@@ -1,6 +1,6 @@
 import MenuIcon from "@mui/icons-material/Menu";
-import { useQuery } from "@tanstack/react-query";
 import { AppBar, Box, Chip, Drawer, IconButton, Toolbar, Typography } from "@mui/material";
+import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Outlet } from "react-router-dom";
 
@@ -20,7 +20,7 @@ export function AppLayout() {
   const apiStatus = data?.status === "ok" ? "API: ok" : isError ? "API: недоступен" : "API: проверка";
 
   return (
-    <Box sx={{ display: "flex", minHeight: "100vh" }}>
+    <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "background.default" }}>
       <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
         <Toolbar>
           <IconButton
@@ -32,7 +32,7 @@ export function AppLayout() {
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 600 }}>
             Платформа учёта и контроля ИСПДн
           </Typography>
           <Chip label={apiStatus} color={data?.status === "ok" ? "success" : "default"} size="small" />
@@ -47,7 +47,7 @@ export function AppLayout() {
           ModalProps={{ keepMounted: true }}
           sx={{
             display: { xs: "block", md: "none" },
-            "& .MuiDrawer-paper": { boxSizing: "border-box", width: drawerWidth },
+            "& .MuiDrawer-paper": { boxSizing: "border-box", width: drawerWidth, borderColor: "divider" },
           }}
         >
           <Toolbar />
@@ -57,7 +57,7 @@ export function AppLayout() {
           variant="permanent"
           sx={{
             display: { xs: "none", md: "block" },
-            "& .MuiDrawer-paper": { boxSizing: "border-box", width: drawerWidth },
+            "& .MuiDrawer-paper": { boxSizing: "border-box", width: drawerWidth, borderColor: "divider" },
           }}
           open
         >

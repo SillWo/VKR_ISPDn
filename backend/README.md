@@ -26,3 +26,14 @@ python -m compileall app
 - `GET /health`
 - `GET /api/v1/health`
 - `GET /docs`
+
+## Database setup
+
+Set `DATABASE_URL` before running Alembic migrations:
+
+```powershell
+$env:DATABASE_URL="postgresql+psycopg://postgres:postgres@localhost:5432/vkr_ispdn"
+alembic upgrade head
+```
+
+Do not commit real `.env` files with secrets.

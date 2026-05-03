@@ -26,6 +26,7 @@ export function MainNavigation() {
             mx: 1,
             my: 0.25,
             borderRadius: 1,
+            color: "text.primary",
             "&.active": {
               bgcolor: "primary.main",
               color: "primary.contrastText",
@@ -35,7 +36,7 @@ export function MainNavigation() {
             },
           }}
         >
-          <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
+          <ListItemIcon sx={{ minWidth: 40, color: "text.secondary" }}>{item.icon}</ListItemIcon>
           <ListItemText primary={item.label} />
         </ListItemButton>
       ))}

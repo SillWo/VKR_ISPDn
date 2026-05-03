@@ -18,12 +18,8 @@ export function PlaceholderPage({ title, description, children }: PlaceholderPag
           {description}
         </Typography>
       </Box>
-      <Paper variant="outlined" sx={{ p: 3, borderRadius: 1 }}>
-        {children ?? (
-          <Typography color="text.secondary">
-            Раздел подготовлен как точка расширения для следующего этапа разработки.
-          </Typography>
-        )}
+      <Paper variant="outlined" sx={{ p: 3, borderRadius: 2, bgcolor: "background.paper" }}>
+        {children ?? <Typography color="text.secondary">Раздел подготовлен как точка расширения для следующего этапа разработки.</Typography>}
       </Paper>
     </Stack>
   );
