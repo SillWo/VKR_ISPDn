@@ -1,0 +1,228 @@
+import AddIcon from "@mui/icons-material/Add";
+import DeleteIcon from "@mui/icons-material/Delete";
+import DownloadIcon from "@mui/icons-material/Download";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Alert, Box, Button, Divider, Stack, TextField, Typography } from "@mui/material";
+import { useMutation } from "@tanstack/react-query";
+import { useState } from "react";
+import { useFieldArray, useForm } from "react-hook-form";
+import { z } from "zod";
+
+import { generateIspdnDocument } from "../../../entities/document/api/documentApi";
+import type {
+  ActIspdnCommissioningFormValues,
+  GenerateIspdnDocumentPayload,
+} from "../../../entities/document/model/types";
+
+const requiredText = (message: string) => z.string().trim().min(1, message);
+
+const actIspdnCommissioningSchema = z.object({
+  descriptionOfViolationsAndDisadvantages: requiredText("Укажите обнаруженные нарушения и недостатки"),
+  recommendation: requiredText("Укажите рекомендации"),
+  events: z
+    .array(
+      z.object({
+        eventName: requiredText("Укажите название мероприятия"),
+        responsibleForTheEvent: requiredText("Укажите ответственного за мероприятие"),
+      }),
+    )
+    .min(1, "Добавьте минимум одно мероприятие"),
+});
+
+function mapToPayload(values: ActIspdnCommissioningFormValues): GenerateIspdnDocumentPayload {
+  return {
+    documentType: "act_ispdn_commissioning",
+    manualData: {
+      description_of_violations_and_disadvantages: values.descriptionOfViolationsAndDisadvantages.trim(),
+      recommendation: values.recommendation.trim(),
+      events: values.events.map((event) => ({
+        event_name: event.eventName.trim(),
+        responsible_for_the_event: event.responsibleForTheEvent.trim(),
+      })),
+    },
+  };
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+}
+
+type GenerateActIspdnDocumentFormProps = {
+  ispdnId: number;
+  disabled?: boolean;
+};
+
+export function GenerateActIspdnDocumentForm({ ispdnId, disabled = false }: GenerateActIspdnDocumentFormProps) {
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+  const {
+    register,
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<ActIspdnCommissioningFormValues>({
+    resolver: zodResolver(actIspdnCommissioningSchema),
+    defaultValues: {
+      descriptionOfViolationsAndDisadvantages: "Недостатки не выявлены",
+      recommendation: "Допустить ИСПДн к эксплуатации",
+      events: [{ eventName: "Проверка состава ИСПДн", responsibleForTheEvent: "" }],
+    },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "events",
+  });
+
+  const mutation = useMutation({
+    mutationFn: (values: ActIspdnCommissioningFormValues) => generateIspdnDocument(ispdnId, mapToPayload(values)),
+    onSuccess: ({ blob, filename }) => {
+      setDownloadError(null);
+      try {
+        downloadBlob(blob, filename);
+      } catch {
+        setDownloadError("Файл сформирован, но браузер не смог начать скачивание.");
+      }
+    },
+  });
+
+  return (
+    <Box component="form" onSubmit={handleSubmit((values) => mutation.mutate(values))}>
+      <Stack spacing={3}>
+        {mutation.isError && (
+          <Alert severity="error">
+            Не удалось сформировать документ. Проверьте данные формы, доступность backend API и наличие системного
+            шаблона.
+          </Alert>
+        )}
+        {downloadError && <Alert severity="error">{downloadError}</Alert>}
+        {mutation.isSuccess && !downloadError && <Alert severity="success">Документ сформирован и передан на скачивание.</Alert>}
+
+        <Stack spacing={2}>
+          <Box>
+            <Typography component="h3" variant="h6" sx={{ fontWeight: 600 }}>
+              Ручные данные
+            </Typography>
+            <Typography color="text.secondary" sx={{ mt: 0.5 }}>
+              Эти поля попадут в системный шаблон акта. Номер мероприятия backend назначит автоматически.
+            </Typography>
+          </Box>
+          <TextField
+            label="Обнаруженные нарушения и недостатки"
+            multiline
+            minRows={4}
+            disabled={disabled || mutation.isPending}
+            error={Boolean(errors.descriptionOfViolationsAndDisadvantages)}
+            helperText={errors.descriptionOfViolationsAndDisadvantages?.message}
+            {...register("descriptionOfViolationsAndDisadvantages")}
+          />
+          <TextField
+            label="Рекомендации"
+            multiline
+            minRows={3}
+            disabled={disabled || mutation.isPending}
+            error={Boolean(errors.recommendation)}
+            helperText={errors.recommendation?.message}
+            {...register("recommendation")}
+          />
+        </Stack>
+
+        <Divider />
+
+        <Stack spacing={2}>
+          <Box>
+            <Typography component="h3" variant="h6" sx={{ fontWeight: 600 }}>
+              Проведённые мероприятия
+            </Typography>
+            <Typography color="text.secondary" sx={{ mt: 0.5 }}>
+              Укажите название и ответственного для каждого мероприятия.
+            </Typography>
+          </Box>
+
+          {errors.events?.root?.message && <Alert severity="error">{errors.events.root.message}</Alert>}
+
+          <Stack spacing={2}>
+            {fields.map((field, index) => (
+              <Box
+                key={field.id}
+                sx={{
+                  border: "1px solid",
+                  borderColor: "divider",
+                  borderRadius: 2,
+                  p: 2,
+                  bgcolor: "background.paper",
+                }}
+              >
+                <Stack spacing={2}>
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    spacing={1.5}
+                    sx={{ alignItems: { sm: "center" }, justifyContent: "space-between" }}
+                  >
+                    <Typography sx={{ fontWeight: 600 }}>Мероприятие {index + 1}</Typography>
+                    <Button
+                      type="button"
+                      variant="outlined"
+                      color="inherit"
+                      startIcon={<DeleteIcon />}
+                      disabled={disabled || mutation.isPending || fields.length === 1}
+                      onClick={() => remove(index)}
+                    >
+                      Удалить мероприятие
+                    </Button>
+                  </Stack>
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                    <TextField
+                      label="Название мероприятия"
+                      fullWidth
+                      disabled={disabled || mutation.isPending}
+                      error={Boolean(errors.events?.[index]?.eventName)}
+                      helperText={errors.events?.[index]?.eventName?.message}
+                      {...register(`events.${index}.eventName`)}
+                    />
+                    <TextField
+                      label="Ответственный за мероприятие"
+                      fullWidth
+                      disabled={disabled || mutation.isPending}
+                      error={Boolean(errors.events?.[index]?.responsibleForTheEvent)}
+                      helperText={errors.events?.[index]?.responsibleForTheEvent?.message}
+                      {...register(`events.${index}.responsibleForTheEvent`)}
+                    />
+                  </Stack>
+                </Stack>
+              </Box>
+            ))}
+          </Stack>
+
+          <Button
+            type="button"
+            variant="outlined"
+            startIcon={<AddIcon />}
+            disabled={disabled || mutation.isPending}
+            onClick={() => append({ eventName: "", responsibleForTheEvent: "" })}
+            sx={{ alignSelf: "flex-start" }}
+          >
+            Добавить мероприятие
+          </Button>
+        </Stack>
+
+        <Button
+          type="submit"
+          variant="contained"
+          color="secondary"
+          startIcon={<DownloadIcon />}
+          disabled={disabled || mutation.isPending}
+          sx={{ alignSelf: "flex-start" }}
+        >
+          {mutation.isPending ? "Формирование..." : "Сформировать .docx"}
+        </Button>
+      </Stack>
+    </Box>
+  );
+}

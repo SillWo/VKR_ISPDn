@@ -1,0 +1,1 @@
+"""Core document generation primitives."""

@@ -24,3 +24,7 @@ export async function httpClient<TResponse>(path: string, init?: RequestInit): P
 
   return response.json() as Promise<TResponse>;
 }
+
+export function buildApiUrl(path: string) {
+  return `${API_BASE_URL}${path}`;
+}
