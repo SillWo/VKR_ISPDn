@@ -1,0 +1,58 @@
+<svg width="640" height="640" viewBox="0 0 640 640" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Логотип «Система безопасности»</title>
+  <desc id="desc">Минималистичный чёрно-белый логотип: щит с листом документа внутри и подписью «Система безопасности».</desc>
+
+  <rect width="640" height="640" fill="#FFFFFF"/>
+
+  <!-- Shield -->
+  <path
+    d="M320 72
+       C383 104 442 113 500 119
+       V264
+       C500 382 428 474 320 520
+       C212 474 140 382 140 264
+       V119
+       C198 113 257 104 320 72Z"
+    stroke="#000000"
+    stroke-width="22"
+    stroke-linejoin="round"
+    fill="#FFFFFF"/>
+
+  <!-- Document sheet -->
+  <path
+    d="M246 175
+       H356
+       L420 239
+       V407
+       H246
+       V175Z"
+    stroke="#000000"
+    stroke-width="18"
+    stroke-linejoin="round"
+    fill="#FFFFFF"/>
+
+  <!-- Folded corner -->
+  <path
+    d="M356 175
+       V239
+       H420"
+    stroke="#000000"
+    stroke-width="18"
+    stroke-linejoin="round"
+    fill="none"/>
+
+  <!-- Document text lines -->
+  <path d="M286 282H381" stroke="#000000" stroke-width="16" stroke-linecap="round"/>
+  <path d="M286 328H381" stroke="#000000" stroke-width="16" stroke-linecap="round"/>
+  <path d="M286 374H354" stroke="#000000" stroke-width="16" stroke-linecap="round"/>
+
+  <!-- Signature check / security mark -->
+  <path
+    d="M274 231
+       L299 255
+       L341 211"
+    stroke="#000000"
+    stroke-width="17"
+    stroke-linecap="round"
+    stroke-linejoin="round"/>
+</svg>

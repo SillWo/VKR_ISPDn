@@ -14,7 +14,7 @@ from app.document_generation.context.providers.threat_model_provider import Thre
 class DocumentContextBuilder:
     def __init__(self, db: Session) -> None:
         self.system_provider = SystemContextProvider()
-        self.organization_provider = OrganizationContextProvider()
+        self.organization_provider = OrganizationContextProvider(db)
         self.ispdn_provider = IspdnContextProvider(db)
         self.processing_provider = ProcessingContextProvider()
         self.security_level_provider = SecurityLevelContextProvider()

@@ -80,7 +80,6 @@ class ActIspdnCommissioningGenerator(DocumentGenerator):
         ]
 
         return {
-            **context_builder.system(),
             **context_builder.organization(),
             **context_builder.ispdn(ispdn_id),
             "description_of_violations_and_disadvantages": manual_data[

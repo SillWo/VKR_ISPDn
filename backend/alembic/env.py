@@ -6,7 +6,7 @@ from sqlalchemy import engine_from_config, pool
 from dotenv import load_dotenv
 
 from app.core.database import Base
-from app.models import IspdnCard
+from app.models import IspdnCard, OrganizationCard
 
 load_dotenv()
 

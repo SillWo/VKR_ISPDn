@@ -2,7 +2,7 @@ import MenuIcon from "@mui/icons-material/Menu";
 import { AppBar, Box, Chip, Drawer, IconButton, Toolbar, Typography } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Outlet } from "react-router-dom";
+import { Link as RouterLink, Outlet } from "react-router-dom";
 
 import { getApiHealth } from "../../shared/api/health";
 import { MainNavigation } from "../navigation/MainNavigation";
@@ -32,9 +32,48 @@ export function AppLayout() {
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 600 }}>
-            Платформа учёта и контроля ИСПДн
-          </Typography>
+
+          <Box
+            component={RouterLink}
+            to="/ispdns"
+            aria-label="Перейти в реестр ИСПДн"
+            sx={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 1.5,
+              flexGrow: 1,
+              width: "fit-content",
+              minWidth: 0,
+              textDecoration: "none",
+              color: "text.primary",
+            }}
+          >
+            <Box
+              component="img"
+              src="/logo.svg"
+              alt="Логотип"
+              sx={{
+                display: "block",
+                width: 44,
+                height: 44,
+                objectFit: "contain",
+              }}
+            />
+            <Typography
+              component="span"
+              sx={{
+                display: { xs: "none", sm: "inline" },
+                fontSize: 18,
+                lineHeight: 1.3,
+                fontWeight: 600,
+                color: "text.primary",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Система контроля ИСПДн
+            </Typography>
+          </Box>
+
           <Chip label={apiStatus} color={data?.status === "ok" ? "success" : "default"} size="small" />
         </Toolbar>
       </AppBar>

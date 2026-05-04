@@ -10,4 +10,7 @@ class IspdnContextProvider:
 
     def get_context(self, ispdn_id: int) -> dict:
         card = self.service.get_card(ispdn_id)
-        return {"ISPDn_name": card.name}
+        return {
+            "ISPDn_name": card.name,
+            "start_date": card.commissioning_date.strftime("%d.%m.%Y"),
+        }
