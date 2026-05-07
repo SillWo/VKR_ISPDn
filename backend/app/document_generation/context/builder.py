@@ -18,7 +18,7 @@ class DocumentContextBuilder:
         self.organization_provider = OrganizationContextProvider(db)
         self.employee_provider = EmployeeContextProvider(db)
         self.ispdn_provider = IspdnContextProvider(db)
-        self.processing_provider = ProcessingContextProvider()
+        self.processing_provider = ProcessingContextProvider(db)
         self.security_level_provider = SecurityLevelContextProvider()
         self.security_measures_provider = SecurityMeasuresContextProvider()
         self.threat_model_provider = ThreatModelContextProvider()

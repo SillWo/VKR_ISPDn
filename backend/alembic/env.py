@@ -6,7 +6,15 @@ from sqlalchemy import engine_from_config, pool
 from dotenv import load_dotenv
 
 from app.core.database import Base
-from app.models import Department, Employee, IspdnCard, OrganizationCard
+from app.models import (
+    Department,
+    Employee,
+    IspdnCard,
+    OrganizationCard,
+    ProcessingProcess,
+    ProcessingPurpose,
+    ispdn_processing_purposes,
+)
 
 load_dotenv()
 

@@ -10,18 +10,22 @@ import {
   Stack,
   TextField,
 } from "@mui/material";
+import { useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 
 import type { IspdnFormValues } from "../../../entities/ispdn/model/types";
 import { FormSection } from "../../../shared/ui/FormSection";
 import { EmployeeSelect } from "../../../shared/ui/employee-select/EmployeeSelect";
-import { ispdnCardFormSchema } from "../model/schema";
+import { ispdnCardFormSchema, ispdnCardMainInfoFormSchema } from "../model/schema";
+import { IspdnProcessingPurposesField } from "./IspdnProcessingPurposesField";
 
 type IspdnCardFormProps = {
   defaultValues: IspdnFormValues;
   submitLabel: string;
   isSubmitting?: boolean;
   legacyResponsiblePerson?: string | null;
+  showActions?: boolean;
+  showProcessingPurposes?: boolean;
   onSubmit: (values: IspdnFormValues) => void;
   onCancel: () => void;
 };
@@ -31,21 +35,28 @@ export function IspdnCardForm({
   submitLabel,
   isSubmitting,
   legacyResponsiblePerson,
+  showActions = true,
+  showProcessingPurposes = true,
   onSubmit,
   onCancel,
 }: IspdnCardFormProps) {
+  const schema = useMemo(
+    () => (showProcessingPurposes ? ispdnCardFormSchema : ispdnCardMainInfoFormSchema),
+    [showProcessingPurposes],
+  );
+
   const {
     control,
     handleSubmit,
     register,
     formState: { errors },
   } = useForm<IspdnFormValues>({
-    resolver: zodResolver(ispdnCardFormSchema),
+    resolver: zodResolver(schema),
     defaultValues,
   });
 
   return (
-    <Stack component="form" spacing={3} onSubmit={handleSubmit(onSubmit)} noValidate>
+    <Stack id="ispdn-card-form" component="form" spacing={3} onSubmit={handleSubmit(onSubmit)} noValidate>
       <FormSection title="Основные сведения">
         <TextField
           label="Название ИСПДн"
@@ -65,16 +76,21 @@ export function IspdnCardForm({
           error={Boolean(errors.shortDescription)}
           helperText={errors.shortDescription?.message ?? "Опишите назначение системы и основной контур обработки."}
         />
-        <TextField
-          label="Цели обработки ПДн"
-          fullWidth
-          required
-          multiline
-          minRows={3}
-          {...register("processingPurposes")}
-          error={Boolean(errors.processingPurposes)}
-          helperText={errors.processingPurposes?.message ?? "Перечислите цели обработки персональных данных."}
-        />
+        {showProcessingPurposes && (
+          <Controller
+            name="processingPurposeIds"
+            control={control}
+            render={({ field }) => (
+              <IspdnProcessingPurposesField
+                value={field.value}
+                onChange={field.onChange}
+                disabled={isSubmitting}
+                error={Boolean(errors.processingPurposeIds)}
+                helperText={errors.processingPurposeIds?.message ?? "Цели обработки выбираются из единого реестра."}
+              />
+            )}
+          />
+        )}
         <TextField
           label="Сайт ИСПДн"
           fullWidth
@@ -159,14 +175,16 @@ export function IspdnCardForm({
         </Stack>
       </FormSection>
 
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ justifyContent: "flex-end" }}>
-        <Button variant="outlined" onClick={onCancel} disabled={isSubmitting}>
-          Отмена
-        </Button>
-        <Button type="submit" variant="contained" disabled={isSubmitting}>
-          {isSubmitting ? "Сохранение..." : submitLabel}
-        </Button>
-      </Stack>
+      {showActions && (
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ justifyContent: "flex-end" }}>
+          <Button variant="outlined" onClick={onCancel} disabled={isSubmitting}>
+            Отмена
+          </Button>
+          <Button type="submit" variant="contained" disabled={isSubmitting}>
+            {isSubmitting ? "Сохранение..." : submitLabel}
+          </Button>
+        </Stack>
+      )}
     </Stack>
   );
 }

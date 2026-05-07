@@ -9,6 +9,10 @@ from app.core.database import Base
 
 if TYPE_CHECKING:
     from app.models.employee import Employee
+    from app.models.processing_process import ProcessingProcess
+    from app.models.processing_purpose import ProcessingPurpose
+
+from app.models.ispdn_processing_purpose import ispdn_processing_purposes
 
 
 class IspdnCard(Base):
@@ -51,3 +55,16 @@ class IspdnCard(Base):
     responsible_employee: Mapped["Employee | None"] = relationship(
         back_populates="responsible_ispdn_cards",
     )
+    processing_processes: Mapped[list["ProcessingProcess"]] = relationship(
+        back_populates="ispdn",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    processing_purpose_options: Mapped[list["ProcessingPurpose"]] = relationship(
+        secondary=ispdn_processing_purposes,
+        back_populates="ispdn_cards",
+    )
+
+    @property
+    def processing_purpose_ids(self) -> list[int]:
+        return [purpose.id for purpose in self.processing_purpose_options]

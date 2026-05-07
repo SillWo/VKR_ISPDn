@@ -6,6 +6,7 @@ import type {
   IspdnStatus,
 } from "../model/types";
 import { httpClient } from "../../../shared/api/httpClient";
+import type { ProcessingPurposeOption } from "../../processing-purpose/model/types";
 
 type ResponsibleEmployeeDto = {
   id: number;
@@ -21,6 +22,8 @@ type IspdnCardDto = {
   name: string;
   short_description: string;
   processing_purposes: string;
+  processing_purpose_ids: number[];
+  processing_purpose_options: ProcessingPurposeOptionDto[];
   commissioning_date: string;
   decommissioning_date: string | null;
   website_url: string | null;
@@ -38,6 +41,8 @@ type IspdnListItemDto = {
   name: string;
   short_description: string;
   processing_purposes: string;
+  processing_purpose_ids: number[];
+  processing_purpose_options: ProcessingPurposeOptionDto[];
   status: IspdnStatus;
   responsible_person: string;
   responsible_employee_id: number | null;
@@ -51,12 +56,19 @@ type IspdnPayloadDto = {
   name: string;
   short_description: string;
   processing_purposes: string;
+  processing_purpose_ids: number[];
   commissioning_date: string;
   decommissioning_date: string | null;
   website_url: string | null;
   responsible_employee_id: number;
   system_composition: string;
   status: IspdnStatus;
+};
+
+type ProcessingPurposeOptionDto = {
+  id: number;
+  name: string;
+  processing_period: string;
 };
 
 function mapResponsibleEmployee(dto: ResponsibleEmployeeDto | null): IspdnResponsibleEmployee | null {
@@ -73,12 +85,22 @@ function mapResponsibleEmployee(dto: ResponsibleEmployeeDto | null): IspdnRespon
   };
 }
 
+function mapProcessingPurposeOption(dto: ProcessingPurposeOptionDto): ProcessingPurposeOption {
+  return {
+    id: dto.id,
+    name: dto.name,
+    processingPeriod: dto.processing_period,
+  };
+}
+
 function mapCard(dto: IspdnCardDto): IspdnCard {
   return {
     id: dto.id,
     name: dto.name,
     shortDescription: dto.short_description,
     processingPurposes: dto.processing_purposes,
+    processingPurposeIds: dto.processing_purpose_ids,
+    processingPurposeOptions: dto.processing_purpose_options.map(mapProcessingPurposeOption),
     commissioningDate: dto.commissioning_date,
     decommissioningDate: dto.decommissioning_date,
     websiteUrl: dto.website_url,
@@ -98,6 +120,8 @@ function mapListItem(dto: IspdnListItemDto): IspdnListItem {
     name: dto.name,
     shortDescription: dto.short_description,
     processingPurposes: dto.processing_purposes,
+    processingPurposeIds: dto.processing_purpose_ids,
+    processingPurposeOptions: dto.processing_purpose_options.map(mapProcessingPurposeOption),
     status: dto.status,
     responsiblePerson: dto.responsible_person,
     responsibleEmployeeId: dto.responsible_employee_id,
@@ -113,6 +137,7 @@ function mapPayload(values: IspdnFormValues): IspdnPayloadDto {
     name: values.name.trim(),
     short_description: values.shortDescription.trim(),
     processing_purposes: values.processingPurposes.trim(),
+    processing_purpose_ids: values.processingPurposeIds,
     commissioning_date: values.commissioningDate,
     decommissioning_date: values.decommissioningDate || null,
     website_url: values.websiteUrl.trim() || null,

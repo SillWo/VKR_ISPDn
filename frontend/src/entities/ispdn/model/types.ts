@@ -1,3 +1,5 @@
+import type { ProcessingPurposeOption } from "../../processing-purpose/model/types";
+
 export type IspdnStatus = "active" | "archived";
 
 export type IspdnResponsibleEmployee = {
@@ -14,6 +16,8 @@ export type IspdnCard = {
   name: string;
   shortDescription: string;
   processingPurposes: string;
+  processingPurposeIds: number[];
+  processingPurposeOptions: ProcessingPurposeOption[];
   commissioningDate: string;
   decommissioningDate: string | null;
   websiteUrl: string | null;
@@ -31,6 +35,8 @@ export type IspdnListItem = {
   name: string;
   shortDescription: string;
   processingPurposes: string;
+  processingPurposeIds: number[];
+  processingPurposeOptions: ProcessingPurposeOption[];
   status: IspdnStatus;
   responsiblePerson: string;
   responsibleEmployeeId: number | null;
@@ -44,6 +50,7 @@ export type IspdnFormValues = {
   name: string;
   shortDescription: string;
   processingPurposes: string;
+  processingPurposeIds: number[];
   commissioningDate: string;
   decommissioningDate: string;
   websiteUrl: string;

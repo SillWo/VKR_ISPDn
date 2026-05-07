@@ -96,7 +96,6 @@ export function IspdnRegistryPage() {
                 <TableCell>Название</TableCell>
                 <TableCell>Статус</TableCell>
                 <TableCell>Ответственный</TableCell>
-                <TableCell>Цели обработки ПДн</TableCell>
                 <TableCell>Дата ввода</TableCell>
                 <TableCell>Дата вывода</TableCell>
                 <TableCell>Последнее обновление</TableCell>
@@ -118,7 +117,6 @@ export function IspdnRegistryPage() {
                     <Chip label={statusLabels[item.status]} color={statusColors[item.status]} size="small" />
                   </TableCell>
                   <TableCell>{item.responsibleEmployee?.fullName ?? item.responsiblePerson}</TableCell>
-                  <TableCell sx={{ maxWidth: 280 }}>{item.processingPurposes}</TableCell>
                   <TableCell>{formatDate(item.commissioningDate)}</TableCell>
                   <TableCell>{formatDate(item.decommissioningDate)}</TableCell>
                   <TableCell>{formatDate(item.updatedAt)}</TableCell>

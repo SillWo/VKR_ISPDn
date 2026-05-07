@@ -22,6 +22,10 @@ export async function httpClient<TResponse>(path: string, init?: RequestInit): P
     throw new HttpError(response.status, response.statusText);
   }
 
+  if (response.status === 204) {
+    return undefined as TResponse;
+  }
+
   return response.json() as Promise<TResponse>;
 }
 

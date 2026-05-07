@@ -27,6 +27,7 @@ function toFormValues(card: IspdnCard): IspdnFormValues {
     name: card.name,
     shortDescription: card.shortDescription,
     processingPurposes: card.processingPurposes,
+    processingPurposeIds: card.processingPurposeIds,
     commissioningDate: card.commissioningDate,
     decommissioningDate: card.decommissioningDate ?? "",
     websiteUrl: card.websiteUrl ?? "",
