@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const requiredText = (message: string) => z.string().trim().min(1, message);
+import { requiredText } from "../../../shared/lib/validation";
 
 export const ispdnCardFormSchema = z
   .object({

@@ -5,16 +5,15 @@ import {
   FormHelperText,
   InputLabel,
   MenuItem,
-  Paper,
   Select,
   Stack,
   TextField,
-  Typography,
 } from "@mui/material";
 import { Controller, useForm } from "react-hook-form";
 
 import type { Department } from "../../../entities/department/model/types";
 import type { EmployeeFormValues } from "../../../entities/employee/model/types";
+import { FormSection } from "../../../shared/ui/FormSection";
 import { employeeFormSchema } from "../model/schema";
 
 type EmployeeFormProps = {
@@ -46,11 +45,7 @@ export function EmployeeForm({
 
   return (
     <Stack component="form" spacing={3} onSubmit={handleSubmit(onSubmit)} noValidate>
-      <Paper variant="outlined" sx={{ p: 3, borderRadius: 2, bgcolor: "background.paper" }}>
-        <Stack spacing={2}>
-          <Typography component="h2" variant="h6" sx={{ fontWeight: 600 }}>
-            Сведения о сотруднике
-          </Typography>
+      <FormSection title="Сведения о сотруднике">
           <TextField
             label="ФИО"
             fullWidth
@@ -106,8 +101,7 @@ export function EmployeeForm({
               </FormControl>
             )}
           />
-        </Stack>
-      </Paper>
+      </FormSection>
 
       <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ justifyContent: "flex-end" }}>
         <Button type="button" variant="outlined" disabled={isSubmitting} onClick={onCancel}>

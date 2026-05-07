@@ -1,11 +1,11 @@
 import SaveIcon from "@mui/icons-material/Save";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Button, Paper, Stack, TextField, Typography } from "@mui/material";
-import type { ReactNode } from "react";
+import { Button, Stack, TextField } from "@mui/material";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 
 import type { OrganizationFormValues } from "../../../entities/organization/model/types";
+import { FormSection } from "../../../shared/ui/FormSection";
 import { organizationCardFormSchema } from "../model/schema";
 
 type OrganizationCardFormProps = {
@@ -138,23 +138,5 @@ export function OrganizationCardForm({
         </Button>
       </Stack>
     </Stack>
-  );
-}
-
-type FormSectionProps = {
-  title: string;
-  children: ReactNode;
-};
-
-function FormSection({ title, children }: FormSectionProps) {
-  return (
-    <Paper variant="outlined" sx={{ p: 3, borderRadius: 2, bgcolor: "background.paper" }}>
-      <Stack spacing={2}>
-        <Typography component="h2" variant="h6" sx={{ fontWeight: 600 }}>
-          {title}
-        </Typography>
-        {children}
-      </Stack>
-    </Paper>
   );
 }

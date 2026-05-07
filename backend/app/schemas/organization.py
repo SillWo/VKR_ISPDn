@@ -2,6 +2,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.schemas.text import strip_required_text
+
 
 class OrganizationBase(BaseModel):
     short_legal_name: str = Field(min_length=1, max_length=255)
@@ -14,7 +16,7 @@ class OrganizationBase(BaseModel):
     registration_address: str = Field(min_length=1)
     registration_city: str = Field(min_length=1, max_length=255)
 
-    @field_validator(
+    _validate_required_text = field_validator(
         "short_legal_name",
         "full_legal_name",
         "inn",
@@ -25,12 +27,7 @@ class OrganizationBase(BaseModel):
         "registration_address",
         "registration_city",
         mode="before",
-    )
-    @classmethod
-    def validate_required_text(cls, value: str) -> str:
-        if not isinstance(value, str) or not value.strip():
-            raise ValueError("Field cannot be empty")
-        return value.strip()
+    )(strip_required_text)
 
 
 class OrganizationUpsert(OrganizationBase):

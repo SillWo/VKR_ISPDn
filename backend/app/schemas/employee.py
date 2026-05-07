@@ -3,6 +3,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.schemas.department import DepartmentShortRead
+from app.schemas.text import strip_required_text
 
 
 class EmployeeBase(BaseModel):
@@ -11,12 +12,9 @@ class EmployeeBase(BaseModel):
     document_initials: str = Field(min_length=1, max_length=255)
     department_id: int | None = None
 
-    @field_validator("full_name", "position", "document_initials", mode="before")
-    @classmethod
-    def validate_required_text(cls, value: str) -> str:
-        if not isinstance(value, str) or not value.strip():
-            raise ValueError("Field cannot be empty")
-        return value.strip()
+    _validate_required_text = field_validator("full_name", "position", "document_initials", mode="before")(
+        strip_required_text,
+    )
 
 
 class EmployeeCreate(EmployeeBase):

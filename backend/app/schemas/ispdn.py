@@ -4,6 +4,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.schemas.employee import EmployeeShortRead
+from app.schemas.text import strip_required_text
 
 IspdnStatus = Literal["active", "archived"]
 
@@ -18,18 +19,13 @@ class IspdnBase(BaseModel):
     system_composition: str = Field(min_length=1)
     status: IspdnStatus = "active"
 
-    @field_validator(
+    _validate_required_text = field_validator(
         "name",
         "short_description",
         "processing_purposes",
         "system_composition",
         mode="before",
-    )
-    @classmethod
-    def validate_required_text(cls, value: str) -> str:
-        if not isinstance(value, str) or not value.strip():
-            raise ValueError("Field cannot be empty")
-        return value.strip()
+    )(strip_required_text)
 
     @field_validator("website_url", mode="before")
     @classmethod

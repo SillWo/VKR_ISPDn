@@ -1,19 +1,10 @@
-import { Button, Stack, Typography } from "@mui/material";
-import { Link as RouterLink, useParams } from "react-router-dom";
-
-import { PlaceholderPage } from "../../shared/ui/PlaceholderPage";
+import { IspdnModulePlaceholderPage } from "../../shared/ui/IspdnModulePlaceholderPage";
 
 export function IspdnThreatModelPage() {
-  const { ispdnId } = useParams();
-
   return (
-    <PlaceholderPage title="Модель угроз" description={`ИСПДн: ${ispdnId}. Функционал модуля будет реализован позже.`}>
-      <Stack spacing={2} sx={{ alignItems: "flex-start" }}>
-        <Typography color="text.secondary">Здесь позже появится информация о модели актуальных угроз выбранной ИСПДн.</Typography>
-        <Button component={RouterLink} to={`/ispdns/${ispdnId}`} variant="outlined">
-          Назад к карточке ИСПДн
-        </Button>
-      </Stack>
-    </PlaceholderPage>
+    <IspdnModulePlaceholderPage
+      title="Модель угроз"
+      body="Здесь позже появится информация о модели актуальных угроз выбранной ИСПДн."
+    />
   );
 }

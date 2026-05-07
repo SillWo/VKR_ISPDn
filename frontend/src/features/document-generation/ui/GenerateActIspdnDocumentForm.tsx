@@ -13,9 +13,8 @@ import type {
   ActIspdnCommissioningFormValues,
   GenerateIspdnDocumentPayload,
 } from "../../../entities/document/model/types";
+import { requiredText } from "../../../shared/lib/validation";
 import { EmployeeSelect } from "../../../shared/ui/employee-select/EmployeeSelect";
-
-const requiredText = (message: string) => z.string().trim().min(1, message);
 
 const actIspdnCommissioningSchema = z.object({
   descriptionOfViolationsAndDisadvantages: requiredText("Укажите обнаруженные нарушения и недостатки"),

@@ -6,16 +6,14 @@ import {
   FormHelperText,
   InputLabel,
   MenuItem,
-  Paper,
   Select,
   Stack,
   TextField,
-  Typography,
 } from "@mui/material";
-import type { ReactNode } from "react";
 import { Controller, useForm } from "react-hook-form";
 
 import type { IspdnFormValues } from "../../../entities/ispdn/model/types";
+import { FormSection } from "../../../shared/ui/FormSection";
 import { EmployeeSelect } from "../../../shared/ui/employee-select/EmployeeSelect";
 import { ispdnCardFormSchema } from "../model/schema";
 
@@ -170,23 +168,5 @@ export function IspdnCardForm({
         </Button>
       </Stack>
     </Stack>
-  );
-}
-
-type FormSectionProps = {
-  title: string;
-  children: ReactNode;
-};
-
-function FormSection({ title, children }: FormSectionProps) {
-  return (
-    <Paper variant="outlined" sx={{ p: 3, borderRadius: 2, bgcolor: "background.paper" }}>
-      <Stack spacing={2}>
-        <Typography component="h2" variant="h6" sx={{ fontWeight: 600 }}>
-          {title}
-        </Typography>
-        {children}
-      </Stack>
-    </Paper>
   );
 }
