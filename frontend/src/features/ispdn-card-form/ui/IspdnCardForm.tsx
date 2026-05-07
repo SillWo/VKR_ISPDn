@@ -1,5 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
+  Alert,
   Button,
   FormControl,
   FormHelperText,
@@ -15,17 +16,26 @@ import type { ReactNode } from "react";
 import { Controller, useForm } from "react-hook-form";
 
 import type { IspdnFormValues } from "../../../entities/ispdn/model/types";
+import { EmployeeSelect } from "../../../shared/ui/employee-select/EmployeeSelect";
 import { ispdnCardFormSchema } from "../model/schema";
 
 type IspdnCardFormProps = {
   defaultValues: IspdnFormValues;
   submitLabel: string;
   isSubmitting?: boolean;
+  legacyResponsiblePerson?: string | null;
   onSubmit: (values: IspdnFormValues) => void;
   onCancel: () => void;
 };
 
-export function IspdnCardForm({ defaultValues, submitLabel, isSubmitting, onSubmit, onCancel }: IspdnCardFormProps) {
+export function IspdnCardForm({
+  defaultValues,
+  submitLabel,
+  isSubmitting,
+  legacyResponsiblePerson,
+  onSubmit,
+  onCancel,
+}: IspdnCardFormProps) {
   const {
     control,
     handleSubmit,
@@ -65,7 +75,7 @@ export function IspdnCardForm({ defaultValues, submitLabel, isSubmitting, onSubm
           minRows={3}
           {...register("processingPurposes")}
           error={Boolean(errors.processingPurposes)}
-          helperText={errors.processingPurposes?.message ?? "Перечислите цели, ради которых в ИСПДн обрабатываются ПДн."}
+          helperText={errors.processingPurposes?.message ?? "Перечислите цели обработки персональных данных."}
         />
         <TextField
           label="Сайт ИСПДн"
@@ -77,13 +87,29 @@ export function IspdnCardForm({ defaultValues, submitLabel, isSubmitting, onSubm
       </FormSection>
 
       <FormSection title="Ответственный и состав системы">
-        <TextField
-          label="Ответственный за обработку ПДн"
-          fullWidth
-          required
-          {...register("responsiblePerson")}
-          error={Boolean(errors.responsiblePerson)}
-          helperText={errors.responsiblePerson?.message ?? "Укажите сотрудника, ответственного за обработку ПДн в этой ИСПДн."}
+        {legacyResponsiblePerson && !defaultValues.responsibleEmployeeId && (
+          <Alert severity="warning">
+            Ответственный указан старым текстовым значением. Выберите сотрудника из реестра и сохраните карточку.
+          </Alert>
+        )}
+        <Controller
+          name="responsibleEmployeeId"
+          control={control}
+          render={({ field }) => (
+            <EmployeeSelect
+              value={field.value}
+              onChange={field.onChange}
+              label="Ответственный за обработку ПДн"
+              required
+              allowQuickCreate
+              disabled={isSubmitting}
+              error={Boolean(errors.responsibleEmployeeId)}
+              helperText={
+                errors.responsibleEmployeeId?.message ??
+                "Выберите сотрудника, ответственного за обработку ПДн в этой ИСПДн."
+              }
+            />
+          )}
         />
         <TextField
           label="Состав ИСПДн"
@@ -93,7 +119,7 @@ export function IspdnCardForm({ defaultValues, submitLabel, isSubmitting, onSubm
           minRows={4}
           {...register("systemComposition")}
           error={Boolean(errors.systemComposition)}
-          helperText={errors.systemComposition?.message ?? "Опишите приложения, базу данных, серверы и ключевые компоненты системы."}
+          helperText={errors.systemComposition?.message ?? "Опишите приложения, базу данных, серверы и компоненты системы."}
         />
       </FormSection>
 
@@ -116,7 +142,7 @@ export function IspdnCardForm({ defaultValues, submitLabel, isSubmitting, onSubm
             slotProps={{ inputLabel: { shrink: true } }}
             {...register("decommissioningDate")}
             error={Boolean(errors.decommissioningDate)}
-            helperText={errors.decommissioningDate?.message ?? "Заполняется, если система выведена или планируется к выводу из работы."}
+            helperText={errors.decommissioningDate?.message ?? "Заполняется, если система выведена или планируется к выводу."}
           />
           <Controller
             name="status"

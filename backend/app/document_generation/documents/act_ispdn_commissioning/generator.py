@@ -20,6 +20,7 @@ class ActIspdnCommissioningGenerator(DocumentGenerator):
     description = "Документ для фиксации ввода ИСПДн в эксплуатацию"
     requires_ispdn = True
     template_path = Path(__file__).with_name("template.docx")
+    employee_name_mode = "document_initials"
 
     def get_manual_fields(self) -> list[DocumentManualField]:
         return [
@@ -48,7 +49,7 @@ class ActIspdnCommissioningGenerator(DocumentGenerator):
                         required=True,
                     ),
                     DocumentManualField(
-                        name="responsible_for_the_event",
+                        name="responsible_employee_id",
                         label="Ответственный за мероприятие",
                         type="text",
                         required=True,
@@ -74,7 +75,10 @@ class ActIspdnCommissioningGenerator(DocumentGenerator):
             {
                 "event_number": index,
                 "event_name": event["event_name"],
-                "responsible_for_the_event": event["responsible_for_the_event"],
+                "responsible_for_the_event": context_builder.employee_name(
+                    event["responsible_employee_id"],
+                    self.employee_name_mode,
+                ),
             }
             for index, event in enumerate(manual_data["events"], start=1)
         ]

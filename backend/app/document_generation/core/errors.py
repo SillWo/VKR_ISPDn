@@ -16,3 +16,7 @@ class DocumentRenderError(DocumentGenerationError):
 
 class DocumentRequiresIspdnError(DocumentGenerationError):
     pass
+
+
+class DocumentEmployeeNotFoundError(DocumentGenerationError):
+    pass

@@ -22,3 +22,14 @@
 ## Context providers
 
 `DocumentContextBuilder` предоставляет методы `system()`, `organization()`, `ispdn(ispdn_id)` и заглушки для будущих модулей. Новый provider подключается в `context/providers/`, затем добавляется в `DocumentContextBuilder`.
+
+## Employee names in documents
+
+Если документу нужен сотрудник компании, frontend должен передавать employee id, а не текстовое ФИО. Генератор получает сотрудника через `DocumentContextBuilder` и сам выбирает формат имени.
+
+Для документов поддерживаются режимы:
+
+- `full_name`;
+- `document_initials`.
+
+Для `act_ispdn_commissioning` используется `employee_name_mode = "document_initials"`, поэтому в контекст шаблона `responsible_for_the_event` подставляются инициалы для документов из карточки сотрудника.

@@ -1,9 +1,14 @@
 from datetime import date, datetime
 
-from sqlalchemy import CheckConstraint, Date, DateTime, String, Text, func
-from sqlalchemy.orm import Mapped, mapped_column
+from typing import TYPE_CHECKING
+
+from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKey, String, Text, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+
+if TYPE_CHECKING:
+    from app.models.employee import Employee
 
 
 class IspdnCard(Base):
@@ -24,6 +29,11 @@ class IspdnCard(Base):
     decommissioning_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     website_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     responsible_person: Mapped[str] = mapped_column(String(255), nullable=False)
+    responsible_employee_id: Mapped[int | None] = mapped_column(
+        ForeignKey("employees.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
     system_composition: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="active")
     created_at: Mapped[datetime] = mapped_column(
@@ -36,4 +46,8 @@ class IspdnCard(Base):
         nullable=False,
         server_default=func.now(),
         onupdate=func.now(),
+    )
+
+    responsible_employee: Mapped["Employee | None"] = relationship(
+        back_populates="responsible_ispdn_cards",
     )

@@ -3,6 +3,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.schemas.employee import EmployeeShortRead
+
 IspdnStatus = Literal["active", "archived"]
 
 
@@ -13,7 +15,6 @@ class IspdnBase(BaseModel):
     commissioning_date: date
     decommissioning_date: date | None = None
     website_url: str | None = Field(default=None, max_length=2048)
-    responsible_person: str = Field(min_length=1, max_length=255)
     system_composition: str = Field(min_length=1)
     status: IspdnStatus = "active"
 
@@ -21,7 +22,6 @@ class IspdnBase(BaseModel):
         "name",
         "short_description",
         "processing_purposes",
-        "responsible_person",
         "system_composition",
         mode="before",
     )
@@ -48,17 +48,20 @@ class IspdnBase(BaseModel):
 
 
 class IspdnCreate(IspdnBase):
-    pass
+    responsible_employee_id: int
 
 
 class IspdnUpdate(IspdnBase):
-    pass
+    responsible_employee_id: int
 
 
 class IspdnRead(IspdnBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    responsible_person: str
+    responsible_employee_id: int | None
+    responsible_employee: EmployeeShortRead | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -71,6 +74,8 @@ class IspdnListItem(BaseModel):
     short_description: str
     status: IspdnStatus
     responsible_person: str
+    responsible_employee_id: int | None
+    responsible_employee: EmployeeShortRead | None = None
     processing_purposes: str
     commissioning_date: date
     decommissioning_date: date | None

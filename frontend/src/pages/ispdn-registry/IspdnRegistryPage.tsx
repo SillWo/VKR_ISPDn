@@ -117,7 +117,7 @@ export function IspdnRegistryPage() {
                   <TableCell>
                     <Chip label={statusLabels[item.status]} color={statusColors[item.status]} size="small" />
                   </TableCell>
-                  <TableCell>{item.responsiblePerson}</TableCell>
+                  <TableCell>{item.responsibleEmployee?.fullName ?? item.responsiblePerson}</TableCell>
                   <TableCell sx={{ maxWidth: 280 }}>{item.processingPurposes}</TableCell>
                   <TableCell>{formatDate(item.commissioningDate)}</TableCell>
                   <TableCell>{formatDate(item.decommissioningDate)}</TableCell>

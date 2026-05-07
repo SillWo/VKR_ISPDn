@@ -18,7 +18,7 @@ export type DocumentType = {
 
 export type ActIspdnCommissioningEvent = {
   eventName: string;
-  responsibleForTheEvent: string;
+  responsibleEmployeeId: number | null;
 };
 
 export type ActIspdnCommissioningFormValues = {
@@ -34,7 +34,7 @@ export type GenerateIspdnDocumentPayload = {
     recommendation: string;
     events: Array<{
       event_name: string;
-      responsible_for_the_event: string;
+      responsible_employee_id: number;
     }>;
   };
 };

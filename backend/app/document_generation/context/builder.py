@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 
 from app.document_generation.context.providers.control_events_provider import ControlEventsContextProvider
+from app.document_generation.context.providers.employee_provider import EmployeeContextProvider, EmployeeNameMode
 from app.document_generation.context.providers.ispdn_provider import IspdnContextProvider
 from app.document_generation.context.providers.organization_provider import OrganizationContextProvider
 from app.document_generation.context.providers.processing_provider import ProcessingContextProvider
@@ -15,6 +16,7 @@ class DocumentContextBuilder:
     def __init__(self, db: Session) -> None:
         self.system_provider = SystemContextProvider()
         self.organization_provider = OrganizationContextProvider(db)
+        self.employee_provider = EmployeeContextProvider(db)
         self.ispdn_provider = IspdnContextProvider(db)
         self.processing_provider = ProcessingContextProvider()
         self.security_level_provider = SecurityLevelContextProvider()
@@ -28,6 +30,9 @@ class DocumentContextBuilder:
 
     def organization(self) -> dict:
         return self.organization_provider.get_context()
+
+    def employee_name(self, employee_id: int, mode: EmployeeNameMode) -> str:
+        return self.employee_provider.get_employee_name(employee_id, mode)
 
     def ispdn(self, ispdn_id: int) -> dict:
         return self.ispdn_provider.get_context(ispdn_id)

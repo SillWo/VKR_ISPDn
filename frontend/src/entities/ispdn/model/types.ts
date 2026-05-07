@@ -1,5 +1,14 @@
 export type IspdnStatus = "active" | "archived";
 
+export type IspdnResponsibleEmployee = {
+  id: number;
+  fullName: string;
+  position: string;
+  documentInitials: string;
+  departmentId: number | null;
+  departmentName: string | null;
+};
+
 export type IspdnCard = {
   id: number;
   name: string;
@@ -9,6 +18,8 @@ export type IspdnCard = {
   decommissioningDate: string | null;
   websiteUrl: string | null;
   responsiblePerson: string;
+  responsibleEmployeeId: number | null;
+  responsibleEmployee: IspdnResponsibleEmployee | null;
   systemComposition: string;
   status: IspdnStatus;
   createdAt: string;
@@ -22,6 +33,8 @@ export type IspdnListItem = {
   processingPurposes: string;
   status: IspdnStatus;
   responsiblePerson: string;
+  responsibleEmployeeId: number | null;
+  responsibleEmployee: IspdnResponsibleEmployee | null;
   commissioningDate: string;
   decommissioningDate: string | null;
   updatedAt: string;
@@ -34,7 +47,7 @@ export type IspdnFormValues = {
   commissioningDate: string;
   decommissioningDate: string;
   websiteUrl: string;
-  responsiblePerson: string;
+  responsibleEmployeeId: number | null;
   systemComposition: string;
   status: IspdnStatus;
 };

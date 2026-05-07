@@ -13,9 +13,13 @@ export const ispdnCardFormSchema = z
       .string()
       .trim()
       .refine((value) => value === "" || z.url().safeParse(value).success, "Укажите корректный URL"),
-    responsiblePerson: requiredText("Укажите ответственного за обработку ПДн"),
+    responsibleEmployeeId: z.number().nullable(),
     systemComposition: requiredText("Опишите состав ИСПДн"),
     status: z.enum(["active", "archived"]),
+  })
+  .refine((values) => values.responsibleEmployeeId !== null, {
+    message: "Выберите ответственного сотрудника из реестра",
+    path: ["responsibleEmployeeId"],
   })
   .refine(
     (values) =>
@@ -37,7 +41,7 @@ export const defaultIspdnFormValues: IspdnCardFormSchema = {
   commissioningDate: "",
   decommissioningDate: "",
   websiteUrl: "",
-  responsiblePerson: "",
+  responsibleEmployeeId: null,
   systemComposition: "",
   status: "active",
 };

@@ -30,7 +30,7 @@ function toFormValues(card: IspdnCard): IspdnFormValues {
     commissioningDate: card.commissioningDate,
     decommissioningDate: card.decommissioningDate ?? "",
     websiteUrl: card.websiteUrl ?? "",
-    responsiblePerson: card.responsiblePerson,
+    responsibleEmployeeId: card.responsibleEmployeeId,
     systemComposition: card.systemComposition,
     status: card.status,
   };
@@ -112,7 +112,9 @@ export function IspdnCardPage() {
             <Chip label={statusLabels[data.status]} color={data.status === "active" ? "success" : "default"} sx={{ alignSelf: { sm: "flex-start" } }} />
           </Stack>
           <Typography>{data.shortDescription}</Typography>
-          <Typography color="text.secondary">Ответственный: {data.responsiblePerson}</Typography>
+          <Typography color="text.secondary">
+            Ответственный: {data.responsibleEmployee?.fullName ?? data.responsiblePerson}
+          </Typography>
         </Stack>
       </Paper>
 
@@ -132,6 +134,7 @@ export function IspdnCardPage() {
             defaultValues={toFormValues(data)}
             submitLabel="Сохранить изменения"
             isSubmitting={mutation.isPending}
+            legacyResponsiblePerson={data.responsiblePerson}
             onSubmit={(values) => mutation.mutate(values)}
             onCancel={() => navigate("/ispdns")}
           />

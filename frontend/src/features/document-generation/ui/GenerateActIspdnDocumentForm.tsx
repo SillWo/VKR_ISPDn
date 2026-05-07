@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Alert, Box, Button, Divider, Stack, TextField, Typography } from "@mui/material";
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
-import { useFieldArray, useForm } from "react-hook-form";
+import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { generateIspdnDocument } from "../../../entities/document/api/documentApi";
@@ -13,6 +13,7 @@ import type {
   ActIspdnCommissioningFormValues,
   GenerateIspdnDocumentPayload,
 } from "../../../entities/document/model/types";
+import { EmployeeSelect } from "../../../shared/ui/employee-select/EmployeeSelect";
 
 const requiredText = (message: string) => z.string().trim().min(1, message);
 
@@ -21,10 +22,15 @@ const actIspdnCommissioningSchema = z.object({
   recommendation: requiredText("Укажите рекомендации"),
   events: z
     .array(
-      z.object({
-        eventName: requiredText("Укажите название мероприятия"),
-        responsibleForTheEvent: requiredText("Укажите ответственного за мероприятие"),
-      }),
+      z
+        .object({
+          eventName: requiredText("Укажите название мероприятия"),
+          responsibleEmployeeId: z.number().nullable(),
+        })
+        .refine((event) => event.responsibleEmployeeId !== null, {
+          message: "Выберите ответственного сотрудника из реестра",
+          path: ["responsibleEmployeeId"],
+        }),
     )
     .min(1, "Добавьте минимум одно мероприятие"),
 });
@@ -37,7 +43,7 @@ function mapToPayload(values: ActIspdnCommissioningFormValues): GenerateIspdnDoc
       recommendation: values.recommendation.trim(),
       events: values.events.map((event) => ({
         event_name: event.eventName.trim(),
-        responsible_for_the_event: event.responsibleForTheEvent.trim(),
+        responsible_employee_id: event.responsibleEmployeeId ?? 0,
       })),
     },
   };
@@ -71,7 +77,7 @@ export function GenerateActIspdnDocumentForm({ ispdnId, disabled = false }: Gene
     defaultValues: {
       descriptionOfViolationsAndDisadvantages: "Недостатки не выявлены",
       recommendation: "Допустить ИСПДн к эксплуатации",
-      events: [{ eventName: "Проверка состава ИСПДн", responsibleForTheEvent: "" }],
+      events: [{ eventName: "Проверка состава ИСПДн", responsibleEmployeeId: null }],
     },
   });
 
@@ -186,13 +192,21 @@ export function GenerateActIspdnDocumentForm({ ispdnId, disabled = false }: Gene
                       helperText={errors.events?.[index]?.eventName?.message}
                       {...register(`events.${index}.eventName`)}
                     />
-                    <TextField
-                      label="Ответственный за мероприятие"
-                      fullWidth
-                      disabled={disabled || mutation.isPending}
-                      error={Boolean(errors.events?.[index]?.responsibleForTheEvent)}
-                      helperText={errors.events?.[index]?.responsibleForTheEvent?.message}
-                      {...register(`events.${index}.responsibleForTheEvent`)}
+                    <Controller
+                      name={`events.${index}.responsibleEmployeeId`}
+                      control={control}
+                      render={({ field: responsibleField }) => (
+                        <EmployeeSelect
+                          value={responsibleField.value}
+                          onChange={responsibleField.onChange}
+                          label="Ответственный за мероприятие"
+                          required
+                          allowQuickCreate
+                          disabled={disabled || mutation.isPending}
+                          error={Boolean(errors.events?.[index]?.responsibleEmployeeId)}
+                          helperText={errors.events?.[index]?.responsibleEmployeeId?.message}
+                        />
+                      )}
                     />
                   </Stack>
                 </Stack>
@@ -205,7 +219,7 @@ export function GenerateActIspdnDocumentForm({ ispdnId, disabled = false }: Gene
             variant="outlined"
             startIcon={<AddIcon />}
             disabled={disabled || mutation.isPending}
-            onClick={() => append({ eventName: "", responsibleForTheEvent: "" })}
+            onClick={() => append({ eventName: "", responsibleEmployeeId: null })}
             sx={{ alignSelf: "flex-start" }}
           >
             Добавить мероприятие

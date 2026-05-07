@@ -1,5 +1,20 @@
-import type { IspdnCard, IspdnFormValues, IspdnListItem, IspdnStatus } from "../model/types";
+import type {
+  IspdnCard,
+  IspdnFormValues,
+  IspdnListItem,
+  IspdnResponsibleEmployee,
+  IspdnStatus,
+} from "../model/types";
 import { httpClient } from "../../../shared/api/httpClient";
+
+type ResponsibleEmployeeDto = {
+  id: number;
+  full_name: string;
+  position: string;
+  document_initials: string;
+  department_id: number | null;
+  department_name: string | null;
+};
 
 type IspdnCardDto = {
   id: number;
@@ -10,6 +25,8 @@ type IspdnCardDto = {
   decommissioning_date: string | null;
   website_url: string | null;
   responsible_person: string;
+  responsible_employee_id: number | null;
+  responsible_employee: ResponsibleEmployeeDto | null;
   system_composition: string;
   status: IspdnStatus;
   created_at: string;
@@ -23,6 +40,8 @@ type IspdnListItemDto = {
   processing_purposes: string;
   status: IspdnStatus;
   responsible_person: string;
+  responsible_employee_id: number | null;
+  responsible_employee: ResponsibleEmployeeDto | null;
   commissioning_date: string;
   decommissioning_date: string | null;
   updated_at: string;
@@ -35,10 +54,24 @@ type IspdnPayloadDto = {
   commissioning_date: string;
   decommissioning_date: string | null;
   website_url: string | null;
-  responsible_person: string;
+  responsible_employee_id: number;
   system_composition: string;
   status: IspdnStatus;
 };
+
+function mapResponsibleEmployee(dto: ResponsibleEmployeeDto | null): IspdnResponsibleEmployee | null {
+  if (!dto) {
+    return null;
+  }
+  return {
+    id: dto.id,
+    fullName: dto.full_name,
+    position: dto.position,
+    documentInitials: dto.document_initials,
+    departmentId: dto.department_id,
+    departmentName: dto.department_name,
+  };
+}
 
 function mapCard(dto: IspdnCardDto): IspdnCard {
   return {
@@ -50,6 +83,8 @@ function mapCard(dto: IspdnCardDto): IspdnCard {
     decommissioningDate: dto.decommissioning_date,
     websiteUrl: dto.website_url,
     responsiblePerson: dto.responsible_person,
+    responsibleEmployeeId: dto.responsible_employee_id,
+    responsibleEmployee: mapResponsibleEmployee(dto.responsible_employee),
     systemComposition: dto.system_composition,
     status: dto.status,
     createdAt: dto.created_at,
@@ -65,6 +100,8 @@ function mapListItem(dto: IspdnListItemDto): IspdnListItem {
     processingPurposes: dto.processing_purposes,
     status: dto.status,
     responsiblePerson: dto.responsible_person,
+    responsibleEmployeeId: dto.responsible_employee_id,
+    responsibleEmployee: mapResponsibleEmployee(dto.responsible_employee),
     commissioningDate: dto.commissioning_date,
     decommissioningDate: dto.decommissioning_date,
     updatedAt: dto.updated_at,
@@ -79,7 +116,7 @@ function mapPayload(values: IspdnFormValues): IspdnPayloadDto {
     commissioning_date: values.commissioningDate,
     decommissioning_date: values.decommissioningDate || null,
     website_url: values.websiteUrl.trim() || null,
-    responsible_person: values.responsiblePerson.trim(),
+    responsible_employee_id: values.responsibleEmployeeId ?? 0,
     system_composition: values.systemComposition.trim(),
     status: values.status,
   };
