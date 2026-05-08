@@ -1,7 +1,11 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.security_measure import IspdnSecurityTools, TechnicalSecurityMeasureRecord
+from app.models.security_measure import (
+    IspdnSecurityTools,
+    TechnicalSecurityMeasureDocument,
+    TechnicalSecurityMeasureRecord,
+)
 
 
 class SecurityMeasureRepository:
@@ -54,3 +58,29 @@ class SecurityMeasureRepository:
         self.db.commit()
         self.db.refresh(record)
         return record
+
+    def get_documents(self, ispdn_id: int) -> list[TechnicalSecurityMeasureDocument]:
+        statement = (
+            select(TechnicalSecurityMeasureDocument)
+            .where(TechnicalSecurityMeasureDocument.ispdn_id == ispdn_id)
+            .order_by(TechnicalSecurityMeasureDocument.created_at.desc(), TechnicalSecurityMeasureDocument.id.desc())
+        )
+        return list(self.db.scalars(statement).all())
+
+    def get_document(self, ispdn_id: int, document_id: int) -> TechnicalSecurityMeasureDocument | None:
+        statement = select(TechnicalSecurityMeasureDocument).where(
+            TechnicalSecurityMeasureDocument.ispdn_id == ispdn_id,
+            TechnicalSecurityMeasureDocument.id == document_id,
+        )
+        return self.db.scalars(statement).first()
+
+    def create_document(self, values: dict) -> TechnicalSecurityMeasureDocument:
+        document = TechnicalSecurityMeasureDocument(**values)
+        self.db.add(document)
+        self.db.commit()
+        self.db.refresh(document)
+        return document
+
+    def delete_document(self, document: TechnicalSecurityMeasureDocument) -> None:
+        self.db.delete(document)
+        self.db.commit()

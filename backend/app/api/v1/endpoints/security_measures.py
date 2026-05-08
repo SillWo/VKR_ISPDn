@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
@@ -10,12 +10,13 @@ from app.repositories.security_measure import SecurityMeasureRepository
 from app.schemas.security_measure import (
     IspdnSecurityToolsRead,
     IspdnSecurityToolsUpsert,
+    TechnicalSecurityMeasureDocumentRead,
     TechnicalSecurityMeasureRead,
     TechnicalSecurityMeasureUpdate,
     TechnicalSecurityMeasuresTableRead,
 )
 from app.services.security_measure import (
-    SecurityMeasureFileNotFoundError,
+    SecurityMeasureDocumentNotFoundError,
     SecurityMeasureNotFoundError,
     SecurityMeasuresIspdnNotFoundError,
     SecurityMeasuresSecurityLevelRequiredError,
@@ -73,17 +74,11 @@ def get_security_measures(
 def update_security_measure(
     ispdn_id: int,
     measure_code: str,
-    factual_status: str = Form(...),
-    justification_text: str | None = Form(None),
-    justification_file: UploadFile | None = File(None),
+    payload: TechnicalSecurityMeasureUpdate,
     service: SecurityMeasureService = Depends(get_security_measure_service),
 ):
     try:
-        payload = TechnicalSecurityMeasureUpdate(
-            factual_status=factual_status,
-            justification_text=justification_text,
-        )
-        return service.update_measure(ispdn_id, measure_code, payload, justification_file)
+        return service.update_measure(ispdn_id, measure_code, payload)
     except SecurityMeasuresIspdnNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc
     except SecurityMeasureNotFoundError as exc:
@@ -97,19 +92,6 @@ def update_security_measure(
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
 
 
-@router.get("/security-measures/{measure_code}/justification-file")
-def get_security_measure_justification_file(
-    ispdn_id: int,
-    measure_code: str,
-    service: SecurityMeasureService = Depends(get_security_measure_service),
-):
-    try:
-        file_path, file_name, media_type = service.get_justification_file(ispdn_id, measure_code)
-        return FileResponse(path=file_path, filename=file_name, media_type=media_type)
-    except (SecurityMeasuresIspdnNotFoundError, SecurityMeasureNotFoundError, SecurityMeasureFileNotFoundError) as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Justification file not found") from exc
-
-
 @router.get("/security-measures/document-context")
 def get_security_measures_document_context(
     ispdn_id: int,
@@ -119,3 +101,63 @@ def get_security_measures_document_context(
         return service.get_document_context(ispdn_id)
     except SecurityMeasuresIspdnNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc
+
+
+@router.get("/security-measures/documents", response_model=list[TechnicalSecurityMeasureDocumentRead])
+def get_security_measure_documents(
+    ispdn_id: int,
+    service: SecurityMeasureService = Depends(get_security_measure_service),
+):
+    try:
+        return service.list_documents(ispdn_id)
+    except SecurityMeasuresIspdnNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc
+
+
+@router.post(
+    "/security-measures/documents",
+    response_model=TechnicalSecurityMeasureDocumentRead,
+    status_code=status.HTTP_201_CREATED,
+)
+def upload_security_measure_document(
+    ispdn_id: int,
+    document_file: UploadFile = File(...),
+    service: SecurityMeasureService = Depends(get_security_measure_service),
+):
+    try:
+        return service.upload_document(ispdn_id, document_file)
+    except SecurityMeasuresIspdnNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc
+    except (SecurityMeasureValidationError, ValidationError) as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+
+
+@router.get("/security-measures/documents/{document_id}/file")
+def get_security_measure_document_file(
+    ispdn_id: int,
+    document_id: int,
+    service: SecurityMeasureService = Depends(get_security_measure_service),
+):
+    try:
+        file_path, file_name, media_type = service.get_document_file(ispdn_id, document_id)
+        return FileResponse(path=file_path, filename=file_name, media_type=media_type)
+    except (SecurityMeasuresIspdnNotFoundError, SecurityMeasureDocumentNotFoundError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Technical security measure document not found",
+        ) from exc
+
+
+@router.delete("/security-measures/documents/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_security_measure_document(
+    ispdn_id: int,
+    document_id: int,
+    service: SecurityMeasureService = Depends(get_security_measure_service),
+):
+    try:
+        service.delete_document(ispdn_id, document_id)
+    except (SecurityMeasuresIspdnNotFoundError, SecurityMeasureDocumentNotFoundError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Technical security measure document not found",
+        ) from exc

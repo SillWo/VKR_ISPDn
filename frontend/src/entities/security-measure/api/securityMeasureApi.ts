@@ -2,6 +2,7 @@ import { buildApiUrl, httpClient } from "../../../shared/api/httpClient";
 import type {
   IspdnSecurityTools,
   TechnicalSecurityMeasure,
+  TechnicalSecurityMeasureDocument,
   TechnicalSecurityMeasureUpdatePayload,
   TechnicalSecurityMeasuresTable,
 } from "../model/types";
@@ -30,10 +31,9 @@ type TechnicalSecurityMeasureDto = {
   regulatory_status_label: string;
   factual_status: "implemented" | "not_implemented";
   factual_status_label: string;
-  justification_required: boolean;
-  justification_text: string | null;
-  justification_file_name: string | null;
-  has_justification_file: boolean;
+  comment_required: boolean;
+  comment: string | null;
+  has_comment: boolean;
   updated_at: string | null;
 };
 
@@ -49,9 +49,22 @@ type TechnicalSecurityMeasuresTableDto = {
     not_base_set_count: number;
     implemented_count: number;
     not_implemented_count: number;
-    justification_required_count: number;
-    missing_required_justification_count: number;
+    base_set_implemented_count: number;
+    base_set_not_implemented_count: number;
+    base_set_rejected_count: number;
+    comment_required_count: number;
+    comment_not_required_count: number;
+    missing_required_comment_count: number;
   };
+};
+
+type TechnicalSecurityMeasureDocumentDto = {
+  id: number;
+  ispdn_id: number;
+  file_name: string;
+  file_content_type: string;
+  file_size_bytes: number;
+  created_at: string;
 };
 
 function mapSecurityTools(dto: IspdnSecurityToolsDto): IspdnSecurityTools {
@@ -97,11 +110,21 @@ function mapMeasure(dto: TechnicalSecurityMeasureDto): TechnicalSecurityMeasure 
     regulatoryStatusLabel: dto.regulatory_status_label,
     factualStatus: dto.factual_status,
     factualStatusLabel: dto.factual_status_label,
-    justificationRequired: dto.justification_required,
-    justificationText: dto.justification_text,
-    justificationFileName: dto.justification_file_name,
-    hasJustificationFile: dto.has_justification_file,
+    commentRequired: dto.comment_required,
+    comment: dto.comment,
+    hasComment: dto.has_comment,
     updatedAt: dto.updated_at,
+  };
+}
+
+function mapDocument(dto: TechnicalSecurityMeasureDocumentDto): TechnicalSecurityMeasureDocument {
+  return {
+    id: dto.id,
+    ispdnId: dto.ispdn_id,
+    fileName: dto.file_name,
+    fileContentType: dto.file_content_type,
+    fileSizeBytes: dto.file_size_bytes,
+    createdAt: dto.created_at,
   };
 }
 
@@ -118,8 +141,12 @@ function mapTable(dto: TechnicalSecurityMeasuresTableDto): TechnicalSecurityMeas
       notBaseSetCount: dto.summary.not_base_set_count,
       implementedCount: dto.summary.implemented_count,
       notImplementedCount: dto.summary.not_implemented_count,
-      justificationRequiredCount: dto.summary.justification_required_count,
-      missingRequiredJustificationCount: dto.summary.missing_required_justification_count,
+      baseSetImplementedCount: dto.summary.base_set_implemented_count,
+      baseSetNotImplementedCount: dto.summary.base_set_not_implemented_count,
+      baseSetRejectedCount: dto.summary.base_set_rejected_count,
+      commentRequiredCount: dto.summary.comment_required_count,
+      commentNotRequiredCount: dto.summary.comment_not_required_count,
+      missingRequiredCommentCount: dto.summary.missing_required_comment_count,
     },
   };
 }
@@ -144,30 +171,44 @@ export function updateTechnicalSecurityMeasure(
   measureCode: string,
   payload: TechnicalSecurityMeasureUpdatePayload,
 ) {
-  const formData = new FormData();
-  formData.append("factual_status", payload.factualStatus);
-  if (payload.justificationText.trim()) {
-    formData.append("justification_text", payload.justificationText.trim());
-  }
-  if (payload.justificationFile) {
-    formData.append("justification_file", payload.justificationFile);
-  }
-
   return httpClient<TechnicalSecurityMeasureDto>(
     `/api/v1/ispdns/${ispdnId}/security-measures/${encodeURIComponent(measureCode)}`,
     {
       method: "PUT",
-      body: formData,
+      body: JSON.stringify({
+        factual_status: payload.factualStatus,
+        comment: payload.comment.trim() || null,
+      }),
     },
   ).then(mapMeasure);
 }
 
-export async function downloadTechnicalSecurityMeasureJustificationFile(ispdnId: number, measureCode: string) {
-  const response = await fetch(
-    buildApiUrl(`/api/v1/ispdns/${ispdnId}/security-measures/${encodeURIComponent(measureCode)}/justification-file`),
-  );
+export function getTechnicalSecurityMeasureDocuments(ispdnId: number) {
+  return httpClient<TechnicalSecurityMeasureDocumentDto[]>(
+    `/api/v1/ispdns/${ispdnId}/security-measures/documents`,
+  ).then((documents) => documents.map(mapDocument));
+}
+
+export function uploadTechnicalSecurityMeasureDocument(ispdnId: number, file: File) {
+  const formData = new FormData();
+  formData.append("document_file", file);
+
+  return httpClient<TechnicalSecurityMeasureDocumentDto>(`/api/v1/ispdns/${ispdnId}/security-measures/documents`, {
+    method: "POST",
+    body: formData,
+  }).then(mapDocument);
+}
+
+export async function downloadTechnicalSecurityMeasureDocument(ispdnId: number, documentId: number) {
+  const response = await fetch(buildApiUrl(`/api/v1/ispdns/${ispdnId}/security-measures/documents/${documentId}/file`));
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
   }
   return response.blob();
+}
+
+export function deleteTechnicalSecurityMeasureDocument(ispdnId: number, documentId: number) {
+  return httpClient<void>(`/api/v1/ispdns/${ispdnId}/security-measures/documents/${documentId}`, {
+    method: "DELETE",
+  });
 }

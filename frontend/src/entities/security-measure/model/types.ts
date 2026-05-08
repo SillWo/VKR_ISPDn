@@ -16,10 +16,9 @@ export type TechnicalSecurityMeasure = {
   regulatoryStatusLabel: string;
   factualStatus: TechnicalMeasureFactualStatus;
   factualStatusLabel: string;
-  justificationRequired: boolean;
-  justificationText: string | null;
-  justificationFileName: string | null;
-  hasJustificationFile: boolean;
+  commentRequired: boolean;
+  comment: string | null;
+  hasComment: boolean;
   updatedAt: string | null;
 };
 
@@ -29,8 +28,12 @@ export type TechnicalSecurityMeasuresSummary = {
   notBaseSetCount: number;
   implementedCount: number;
   notImplementedCount: number;
-  justificationRequiredCount: number;
-  missingRequiredJustificationCount: number;
+  baseSetImplementedCount: number;
+  baseSetNotImplementedCount: number;
+  baseSetRejectedCount: number;
+  commentRequiredCount: number;
+  commentNotRequiredCount: number;
+  missingRequiredCommentCount: number;
 };
 
 export type TechnicalSecurityMeasuresTable = {
@@ -44,6 +47,14 @@ export type TechnicalSecurityMeasuresTable = {
 
 export type TechnicalSecurityMeasureUpdatePayload = {
   factualStatus: TechnicalMeasureFactualStatus;
-  justificationText: string;
-  justificationFile: File | null;
+  comment: string;
+};
+
+export type TechnicalSecurityMeasureDocument = {
+  id: number;
+  ispdnId: number;
+  fileName: string;
+  fileContentType: string;
+  fileSizeBytes: number;
+  createdAt: string;
 };

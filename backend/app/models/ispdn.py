@@ -12,7 +12,11 @@ if TYPE_CHECKING:
     from app.models.processing_process import ProcessingProcess
     from app.models.processing_purpose import ProcessingPurpose
     from app.models.security_level import SecurityLevelRecord
-    from app.models.security_measure import IspdnSecurityTools, TechnicalSecurityMeasureRecord
+    from app.models.security_measure import (
+        IspdnSecurityTools,
+        TechnicalSecurityMeasureDocument,
+        TechnicalSecurityMeasureRecord,
+    )
 
 from app.models.ispdn_processing_purpose import ispdn_processing_purposes
 
@@ -75,6 +79,11 @@ class IspdnCard(Base):
         uselist=False,
     )
     technical_security_measure_records: Mapped[list["TechnicalSecurityMeasureRecord"]] = relationship(
+        back_populates="ispdn",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    technical_security_measure_documents: Mapped[list["TechnicalSecurityMeasureDocument"]] = relationship(
         back_populates="ispdn",
         cascade="all, delete-orphan",
         passive_deletes=True,

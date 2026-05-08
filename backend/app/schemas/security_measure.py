@@ -41,11 +41,11 @@ class IspdnSecurityToolsRead(IspdnSecurityToolsBase):
 
 class TechnicalSecurityMeasureUpdate(BaseModel):
     factual_status: TechnicalMeasureFactualStatus
-    justification_text: str | None = None
+    comment: str | None = None
 
-    @field_validator("justification_text", mode="before")
+    @field_validator("comment", mode="before")
     @classmethod
-    def normalize_justification_text(cls, value: str | None) -> str | None:
+    def normalize_comment(cls, value: str | None) -> str | None:
         if value is None:
             return None
         if not isinstance(value, str):
@@ -64,10 +64,9 @@ class TechnicalSecurityMeasureRead(BaseModel):
     regulatory_status_label: str
     factual_status: TechnicalMeasureFactualStatus
     factual_status_label: str
-    justification_required: bool
-    justification_text: str | None
-    justification_file_name: str | None
-    has_justification_file: bool
+    comment_required: bool
+    comment: str | None
+    has_comment: bool
     updated_at: datetime | None
 
 
@@ -77,8 +76,12 @@ class TechnicalSecurityMeasuresSummary(BaseModel):
     not_base_set_count: int
     implemented_count: int
     not_implemented_count: int
-    justification_required_count: int
-    missing_required_justification_count: int
+    base_set_implemented_count: int
+    base_set_not_implemented_count: int
+    base_set_rejected_count: int
+    comment_required_count: int
+    comment_not_required_count: int
+    missing_required_comment_count: int
 
 
 class TechnicalSecurityMeasuresTableRead(BaseModel):
@@ -99,6 +102,19 @@ class TechnicalSecurityMeasureDocumentContext(BaseModel):
     regulatory_status_label: str
     factual_status: TechnicalMeasureFactualStatus
     factual_status_label: str
+    comment_required: bool
+    comment: str | None
+    has_comment: bool
     justification_required: bool
     justification_text: str | None
-    justification_file_name: str | None
+
+
+class TechnicalSecurityMeasureDocumentRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    ispdn_id: int
+    file_name: str
+    file_content_type: str
+    file_size_bytes: int
+    created_at: datetime

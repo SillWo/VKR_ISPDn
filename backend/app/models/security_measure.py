@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, String, Text, UniqueConstraint, func
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, DateTime, ForeignKey, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -60,10 +60,7 @@ class TechnicalSecurityMeasureRecord(Base):
     )
     measure_code: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
     factual_status: Mapped[str] = mapped_column(String(32), nullable=False, default="not_implemented")
-    justification_text: Mapped[str | None] = mapped_column(Text, nullable=True)
-    justification_file_path: Mapped[str | None] = mapped_column(String(2048), nullable=True)
-    justification_file_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    justification_file_content_type: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), nullable=False, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=False),
@@ -73,3 +70,21 @@ class TechnicalSecurityMeasureRecord(Base):
     )
 
     ispdn: Mapped["IspdnCard"] = relationship(back_populates="technical_security_measure_records")
+
+
+class TechnicalSecurityMeasureDocument(Base):
+    __tablename__ = "technical_security_measure_documents"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    ispdn_id: Mapped[int] = mapped_column(
+        ForeignKey("ispdn_cards.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    file_path: Mapped[str] = mapped_column(String(2048), nullable=False)
+    file_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    file_content_type: Mapped[str] = mapped_column(String(255), nullable=False)
+    file_size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), nullable=False, server_default=func.now())
+
+    ispdn: Mapped["IspdnCard"] = relationship(back_populates="technical_security_measure_documents")
