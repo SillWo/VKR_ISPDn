@@ -7,6 +7,7 @@ from app.models.organization import OrganizationCard
 from app.models.processing_process import ProcessingProcess
 from app.models.processing_purpose import ProcessingPurpose
 from app.models.security_level import SecurityLevelRecord
+from app.models.security_measure import IspdnSecurityTools, TechnicalSecurityMeasureRecord
 
 __all__ = [
     "Department",
@@ -17,4 +18,6 @@ __all__ = [
     "ProcessingProcess",
     "ProcessingPurpose",
     "SecurityLevelRecord",
+    "IspdnSecurityTools",
+    "TechnicalSecurityMeasureRecord",
 ]

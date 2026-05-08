@@ -46,7 +46,9 @@ export function IspdnSecurityLevelPage() {
     mutationFn: (values: SecurityLevelFormValues) => saveIspdnSecurityLevel(numericId, values),
     onSuccess: async (record) => {
       queryClient.setQueryData(["ispdnSecurityLevel", numericId], record);
+      queryClient.removeQueries({ queryKey: ["technicalSecurityMeasures", numericId] });
       await queryClient.invalidateQueries({ queryKey: ["ispdnSecurityLevel", numericId] });
+      await queryClient.invalidateQueries({ queryKey: ["technicalSecurityMeasures", numericId] });
     },
   });
 

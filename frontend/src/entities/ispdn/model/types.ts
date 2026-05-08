@@ -25,6 +25,7 @@ export type IspdnCard = {
   responsibleEmployeeId: number | null;
   responsibleEmployee: IspdnResponsibleEmployee | null;
   systemComposition: string;
+  securityTools: IspdnSecurityTools;
   status: IspdnStatus;
   createdAt: string;
   updatedAt: string;
@@ -56,5 +57,20 @@ export type IspdnFormValues = {
   websiteUrl: string;
   responsibleEmployeeId: number | null;
   systemComposition: string;
+  securityTools: IspdnSecurityTools;
   status: IspdnStatus;
+};
+
+export type IspdnSecurityTools = {
+  dlp: boolean;
+  siem: boolean;
+  antivirus: boolean;
+  ipsIds: boolean;
+  firewallUtmNgfw: boolean;
+  vulnerabilityScanner: boolean;
+  backupSystem: boolean;
+  trustedBoot: boolean;
+  accessControl: boolean;
+  physicalSecurity: boolean;
+  otherSecurityTools: string | null;
 };

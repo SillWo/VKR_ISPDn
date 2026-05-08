@@ -15,6 +15,19 @@ const ispdnCardBaseSchema = z.object({
     .refine((value) => value === "" || z.url().safeParse(value).success, "Укажите корректный URL"),
   responsibleEmployeeId: z.number().nullable(),
   systemComposition: requiredText("Опишите состав ИСПДн"),
+  securityTools: z.object({
+    dlp: z.boolean(),
+    siem: z.boolean(),
+    antivirus: z.boolean(),
+    ipsIds: z.boolean(),
+    firewallUtmNgfw: z.boolean(),
+    vulnerabilityScanner: z.boolean(),
+    backupSystem: z.boolean(),
+    trustedBoot: z.boolean(),
+    accessControl: z.boolean(),
+    physicalSecurity: z.boolean(),
+    otherSecurityTools: z.string().nullable(),
+  }),
   status: z.enum(["active", "archived"]),
 });
 
@@ -56,5 +69,18 @@ export const defaultIspdnFormValues: IspdnCardFormSchema = {
   websiteUrl: "",
   responsibleEmployeeId: null,
   systemComposition: "",
+  securityTools: {
+    dlp: false,
+    siem: false,
+    antivirus: false,
+    ipsIds: false,
+    firewallUtmNgfw: false,
+    vulnerabilityScanner: false,
+    backupSystem: false,
+    trustedBoot: false,
+    accessControl: false,
+    physicalSecurity: false,
+    otherSecurityTools: "",
+  },
   status: "active",
 };

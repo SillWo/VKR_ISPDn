@@ -13,7 +13,9 @@ from app.models import (
     OrganizationCard,
     ProcessingProcess,
     ProcessingPurpose,
+    IspdnSecurityTools,
     SecurityLevelRecord,
+    TechnicalSecurityMeasureRecord,
     ispdn_processing_purposes,
 )
 

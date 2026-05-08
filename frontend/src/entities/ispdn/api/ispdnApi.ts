@@ -3,6 +3,7 @@ import type {
   IspdnFormValues,
   IspdnListItem,
   IspdnResponsibleEmployee,
+  IspdnSecurityTools,
   IspdnStatus,
 } from "../model/types";
 import { httpClient } from "../../../shared/api/httpClient";
@@ -31,6 +32,7 @@ type IspdnCardDto = {
   responsible_employee_id: number | null;
   responsible_employee: ResponsibleEmployeeDto | null;
   system_composition: string;
+  security_tools: IspdnSecurityToolsDto;
   status: IspdnStatus;
   created_at: string;
   updated_at: string;
@@ -62,7 +64,22 @@ type IspdnPayloadDto = {
   website_url: string | null;
   responsible_employee_id: number;
   system_composition: string;
+  security_tools: IspdnSecurityToolsDto;
   status: IspdnStatus;
+};
+
+type IspdnSecurityToolsDto = {
+  dlp: boolean;
+  siem: boolean;
+  antivirus: boolean;
+  ips_ids: boolean;
+  firewall_utm_ngfw: boolean;
+  vulnerability_scanner: boolean;
+  backup_system: boolean;
+  trusted_boot: boolean;
+  access_control: boolean;
+  physical_security: boolean;
+  other_security_tools: string | null;
 };
 
 type ProcessingPurposeOptionDto = {
@@ -108,9 +125,42 @@ function mapCard(dto: IspdnCardDto): IspdnCard {
     responsibleEmployeeId: dto.responsible_employee_id,
     responsibleEmployee: mapResponsibleEmployee(dto.responsible_employee),
     systemComposition: dto.system_composition,
+    securityTools: mapSecurityTools(dto.security_tools),
     status: dto.status,
     createdAt: dto.created_at,
     updatedAt: dto.updated_at,
+  };
+}
+
+function mapSecurityTools(dto: IspdnSecurityToolsDto): IspdnSecurityTools {
+  return {
+    dlp: dto.dlp,
+    siem: dto.siem,
+    antivirus: dto.antivirus,
+    ipsIds: dto.ips_ids,
+    firewallUtmNgfw: dto.firewall_utm_ngfw,
+    vulnerabilityScanner: dto.vulnerability_scanner,
+    backupSystem: dto.backup_system,
+    trustedBoot: dto.trusted_boot,
+    accessControl: dto.access_control,
+    physicalSecurity: dto.physical_security,
+    otherSecurityTools: dto.other_security_tools,
+  };
+}
+
+function mapSecurityToolsPayload(values: IspdnSecurityTools): IspdnSecurityToolsDto {
+  return {
+    dlp: values.dlp,
+    siem: values.siem,
+    antivirus: values.antivirus,
+    ips_ids: values.ipsIds,
+    firewall_utm_ngfw: values.firewallUtmNgfw,
+    vulnerability_scanner: values.vulnerabilityScanner,
+    backup_system: values.backupSystem,
+    trusted_boot: values.trustedBoot,
+    access_control: values.accessControl,
+    physical_security: values.physicalSecurity,
+    other_security_tools: values.otherSecurityTools?.trim() || null,
   };
 }
 
@@ -143,6 +193,7 @@ function mapPayload(values: IspdnFormValues): IspdnPayloadDto {
     website_url: values.websiteUrl.trim() || null,
     responsible_employee_id: values.responsibleEmployeeId ?? 0,
     system_composition: values.systemComposition.trim(),
+    security_tools: mapSecurityToolsPayload(values.securityTools),
     status: values.status,
   };
 }

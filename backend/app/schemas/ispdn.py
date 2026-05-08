@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from app.schemas.employee import EmployeeShortRead
 from app.schemas.processing_purpose import ProcessingPurposeOption
+from app.schemas.security_measure import IspdnSecurityToolsRead, IspdnSecurityToolsUpsert
 from app.schemas.text import strip_required_text
 
 IspdnStatus = Literal["active", "archived"]
@@ -47,11 +48,13 @@ class IspdnBase(BaseModel):
 class IspdnCreate(IspdnBase):
     responsible_employee_id: int
     processing_purpose_ids: list[int] = Field(min_length=1)
+    security_tools: IspdnSecurityToolsUpsert | None = None
 
 
 class IspdnUpdate(IspdnBase):
     responsible_employee_id: int
     processing_purpose_ids: list[int] = Field(min_length=1)
+    security_tools: IspdnSecurityToolsUpsert | None = None
 
 
 class IspdnRead(IspdnBase):
@@ -62,8 +65,14 @@ class IspdnRead(IspdnBase):
     responsible_employee_id: int | None
     responsible_employee: EmployeeShortRead | None = None
     processing_purpose_options: list[ProcessingPurposeOption] = []
+    security_tools: IspdnSecurityToolsRead = Field(default_factory=IspdnSecurityToolsRead)
     created_at: datetime
     updated_at: datetime
+
+    @field_validator("security_tools", mode="before")
+    @classmethod
+    def default_security_tools(cls, value):
+        return value or IspdnSecurityToolsRead()
 
 
 class IspdnListItem(BaseModel):

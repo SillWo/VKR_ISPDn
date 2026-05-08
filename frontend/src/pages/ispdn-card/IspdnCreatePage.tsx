@@ -16,12 +16,14 @@ import {
   Step,
   StepLabel,
   Stepper,
+  Switch,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
   Tooltip,
   Typography,
 } from "@mui/material";
@@ -30,7 +32,7 @@ import { useEffect, useRef, useState } from "react";
 import { useBlocker, useNavigate } from "react-router-dom";
 
 import { createIspdn, deleteIspdn, updateIspdn } from "../../entities/ispdn/api/ispdnApi";
-import type { IspdnCard, IspdnFormValues } from "../../entities/ispdn/model/types";
+import type { IspdnCard, IspdnFormValues, IspdnSecurityTools } from "../../entities/ispdn/model/types";
 import { getProcessingPurposeOptions } from "../../entities/processing-purpose/api/processingPurposeApi";
 import type { ProcessingPurposeOption } from "../../entities/processing-purpose/model/types";
 import { createIspdnProcessingProcess } from "../../entities/processing-process/api/processingProcessApi";
@@ -52,7 +54,20 @@ import { ProcessingProcessForm } from "../../features/processing-process-form/ui
 import { defaultSecurityLevelFormValues } from "../../features/security-level-form/model/schema";
 import { SecurityLevelForm } from "../../features/security-level-form/ui/SecurityLevelForm";
 
-const steps = ["Основные сведения", "Информация о субъектах ПДн", "Процессы обработки"];
+const steps = ["Основные сведения", "Средства защиты внутри ИСПДн", "Информация о субъектах ПДн", "Процессы обработки"];
+
+const securityToolOptions = [
+  { key: "dlp", label: "DLP" },
+  { key: "siem", label: "SIEM" },
+  { key: "antivirus", label: "Антивирусные средства" },
+  { key: "ipsIds", label: "IPS/IDS" },
+  { key: "firewallUtmNgfw", label: "МЭ, UTM и NGFW" },
+  { key: "vulnerabilityScanner", label: "Сканер уязвимостей" },
+  { key: "backupSystem", label: "Система резервного копирования" },
+  { key: "trustedBoot", label: "Средство доверенной загрузки" },
+  { key: "accessControl", label: "Средства разграничения доступа" },
+  { key: "physicalSecurity", label: "СКУД, сигнализация" },
+] as const;
 
 type LocalProcessingProcess = {
   clientId: number;
@@ -74,6 +89,10 @@ function toFormValues(card: IspdnCard): IspdnFormValues {
     websiteUrl: card.websiteUrl ?? "",
     responsibleEmployeeId: card.responsibleEmployeeId,
     systemComposition: card.systemComposition,
+    securityTools: {
+      ...card.securityTools,
+      otherSecurityTools: card.securityTools.otherSecurityTools ?? "",
+    },
     status: card.status,
   };
 }
@@ -109,7 +128,7 @@ export function IspdnCreatePage() {
   const purposesQuery = useQuery({
     queryKey: ["processingPurposeOptions"],
     queryFn: getProcessingPurposeOptions,
-    enabled: activeStep === 2,
+    enabled: activeStep === 3,
   });
 
   const cardMutation = useMutation({
@@ -120,6 +139,22 @@ export function IspdnCreatePage() {
       await queryClient.invalidateQueries({ queryKey: ["ispdns"] });
       await queryClient.invalidateQueries({ queryKey: ["ispdn", savedCard.id] });
       setActiveStep(1);
+    },
+  });
+
+  const securityToolsMutation = useMutation({
+    mutationFn: () => {
+      if (!card) {
+        throw new Error("Ispdn card must be created before security tools data");
+      }
+      return updateIspdn(card.id, cardValues);
+    },
+    onSuccess: async (savedCard) => {
+      setCard(savedCard);
+      setCardValues(toFormValues(savedCard));
+      await queryClient.invalidateQueries({ queryKey: ["ispdns"] });
+      await queryClient.invalidateQueries({ queryKey: ["ispdn", savedCard.id] });
+      setActiveStep(2);
     },
   });
 
@@ -135,8 +170,10 @@ export function IspdnCreatePage() {
         return;
       }
       setSecurityLevelValues(values);
+      queryClient.removeQueries({ queryKey: ["technicalSecurityMeasures", card.id] });
       await queryClient.invalidateQueries({ queryKey: ["ispdnSecurityLevel", card.id] });
-      setActiveStep(2);
+      await queryClient.invalidateQueries({ queryKey: ["technicalSecurityMeasures", card.id] });
+      setActiveStep(3);
     },
   });
 
@@ -176,6 +213,7 @@ export function IspdnCreatePage() {
       if (card) {
         await queryClient.invalidateQueries({ queryKey: ["ispdn", card.id] });
         await queryClient.invalidateQueries({ queryKey: ["ispdnSecurityLevel", card.id] });
+        queryClient.removeQueries({ queryKey: ["technicalSecurityMeasures", card.id] });
         await queryClient.invalidateQueries({ queryKey: ["ispdnProcessingProcesses", card.id] });
       }
       allowExitRef.current = true;
@@ -189,6 +227,7 @@ export function IspdnCreatePage() {
 
   const isBusy =
     cardMutation.isPending ||
+    securityToolsMutation.isPending ||
     securityLevelMutation.isPending ||
     finishMutation.isPending ||
     cancelCreationMutation.isPending;
@@ -228,7 +267,7 @@ export function IspdnCreatePage() {
           Создание ИСПДн
         </Typography>
         <Typography color="text.secondary" sx={{ mt: 0.5, maxWidth: 820 }}>
-          Заполните три обязательных раздела последовательно. Выйти из процесса через интерфейс можно только после
+          Заполните обязательные разделы последовательно. Выйти из процесса через интерфейс можно только после
           завершения раздела «Процессы обработки».
         </Typography>
       </Box>
@@ -253,6 +292,11 @@ export function IspdnCreatePage() {
           Не удалось сохранить информацию о субъектах ПДн. Проверьте поля, расчёт уровня и формат файла обоснования.
         </Alert>
       )}
+      {securityToolsMutation.isError && (
+        <Alert severity="error">
+          Не удалось сохранить сведения о средствах защиты. Проверьте доступность API и повторите попытку.
+        </Alert>
+      )}
       {finishMutation.isError && (
         <Alert severity="error">
           Не удалось завершить создание ИСПДн. Проверьте процессы обработки и доступность API.
@@ -273,6 +317,7 @@ export function IspdnCreatePage() {
             isSubmitting={isBusy}
             showActions={false}
             showProcessingPurposes
+            showSecurityTools={false}
             onSubmit={(values) => cardMutation.mutate(values)}
             onCancel={() => undefined}
           />
@@ -280,6 +325,15 @@ export function IspdnCreatePage() {
       )}
 
       {activeStep === 1 && card && (
+        <SecurityToolsStep
+          values={cardValues.securityTools}
+          isBusy={isBusy}
+          onChange={(securityTools) => setCardValues((current) => ({ ...current, securityTools }))}
+          onSubmit={() => securityToolsMutation.mutate()}
+        />
+      )}
+
+      {activeStep === 2 && card && (
         <SecurityLevelForm
           key={card.id}
           formId="security-level-create-form"
@@ -291,7 +345,7 @@ export function IspdnCreatePage() {
         />
       )}
 
-      {activeStep === 2 && (
+      {activeStep === 3 && (
         <Stack spacing={3}>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ justifyContent: "space-between" }}>
             <Box>
@@ -340,9 +394,17 @@ export function IspdnCreatePage() {
         activeStep={activeStep}
         isBusy={isBusy}
         onBack={() => setActiveStep((current) => Math.max(0, current - 1))}
-        onNext={activeStep === 2 ? handleFinish : undefined}
-        nextFormId={activeStep === 0 ? "ispdn-card-form" : activeStep === 1 ? "security-level-create-form" : undefined}
-        nextLabel={activeStep === 2 ? "Далее" : "Далее"}
+        onNext={activeStep === 3 ? handleFinish : undefined}
+        nextFormId={
+          activeStep === 0
+            ? "ispdn-card-form"
+            : activeStep === 1
+              ? "security-tools-create-form"
+              : activeStep === 2
+                ? "security-level-create-form"
+                : undefined
+        }
+        nextLabel="Далее"
       />
 
       <Dialog
@@ -358,7 +420,7 @@ export function IspdnCreatePage() {
         <DialogTitle>Создание ИСПДн не завершено</DialogTitle>
         <DialogContent>
           <Typography color="text.secondary">
-            Завершите разделы «Основные сведения», «Информация о субъектах ПДн» и «Процессы обработки», чтобы выйти из процесса создания.
+            Завершите разделы «Основные сведения», «Средства защиты внутри ИСПДн», «Информация о субъектах ПДн» и «Процессы обработки», чтобы выйти из процесса создания.
           </Typography>
         </DialogContent>
         <DialogActions>
@@ -394,6 +456,85 @@ export function IspdnCreatePage() {
         </DialogContent>
       </Dialog>
     </Stack>
+  );
+}
+
+function SecurityToolsStep({
+  values,
+  isBusy,
+  onChange,
+  onSubmit,
+}: {
+  values: IspdnSecurityTools;
+  isBusy: boolean;
+  onChange: (values: IspdnSecurityTools) => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <Paper
+      id="security-tools-create-form"
+      component="form"
+      variant="outlined"
+      sx={{ p: 3, borderRadius: 2, bgcolor: "background.paper" }}
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSubmit();
+      }}
+    >
+      <Stack spacing={3}>
+        <Box>
+          <Typography component="h2" variant="h6" sx={{ fontWeight: 600 }}>
+            Средства защиты внутри ИСПДн
+          </Typography>
+          <Typography color="text.secondary" sx={{ mt: 0.5, maxWidth: 760 }}>
+            Отметьте средства защиты, которые уже используются внутри создаваемой ИСПДн. Этот шаг можно оставить
+            незаполненным и перейти дальше.
+          </Typography>
+        </Box>
+
+        <Stack spacing={1}>
+          {securityToolOptions.map((option) => {
+            const checked = Boolean(values[option.key]);
+            return (
+              <Box
+                key={option.key}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 2,
+                  py: 1,
+                  borderBottom: "1px solid",
+                  borderColor: "divider",
+                }}
+              >
+                <Typography>{option.label}</Typography>
+                <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexShrink: 0 }}>
+                  <Typography color={checked ? "text.secondary" : "text.primary"}>Нет</Typography>
+                  <Switch
+                    checked={checked}
+                    disabled={isBusy}
+                    onChange={(_, nextChecked) => onChange({ ...values, [option.key]: nextChecked })}
+                  />
+                  <Typography color={checked ? "text.primary" : "text.secondary"}>Да</Typography>
+                </Stack>
+              </Box>
+            );
+          })}
+        </Stack>
+
+        <TextField
+          label="Иные средства защиты"
+          fullWidth
+          multiline
+          minRows={3}
+          value={values.otherSecurityTools ?? ""}
+          onChange={(event) => onChange({ ...values, otherSecurityTools: event.target.value })}
+          helperText="Введите дополнительные средства защиты через ;."
+          disabled={isBusy}
+        />
+      </Stack>
+    </Paper>
   );
 }
 

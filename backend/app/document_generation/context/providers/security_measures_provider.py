@@ -1,4 +1,14 @@
+from sqlalchemy.orm import Session
+
+from app.repositories.ispdn import IspdnRepository
+from app.repositories.security_level import SecurityLevelRepository
+from app.repositories.security_measure import SecurityMeasureRepository
+from app.services.security_measure import SecurityMeasureService
+
+
 class SecurityMeasuresContextProvider:
+    def __init__(self, db: Session) -> None:
+        self.service = SecurityMeasureService(SecurityMeasureRepository(db), IspdnRepository(db), SecurityLevelRepository(db))
+
     def get_context(self, ispdn_id: int) -> dict:
-        # TODO: Connect to real module after it is implemented.
-        return {}
+        return self.service.get_document_context(ispdn_id)

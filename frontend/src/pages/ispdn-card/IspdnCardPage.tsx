@@ -34,6 +34,10 @@ function toFormValues(card: IspdnCard): IspdnFormValues {
     websiteUrl: card.websiteUrl ?? "",
     responsibleEmployeeId: card.responsibleEmployeeId,
     systemComposition: card.systemComposition,
+    securityTools: {
+      ...card.securityTools,
+      otherSecurityTools: card.securityTools.otherSecurityTools ?? "",
+    },
     status: card.status,
   };
 }
