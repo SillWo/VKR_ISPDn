@@ -1,12 +1,10 @@
 import AddIcon from "@mui/icons-material/Add";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import DeleteIcon from "@mui/icons-material/Delete";
-import EditIcon from "@mui/icons-material/Edit";
 import {
   Alert,
   Box,
   Button,
-  Chip,
   Dialog,
   DialogContent,
   DialogTitle,
@@ -34,16 +32,11 @@ import {
   updateIspdnProcessingProcess,
 } from "../../entities/processing-process/api/processingProcessApi";
 import {
-  dataCategoryCatalog,
-  internalNetworkTransferOptions,
-  internetTransferOptions,
   legalBasisCatalog,
   mergeDataCategoryValues,
   mergePersonalDataActionValues,
   mergeSwitchValues,
   personalDataActionCatalog,
-  processingTypeOptions,
-  selectedCatalogLabels,
   subjectCategoryCatalog,
 } from "../../entities/processing-process/model/catalogs";
 import type {
@@ -191,7 +184,7 @@ export function IspdnProcessingPage() {
 
       <Dialog open={dialog !== null} onClose={() => setDialog(null)} fullWidth maxWidth="lg">
         <DialogTitle>
-          {dialog?.mode === "edit" ? "Редактировать процесс обработки" : "Добавить процесс обработки"}
+          {dialog?.mode === "edit" ? "Редактирование процесса обработки" : "Добавить процесс обработки"}
         </DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 1 }}>
@@ -242,9 +235,6 @@ function ProcessingProcessesTable({
         <TableHead>
           <TableRow>
             <TableCell>Цель обработки</TableCell>
-            <TableCell>Категории субъектов</TableCell>
-            <TableCell>Категории данных</TableCell>
-            <TableCell>Способы обработки</TableCell>
             <TableCell align="right">Действия</TableCell>
           </TableRow>
         </TableHead>
@@ -257,32 +247,10 @@ function ProcessingProcessesTable({
                   {process.processingPurpose.processingPeriod}
                 </Typography>
               </TableCell>
-              <TableCell>
-                <ChipList labels={selectedCatalogLabels(subjectCategoryCatalog, process.subjectCategories)} />
-              </TableCell>
-              <TableCell>
-                <ChipList labels={selectedCatalogLabels(dataCategoryCatalog, process.dataCategories)} max={4} />
-              </TableCell>
-              <TableCell>
-                <Stack spacing={0.5}>
-                  <Typography variant="body2">{labelByValue(processingTypeOptions, process.processingType)}</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {labelByValue(internalNetworkTransferOptions, process.internalNetworkTransfer)}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {labelByValue(internetTransferOptions, process.internetTransfer)}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Трансграничная передача: {process.crossBorderTransfer ? "Да" : "Нет"}
-                  </Typography>
-                </Stack>
-              </TableCell>
               <TableCell align="right">
-                <Tooltip title="Редактировать">
-                  <IconButton aria-label="Редактировать" onClick={() => onEdit(process)}>
-                    <EditIcon />
-                  </IconButton>
-                </Tooltip>
+                <Button variant="outlined" size="small" onClick={() => onEdit(process)} sx={{ mr: 1 }}>
+                  Подробнее
+                </Button>
                 <Tooltip title="Удалить">
                   <IconButton aria-label="Удалить" color="error" onClick={() => onDelete(process)}>
                     <DeleteIcon />
@@ -295,24 +263,6 @@ function ProcessingProcessesTable({
       </Table>
     </TableContainer>
   );
-}
-
-function ChipList({ labels, max = 3 }: { labels: string[]; max?: number }) {
-  const visibleLabels = labels.slice(0, max);
-  const hiddenCount = labels.length - visibleLabels.length;
-
-  return (
-    <Stack direction="row" spacing={0.75} sx={{ flexWrap: "wrap", gap: 0.75 }}>
-      {visibleLabels.map((label) => (
-        <Chip key={label} label={label} size="small" variant="outlined" />
-      ))}
-      {hiddenCount > 0 && <Chip label={`+${hiddenCount}`} size="small" />}
-    </Stack>
-  );
-}
-
-function labelByValue<TValue extends string>(options: readonly { value: TValue; label: string }[], value: TValue) {
-  return options.find((option) => option.value === value)?.label ?? value;
 }
 
 function toFormValues(process: ProcessingProcess): ProcessingProcessFormValues {

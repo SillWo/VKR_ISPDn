@@ -19,6 +19,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
 import { getProcessingPurposeOptions } from "../../../entities/processing-purpose/api/processingPurposeApi";
+import type { ProcessingPurposeOption } from "../../../entities/processing-purpose/model/types";
+import { ProcessingPurposeQuickCreateDialog } from "../../../features/processing-purpose-quick-create/ui/ProcessingPurposeQuickCreateDialog";
 import { ProcessingPurposeSelect } from "../../../shared/ui/processing-purpose-select/ProcessingPurposeSelect";
 
 type IspdnProcessingPurposesFieldProps = {
@@ -36,7 +38,7 @@ export function IspdnProcessingPurposesField({
   helperText,
   disabled,
 }: IspdnProcessingPurposesFieldProps) {
-  const [selectedPurposeId, setSelectedPurposeId] = useState<number | null>(null);
+  const [quickCreateOpen, setQuickCreateOpen] = useState(false);
   const { data = [], isLoading, isError } = useQuery({
     queryKey: ["processingPurposeOptions"],
     queryFn: getProcessingPurposeOptions,
@@ -50,12 +52,18 @@ export function IspdnProcessingPurposesField({
     [data, value],
   );
 
-  const handleAdd = () => {
-    if (!selectedPurposeId || value.includes(selectedPurposeId)) {
+  const handleSelect = (purposeId: number | null) => {
+    if (purposeId === null || value.includes(purposeId)) {
       return;
     }
-    onChange([...value, selectedPurposeId]);
-    setSelectedPurposeId(null);
+    onChange([...value, purposeId]);
+  };
+
+  const handleCreated = (purpose: ProcessingPurposeOption) => {
+    if (!value.includes(purpose.id)) {
+      onChange([...value, purpose.id]);
+    }
+    setQuickCreateOpen(false);
   };
 
   const handleRemove = (purposeId: number) => {
@@ -69,10 +77,11 @@ export function IspdnProcessingPurposesField({
       <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} sx={{ alignItems: { md: "flex-start" } }}>
         <Box sx={{ flex: 1 }}>
           <ProcessingPurposeSelect
-            value={selectedPurposeId}
-            onChange={setSelectedPurposeId}
+            value={null}
+            onChange={handleSelect}
             label="Цель обработки"
             allowQuickCreate
+            showQuickCreateButton={false}
             disabled={disabled || isLoading}
           />
         </Box>
@@ -80,11 +89,11 @@ export function IspdnProcessingPurposesField({
           type="button"
           variant="outlined"
           startIcon={<AddIcon />}
-          onClick={handleAdd}
-          disabled={disabled || !selectedPurposeId || value.includes(selectedPurposeId)}
+          onClick={() => setQuickCreateOpen(true)}
+          disabled={disabled}
           sx={{ mt: { md: 0.5 }, whiteSpace: "nowrap" }}
         >
-          Добавить
+          Добавить цель
         </Button>
       </Stack>
 
@@ -127,6 +136,11 @@ export function IspdnProcessingPurposesField({
           </TableContainer>
         )}
       </Paper>
+      <ProcessingPurposeQuickCreateDialog
+        open={quickCreateOpen}
+        onClose={() => setQuickCreateOpen(false)}
+        onCreated={handleCreated}
+      />
     </Stack>
   );
 }

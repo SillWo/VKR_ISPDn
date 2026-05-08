@@ -24,6 +24,7 @@ type ProcessingPurposeSelectProps = {
   label?: string;
   required?: boolean;
   allowQuickCreate?: boolean;
+  showQuickCreateButton?: boolean;
   error?: boolean;
   helperText?: string;
   disabled?: boolean;
@@ -35,6 +36,7 @@ export function ProcessingPurposeSelect({
   label = "Цель обработки",
   required,
   allowQuickCreate,
+  showQuickCreateButton = true,
   error,
   helperText,
   disabled,
@@ -78,7 +80,7 @@ export function ProcessingPurposeSelect({
         </Select>
         <FormHelperText>{helperText ?? "Выберите цель из единого реестра целей обработки."}</FormHelperText>
       </FormControl>
-      {allowQuickCreate && (
+      {allowQuickCreate && showQuickCreateButton && (
         <Button
           variant="outlined"
           startIcon={<AddIcon />}

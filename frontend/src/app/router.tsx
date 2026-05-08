@@ -9,6 +9,7 @@ import { IspdnSecurityLevelPage } from "../pages/ispdn-card/IspdnSecurityLevelPa
 import { IspdnSecurityMeasuresPage } from "../pages/ispdn-card/IspdnSecurityMeasuresPage";
 import { IspdnTasksPage } from "../pages/ispdn-card/IspdnTasksPage";
 import { IspdnThreatModelPage } from "../pages/ispdn-card/IspdnThreatModelPage";
+import { IspdnArchivePage } from "../pages/ispdn-registry/IspdnArchivePage";
 import { IspdnRegistryPage } from "../pages/ispdn-registry/IspdnRegistryPage";
 import { OrganizationCardPage } from "../pages/organization-card/OrganizationCardPage";
 import { ProcessingPurposesRegistryPage } from "../pages/processing-purposes-registry/ProcessingPurposesRegistryPage";
@@ -27,6 +28,10 @@ export const router = createBrowserRouter([
       {
         path: "ispdns",
         element: <IspdnRegistryPage />,
+      },
+      {
+        path: "ispdns/archive",
+        element: <IspdnArchivePage />,
       },
       {
         path: "ispdns/new",

@@ -13,6 +13,7 @@ export type EmployeeSelectProps = {
   label: string;
   required?: boolean;
   allowQuickCreate?: boolean;
+  quickCreateButtonPlacement?: "below" | "inline";
   error?: boolean;
   helperText?: string;
   disabled?: boolean;
@@ -24,6 +25,7 @@ export function EmployeeSelect({
   label,
   required = false,
   allowQuickCreate = false,
+  quickCreateButtonPlacement = "below",
   error = false,
   helperText,
   disabled = false,
@@ -46,51 +48,68 @@ export function EmployeeSelect({
     onChange(employee.id);
   };
 
+  const quickCreateButton = allowQuickCreate ? (
+    <Button
+      type="button"
+      variant="outlined"
+      startIcon={<AddIcon />}
+      onClick={() => setQuickCreateOpen(true)}
+      disabled={disabled}
+      sx={{
+        alignSelf: quickCreateButtonPlacement === "inline" ? "flex-start" : "flex-start",
+        mt: quickCreateButtonPlacement === "inline" ? 0.5 : 0,
+        whiteSpace: "nowrap",
+      }}
+    >
+      Создать сотрудника
+    </Button>
+  ) : null;
+
+  const select = (
+    <Autocomplete<EmployeeOption, false, false, false>
+      options={employeesQuery.data ?? []}
+      value={selectedEmployee}
+      loading={employeesQuery.isLoading}
+      disabled={disabled}
+      fullWidth
+      getOptionLabel={(option) => option.fullName}
+      isOptionEqualToValue={(option, selected) => option.id === selected.id}
+      onChange={(_, option) => onChange(option?.id ?? null)}
+      renderOption={(props, option) => (
+        <li {...props} key={option.id}>
+          <Stack spacing={0.25}>
+            <Typography sx={{ fontWeight: 600 }}>{option.fullName}</Typography>
+            <Typography variant="body2" color="text.secondary">
+              {option.position}
+              {option.departmentName ? `, ${option.departmentName}` : ""}
+            </Typography>
+          </Stack>
+        </li>
+      )}
+      renderInput={(params) => (
+        <TextField
+          {...params}
+          label={label}
+          required={required}
+          error={error}
+          helperText={helperText}
+        />
+      )}
+    />
+  );
+
   return (
     <Stack spacing={1} sx={{ width: "100%" }}>
       {employeesQuery.isError && <Alert severity="error">Не удалось загрузить список сотрудников.</Alert>}
-      <Autocomplete<EmployeeOption, false, false, false>
-        options={employeesQuery.data ?? []}
-        value={selectedEmployee}
-        loading={employeesQuery.isLoading}
-        disabled={disabled}
-        fullWidth
-        getOptionLabel={(option) => option.fullName}
-        isOptionEqualToValue={(option, selected) => option.id === selected.id}
-        onChange={(_, option) => onChange(option?.id ?? null)}
-        renderOption={(props, option) => (
-          <li {...props} key={option.id}>
-            <Stack spacing={0.25}>
-              <Typography sx={{ fontWeight: 600 }}>{option.fullName}</Typography>
-              <Typography variant="body2" color="text.secondary">
-                {option.position}
-                {option.departmentName ? `, ${option.departmentName}` : ""}
-              </Typography>
-            </Stack>
-          </li>
-        )}
-        renderInput={(params) => (
-          <TextField
-            {...params}
-            label={label}
-            required={required}
-            error={error}
-            helperText={helperText}
-          />
-        )}
-      />
-      {allowQuickCreate && (
-        <Button
-          type="button"
-          variant="outlined"
-          startIcon={<AddIcon />}
-          onClick={() => setQuickCreateOpen(true)}
-          disabled={disabled}
-          sx={{ alignSelf: "flex-start" }}
-        >
-          Создать сотрудника
-        </Button>
+      {quickCreateButtonPlacement === "inline" && quickCreateButton ? (
+        <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} sx={{ alignItems: { md: "flex-start" } }}>
+          {select}
+          {quickCreateButton}
+        </Stack>
+      ) : (
+        select
       )}
+      {quickCreateButtonPlacement === "below" && quickCreateButton}
       <EmployeeQuickCreateDialog
         open={quickCreateOpen}
         onClose={() => setQuickCreateOpen(false)}

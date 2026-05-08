@@ -8,10 +8,10 @@ import type {
 } from "./types";
 
 export const dataCategoryOptions: readonly { value: SecurityLevelDataCategoryKey; label: string }[] = [
-  { value: "special", label: "специальные" },
-  { value: "biometric", label: "биометрические" },
-  { value: "public", label: "из общедоступных источников" },
-  { value: "other", label: "иные" },
+  { value: "special", label: "Специальные" },
+  { value: "biometric", label: "Биометрические" },
+  { value: "public", label: "Из общедоступных источников" },
+  { value: "other", label: "Иные" },
 ];
 
 export const subjectCountRangeOptions: readonly { value: SubjectCountRange; label: string }[] = [

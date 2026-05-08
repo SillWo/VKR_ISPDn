@@ -6,14 +6,14 @@ from sqlalchemy.orm import Session, joinedload
 from app.models.ispdn import IspdnCard
 from app.models.processing_purpose import ProcessingPurpose
 from app.models.security_measure import IspdnSecurityTools
-from app.schemas.ispdn import IspdnCreate, IspdnUpdate
+from app.schemas.ispdn import IspdnCreate, IspdnStatus, IspdnUpdate
 
 
 class IspdnRepository:
     def __init__(self, db: Session) -> None:
         self.db = db
 
-    def list(self) -> list[IspdnCard]:
+    def list(self, status: IspdnStatus | None = None) -> list[IspdnCard]:
         statement = (
             select(IspdnCard)
             .options(
@@ -23,6 +23,8 @@ class IspdnRepository:
             )
             .order_by(IspdnCard.updated_at.desc())
         )
+        if status is not None:
+            statement = statement.where(IspdnCard.status == status)
         return list(self.db.scalars(statement).unique().all())
 
     def get_by_id(self, ispdn_id: int) -> IspdnCard | None:

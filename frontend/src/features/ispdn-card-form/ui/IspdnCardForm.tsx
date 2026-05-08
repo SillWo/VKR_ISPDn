@@ -133,6 +133,7 @@ export function IspdnCardForm({
               label="Ответственный за обработку ПДн"
               required
               allowQuickCreate
+              quickCreateButtonPlacement="inline"
               disabled={isSubmitting}
               error={Boolean(errors.responsibleEmployeeId)}
               helperText={

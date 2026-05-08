@@ -88,6 +88,10 @@ type ProcessingPurposeOptionDto = {
   processing_period: string;
 };
 
+type GetIspdnsParams = {
+  status?: IspdnStatus;
+};
+
 function mapResponsibleEmployee(dto: ResponsibleEmployeeDto | null): IspdnResponsibleEmployee | null {
   if (!dto) {
     return null;
@@ -198,8 +202,15 @@ function mapPayload(values: IspdnFormValues): IspdnPayloadDto {
   };
 }
 
-export function getIspdns() {
-  return httpClient<IspdnListItemDto[]>("/api/v1/ispdns").then((items) => items.map(mapListItem));
+export function getIspdns(params?: GetIspdnsParams) {
+  const searchParams = new URLSearchParams();
+  if (params?.status) {
+    searchParams.set("status", params.status);
+  }
+  const query = searchParams.toString();
+  const path = query ? `/api/v1/ispdns?${query}` : "/api/v1/ispdns";
+
+  return httpClient<IspdnListItemDto[]>(path).then((items) => items.map(mapListItem));
 }
 
 export function getIspdnById(id: number) {

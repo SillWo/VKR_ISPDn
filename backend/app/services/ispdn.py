@@ -4,7 +4,7 @@ from app.models.ispdn import IspdnCard
 from app.repositories.employee import EmployeeRepository
 from app.repositories.ispdn import IspdnRepository
 from app.repositories.processing_purpose import ProcessingPurposeRepository
-from app.schemas.ispdn import IspdnCreate, IspdnUpdate
+from app.schemas.ispdn import IspdnCreate, IspdnStatus, IspdnUpdate
 
 
 SECURITY_LEVEL_JUSTIFICATION_STORAGE_DIR = (
@@ -35,8 +35,8 @@ class IspdnService:
         self.employee_repository = employee_repository
         self.processing_purpose_repository = processing_purpose_repository
 
-    def list_cards(self) -> list[IspdnCard]:
-        return self.repository.list()
+    def list_cards(self, status: IspdnStatus | None = None) -> list[IspdnCard]:
+        return self.repository.list(status)
 
     def get_card(self, ispdn_id: int) -> IspdnCard:
         card = self.repository.get_by_id(ispdn_id)

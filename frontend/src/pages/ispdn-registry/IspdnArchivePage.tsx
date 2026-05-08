@@ -1,4 +1,3 @@
-import AddIcon from "@mui/icons-material/Add";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import {
   Alert,
@@ -39,10 +38,10 @@ function formatDate(value: string | null) {
   return new Intl.DateTimeFormat("ru-RU").format(new Date(value));
 }
 
-export function IspdnRegistryPage() {
+export function IspdnArchivePage() {
   const { data = [], isLoading, isError } = useQuery({
-    queryKey: ["ispdns", "active"],
-    queryFn: () => getIspdns({ status: "active" }),
+    queryKey: ["ispdns", "archived"],
+    queryFn: () => getIspdns({ status: "archived" }),
   });
 
   return (
@@ -50,46 +49,33 @@ export function IspdnRegistryPage() {
       <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ justifyContent: "space-between" }}>
         <Box>
           <Typography component="h1" variant="h5" sx={{ fontWeight: 600 }}>
-            Реестр ИСПДн
+            Архив ИСПДн
           </Typography>
           <Typography color="text.secondary" sx={{ mt: 0.5, maxWidth: 760 }}>
-            Карточки информационных систем персональных данных организации, их статус и ответственные за обработку ПДн.
+            Карточки ИСПДн со статусом «Архив».
           </Typography>
         </Box>
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ alignSelf: { sm: "flex-start" } }}>
-          <Button component={RouterLink} to="/ispdns/archive" variant="outlined">
-            Архив ИСПДн
-          </Button>
-          <Button component={RouterLink} to="/ispdns/new" variant="contained" startIcon={<AddIcon />}>
-            Создать ИСПДн
-          </Button>
-        </Stack>
+        <Button component={RouterLink} to="/ispdns" variant="outlined" sx={{ alignSelf: { sm: "flex-start" } }}>
+          К реестру ИСПДн
+        </Button>
       </Stack>
 
       {isLoading && (
         <Paper variant="outlined" sx={{ p: 4, borderRadius: 2, textAlign: "center" }}>
           <CircularProgress size={28} />
           <Typography color="text.secondary" sx={{ mt: 2 }}>
-            Загрузка реестра ИСПДн
+            Загрузка архива ИСПДн
           </Typography>
         </Paper>
       )}
 
-      {isError && <Alert severity="error">Не удалось загрузить реестр ИСПДн. Проверьте доступность backend API.</Alert>}
+      {isError && <Alert severity="error">Не удалось загрузить архив ИСПДн. Проверьте доступность backend API.</Alert>}
 
       {!isLoading && !isError && data.length === 0 && (
         <Paper variant="outlined" sx={{ p: 4, borderRadius: 2 }}>
-          <Stack spacing={1.5} sx={{ alignItems: "flex-start" }}>
-            <Typography variant="h6" sx={{ fontWeight: 600 }}>
-              В реестре пока нет карточек ИСПДн
-            </Typography>
-            <Typography color="text.secondary">
-              Создайте первую карточку, чтобы зафиксировать базовые сведения об ИСПДн и открыть связанные разделы.
-            </Typography>
-            <Button component={RouterLink} to="/ispdns/new" variant="contained" startIcon={<AddIcon />}>
-              Создать ИСПДн
-            </Button>
-          </Stack>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            В архиве пока нет карточек ИСПДн
+          </Typography>
         </Paper>
       )}
 

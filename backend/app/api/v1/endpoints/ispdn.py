@@ -5,7 +5,7 @@ from app.core.database import get_db
 from app.repositories.employee import EmployeeRepository
 from app.repositories.ispdn import IspdnRepository
 from app.repositories.processing_purpose import ProcessingPurposeRepository
-from app.schemas.ispdn import IspdnCreate, IspdnListItem, IspdnRead, IspdnUpdate
+from app.schemas.ispdn import IspdnCreate, IspdnListItem, IspdnRead, IspdnStatus, IspdnUpdate
 from app.services.ispdn import (
     IspdnNotFoundError,
     IspdnProcessingPurposeNotFoundError,
@@ -21,8 +21,8 @@ def get_ispdn_service(db: Session = Depends(get_db)) -> IspdnService:
 
 
 @router.get("", response_model=list[IspdnListItem])
-def list_ispdns(service: IspdnService = Depends(get_ispdn_service)):
-    return service.list_cards()
+def list_ispdns(status: IspdnStatus | None = None, service: IspdnService = Depends(get_ispdn_service)):
+    return service.list_cards(status)
 
 
 @router.post("", response_model=IspdnRead, status_code=status.HTTP_201_CREATED)

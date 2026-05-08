@@ -225,7 +225,7 @@ export function SecurityLevelForm({
         />
       </FormSection>
 
-      <FormSection title="Результат расчёта">
+      <FormSection title="Рекомендуемый уровень защищённости">
         <SecurityLevelResultCard
           result={result ?? null}
           isCalculating={calculateMutation.isPending}
