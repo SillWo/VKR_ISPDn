@@ -8,6 +8,7 @@ from app.api.v1.endpoints.ispdn import router as ispdn_router
 from app.api.v1.endpoints.organizations import router as organizations_router
 from app.api.v1.endpoints.processing_processes import router as processing_processes_router
 from app.api.v1.endpoints.processing_purposes import router as processing_purposes_router
+from app.api.v1.endpoints.security_level import router as security_level_router
 
 api_router = APIRouter()
 api_router.include_router(health_router)
@@ -18,3 +19,4 @@ api_router.include_router(employees_router)
 api_router.include_router(documents_router)
 api_router.include_router(processing_purposes_router)
 api_router.include_router(processing_processes_router)
+api_router.include_router(security_level_router)

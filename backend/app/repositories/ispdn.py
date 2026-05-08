@@ -60,6 +60,10 @@ class IspdnRepository:
         self.db.refresh(card)
         return self.get_by_id(card.id) or card
 
+    def delete(self, card: IspdnCard) -> None:
+        self.db.delete(card)
+        self.db.commit()
+
     @staticmethod
     def _build_legacy_processing_purposes(processing_purposes: list[ProcessingPurpose]) -> str:
         return "\n".join(purpose.name for purpose in processing_purposes)

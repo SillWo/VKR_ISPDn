@@ -1,8 +1,15 @@
+from pathlib import Path
+
 from app.models.ispdn import IspdnCard
 from app.repositories.employee import EmployeeRepository
 from app.repositories.ispdn import IspdnRepository
 from app.repositories.processing_purpose import ProcessingPurposeRepository
 from app.schemas.ispdn import IspdnCreate, IspdnUpdate
+
+
+SECURITY_LEVEL_JUSTIFICATION_STORAGE_DIR = (
+    Path(__file__).resolve().parents[2] / "storage" / "security_level_justifications"
+)
 
 
 class IspdnNotFoundError(Exception):
@@ -57,6 +64,11 @@ class IspdnService:
             processing_purposes=processing_purposes,
         )
 
+    def delete_card(self, ispdn_id: int) -> None:
+        card = self.get_card(ispdn_id)
+        self._delete_security_level_justification_file(card)
+        self.repository.delete(card)
+
     def _get_processing_purposes(self, purpose_ids: list[int]):
         purposes = []
         seen_ids: set[int] = set()
@@ -69,3 +81,18 @@ class IspdnService:
             purposes.append(purpose)
             seen_ids.add(purpose_id)
         return purposes
+
+    @staticmethod
+    def _delete_security_level_justification_file(card: IspdnCard) -> None:
+        record = card.security_level_record
+        if record is None or not record.deviation_justification_file_path:
+            return
+
+        file_path = Path(record.deviation_justification_file_path)
+        try:
+            file_path.relative_to(SECURITY_LEVEL_JUSTIFICATION_STORAGE_DIR)
+        except ValueError:
+            return
+
+        if file_path.exists() and file_path.is_file():
+            file_path.unlink()

@@ -7,6 +7,7 @@ import {
   Button,
   Chip,
   Dialog,
+  DialogActions,
   DialogContent,
   DialogTitle,
   IconButton,
@@ -25,11 +26,11 @@ import {
   Typography,
 } from "@mui/material";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { useBlocker, useNavigate } from "react-router-dom";
 
-import { createIspdn } from "../../entities/ispdn/api/ispdnApi";
-import type { IspdnFormValues } from "../../entities/ispdn/model/types";
+import { createIspdn, deleteIspdn, updateIspdn } from "../../entities/ispdn/api/ispdnApi";
+import type { IspdnCard, IspdnFormValues } from "../../entities/ispdn/model/types";
 import { getProcessingPurposeOptions } from "../../entities/processing-purpose/api/processingPurposeApi";
 import type { ProcessingPurposeOption } from "../../entities/processing-purpose/model/types";
 import { createIspdnProcessingProcess } from "../../entities/processing-process/api/processingProcessApi";
@@ -42,12 +43,16 @@ import {
   subjectCategoryCatalog,
 } from "../../entities/processing-process/model/catalogs";
 import type { ProcessingProcessFormValues } from "../../entities/processing-process/model/types";
+import { saveIspdnSecurityLevel } from "../../entities/security-level/api/securityLevelApi";
+import type { SecurityLevelFormValues } from "../../entities/security-level/model/types";
 import { defaultIspdnFormValues } from "../../features/ispdn-card-form/model/schema";
 import { IspdnCardForm } from "../../features/ispdn-card-form/ui/IspdnCardForm";
 import { defaultProcessingProcessFormValues } from "../../features/processing-process-form/model/schema";
 import { ProcessingProcessForm } from "../../features/processing-process-form/ui/ProcessingProcessForm";
+import { defaultSecurityLevelFormValues } from "../../features/security-level-form/model/schema";
+import { SecurityLevelForm } from "../../features/security-level-form/ui/SecurityLevelForm";
 
-const steps = ["Основные сведения", "Процессы обработки"];
+const steps = ["Основные сведения", "Информация о субъектах ПДн", "Процессы обработки"];
 
 type LocalProcessingProcess = {
   clientId: number;
@@ -58,42 +63,140 @@ type ProcessDialogState =
   | { mode: "create" }
   | { mode: "edit"; process: LocalProcessingProcess };
 
+function toFormValues(card: IspdnCard): IspdnFormValues {
+  return {
+    name: card.name,
+    shortDescription: card.shortDescription,
+    processingPurposes: card.processingPurposes,
+    processingPurposeIds: card.processingPurposeIds,
+    commissioningDate: card.commissioningDate,
+    decommissioningDate: card.decommissioningDate ?? "",
+    websiteUrl: card.websiteUrl ?? "",
+    responsibleEmployeeId: card.responsibleEmployeeId,
+    systemComposition: card.systemComposition,
+    status: card.status,
+  };
+}
+
 export function IspdnCreatePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const allowExitRef = useRef(false);
+  const blocker = useBlocker(() => !allowExitRef.current);
   const [activeStep, setActiveStep] = useState(0);
+  const [card, setCard] = useState<IspdnCard | null>(null);
   const [cardValues, setCardValues] = useState<IspdnFormValues>(defaultIspdnFormValues);
+  const [securityLevelValues, setSecurityLevelValues] =
+    useState<SecurityLevelFormValues>(defaultSecurityLevelFormValues);
   const [processes, setProcesses] = useState<LocalProcessingProcess[]>([]);
   const [processDialog, setProcessDialog] = useState<ProcessDialogState | null>(null);
   const [nextProcessId, setNextProcessId] = useState(1);
+  const [processingStepError, setProcessingStepError] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (allowExitRef.current) {
+        return;
+      }
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, []);
 
   const purposesQuery = useQuery({
     queryKey: ["processingPurposeOptions"],
     queryFn: getProcessingPurposeOptions,
-    enabled: activeStep === 1,
+    enabled: activeStep === 2,
   });
 
-  const mutation = useMutation({
-    mutationFn: async (values: { card: IspdnFormValues; processes: LocalProcessingProcess[] }) => {
-      const card = await createIspdn(withProcessPurposes(values.card, values.processes.map((process) => process.values)));
-      for (const process of values.processes) {
+  const cardMutation = useMutation({
+    mutationFn: (values: IspdnFormValues) => (card ? updateIspdn(card.id, values) : createIspdn(values)),
+    onSuccess: async (savedCard) => {
+      setCard(savedCard);
+      setCardValues(toFormValues(savedCard));
+      await queryClient.invalidateQueries({ queryKey: ["ispdns"] });
+      await queryClient.invalidateQueries({ queryKey: ["ispdn", savedCard.id] });
+      setActiveStep(1);
+    },
+  });
+
+  const securityLevelMutation = useMutation({
+    mutationFn: (values: SecurityLevelFormValues) => {
+      if (!card) {
+        throw new Error("Ispdn card must be created before security level data");
+      }
+      return saveIspdnSecurityLevel(card.id, values);
+    },
+    onSuccess: async (_record, values) => {
+      if (!card) {
+        return;
+      }
+      setSecurityLevelValues(values);
+      await queryClient.invalidateQueries({ queryKey: ["ispdnSecurityLevel", card.id] });
+      setActiveStep(2);
+    },
+  });
+
+  const finishMutation = useMutation({
+    mutationFn: async () => {
+      if (!card) {
+        throw new Error("Ispdn card must be created before processing processes");
+      }
+      if (processes.length === 0) {
+        throw new Error("At least one processing process is required");
+      }
+
+      const updatedCardValues = withProcessPurposes(cardValues, processes.map((process) => process.values));
+      const updatedCard = await updateIspdn(card.id, updatedCardValues);
+      for (const process of processes) {
         await createIspdnProcessingProcess(card.id, process.values);
       }
-      return card;
+      return updatedCard;
     },
-    onSuccess: async (card) => {
+    onSuccess: async (savedCard) => {
       await queryClient.invalidateQueries({ queryKey: ["ispdns"] });
-      await queryClient.invalidateQueries({ queryKey: ["ispdnProcessingProcesses", card.id] });
-      navigate(`/ispdns/${card.id}`);
+      await queryClient.invalidateQueries({ queryKey: ["ispdn", savedCard.id] });
+      await queryClient.invalidateQueries({ queryKey: ["ispdnProcessingProcesses", savedCard.id] });
+      allowExitRef.current = true;
+      navigate(`/ispdns/${savedCard.id}`);
     },
   });
 
-  const handleMainInfoSubmit = (values: IspdnFormValues) => {
-    setCardValues(values);
-    setActiveStep(1);
-  };
+  const cancelCreationMutation = useMutation({
+    mutationFn: async () => {
+      if (card) {
+        await deleteIspdn(card.id);
+      }
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["ispdns"] });
+      if (card) {
+        await queryClient.invalidateQueries({ queryKey: ["ispdn", card.id] });
+        await queryClient.invalidateQueries({ queryKey: ["ispdnSecurityLevel", card.id] });
+        await queryClient.invalidateQueries({ queryKey: ["ispdnProcessingProcesses", card.id] });
+      }
+      allowExitRef.current = true;
+      if (blocker.state === "blocked") {
+        blocker.proceed?.();
+        return;
+      }
+      navigate("/ispdns");
+    },
+  });
+
+  const isBusy =
+    cardMutation.isPending ||
+    securityLevelMutation.isPending ||
+    finishMutation.isPending ||
+    cancelCreationMutation.isPending;
+  const dialogDefaultValues =
+    processDialog?.mode === "edit" ? processDialog.process.values : defaultProcessingProcessFormValues;
 
   const handleProcessSubmit = (values: ProcessingProcessFormValues) => {
+    setProcessingStepError(false);
     if (processDialog?.mode === "edit") {
       setProcesses((current) =>
         current.map((process) =>
@@ -109,24 +212,24 @@ export function IspdnCreatePage() {
     setProcessDialog(null);
   };
 
-  const handleCreateCard = () => {
+  const handleFinish = () => {
     if (processes.length === 0) {
+      setProcessingStepError(true);
       return;
     }
-    mutation.mutate({ card: cardValues, processes });
+    setProcessingStepError(false);
+    finishMutation.mutate();
   };
-
-  const dialogDefaultValues =
-    processDialog?.mode === "edit" ? processDialog.process.values : defaultProcessingProcessFormValues;
 
   return (
     <Stack spacing={3}>
       <Box>
         <Typography component="h1" variant="h5" sx={{ fontWeight: 600 }}>
-          Создание карточки ИСПДн
+          Создание ИСПДн
         </Typography>
-        <Typography color="text.secondary" sx={{ mt: 0.5, maxWidth: 760 }}>
-          Сначала заполните основные сведения, затем добавьте один или несколько процессов обработки.
+        <Typography color="text.secondary" sx={{ mt: 0.5, maxWidth: 820 }}>
+          Заполните три обязательных раздела последовательно. Выйти из процесса через интерфейс можно только после
+          завершения раздела «Процессы обработки».
         </Typography>
       </Box>
 
@@ -140,26 +243,55 @@ export function IspdnCreatePage() {
         </Stepper>
       </Paper>
 
-      {mutation.isError && (
+      {cardMutation.isError && (
         <Alert severity="error">
-          Не удалось сохранить карточку ИСПДн или процессы обработки. Проверьте заполнение полей и доступность API.
+          Не удалось сохранить основные сведения ИСПДн. Проверьте обязательные поля и доступность API.
+        </Alert>
+      )}
+      {securityLevelMutation.isError && (
+        <Alert severity="error">
+          Не удалось сохранить информацию о субъектах ПДн. Проверьте поля, расчёт уровня и формат файла обоснования.
+        </Alert>
+      )}
+      {finishMutation.isError && (
+        <Alert severity="error">
+          Не удалось завершить создание ИСПДн. Проверьте процессы обработки и доступность API.
+        </Alert>
+      )}
+      {cancelCreationMutation.isError && (
+        <Alert severity="error">
+          Не удалось отменить создание ИСПДн. Проверьте доступность API и повторите попытку.
         </Alert>
       )}
 
       {activeStep === 0 && (
         <Paper variant="outlined" sx={{ p: 3, borderRadius: 2, bgcolor: "background.paper" }}>
           <IspdnCardForm
+            key={card?.updatedAt ?? "new-card"}
             defaultValues={cardValues}
-            submitLabel="Перейти к процессам обработки"
-            isSubmitting={mutation.isPending}
-            showProcessingPurposes={false}
-            onSubmit={handleMainInfoSubmit}
-            onCancel={() => navigate("/ispdns")}
+            submitLabel="Далее"
+            isSubmitting={isBusy}
+            showActions={false}
+            showProcessingPurposes
+            onSubmit={(values) => cardMutation.mutate(values)}
+            onCancel={() => undefined}
           />
         </Paper>
       )}
 
-      {activeStep === 1 && (
+      {activeStep === 1 && card && (
+        <SecurityLevelForm
+          key={card.id}
+          formId="security-level-create-form"
+          ispdnId={card.id}
+          defaultValues={securityLevelValues}
+          isSubmitting={isBusy}
+          showActions={false}
+          onSubmit={(values) => securityLevelMutation.mutate(values)}
+        />
+      )}
+
+      {activeStep === 2 && (
         <Stack spacing={3}>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ justifyContent: "space-between" }}>
             <Box>
@@ -167,24 +299,24 @@ export function IspdnCreatePage() {
                 Процессы обработки
               </Typography>
               <Typography color="text.secondary" sx={{ mt: 0.5, maxWidth: 760 }}>
-                Добавьте процессы обработки так же, как в модуле процессов внутри карточки ИСПДн. Для создания карточки
-                нужен минимум один процесс.
+                Добавьте один или несколько процессов обработки для создаваемой ИСПДн. После нажатия «Далее» процессы
+                будут сохранены, а создание ИСПДн будет завершено.
               </Typography>
             </Box>
             <Button
               variant="contained"
               startIcon={<AddIcon />}
               onClick={() => setProcessDialog({ mode: "create" })}
-              disabled={mutation.isPending}
+              disabled={isBusy}
               sx={{ alignSelf: { sm: "flex-start" } }}
             >
               Добавить процесс обработки
             </Button>
           </Stack>
 
-          {processes.length === 0 && (
-            <Alert severity="warning">
-              Добавьте хотя бы один процесс обработки. Без него карточку ИСПДн создать нельзя.
+          {(processingStepError || processes.length === 0) && (
+            <Alert severity={processingStepError ? "error" : "warning"}>
+              Добавьте хотя бы один процесс обработки, чтобы завершить создание ИСПДн.
             </Alert>
           )}
 
@@ -201,17 +333,48 @@ export function IspdnCreatePage() {
               />
             </Box>
           </Paper>
-
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ justifyContent: "flex-end" }}>
-            <Button variant="outlined" onClick={() => setActiveStep(0)} disabled={mutation.isPending}>
-              Назад
-            </Button>
-            <Button variant="contained" onClick={handleCreateCard} disabled={mutation.isPending || processes.length === 0}>
-              {mutation.isPending ? "Сохранение..." : "Создать ИСПДн"}
-            </Button>
-          </Stack>
         </Stack>
       )}
+
+      <WizardNavigation
+        activeStep={activeStep}
+        isBusy={isBusy}
+        onBack={() => setActiveStep((current) => Math.max(0, current - 1))}
+        onNext={activeStep === 2 ? handleFinish : undefined}
+        nextFormId={activeStep === 0 ? "ispdn-card-form" : activeStep === 1 ? "security-level-create-form" : undefined}
+        nextLabel={activeStep === 2 ? "Далее" : "Далее"}
+      />
+
+      <Dialog
+        open={blocker.state === "blocked"}
+        onClose={() => {
+          if (!cancelCreationMutation.isPending) {
+            blocker.reset?.();
+          }
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Создание ИСПДн не завершено</DialogTitle>
+        <DialogContent>
+          <Typography color="text.secondary">
+            Завершите разделы «Основные сведения», «Информация о субъектах ПДн» и «Процессы обработки», чтобы выйти из процесса создания.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            color="error"
+            variant="outlined"
+            onClick={() => cancelCreationMutation.mutate()}
+            disabled={cancelCreationMutation.isPending}
+          >
+            {cancelCreationMutation.isPending ? "Отмена..." : "Отменить создание"}
+          </Button>
+          <Button variant="contained" onClick={() => blocker.reset?.()} disabled={cancelCreationMutation.isPending}>
+            Вернуться к созданию
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={processDialog !== null} onClose={() => setProcessDialog(null)} fullWidth maxWidth="lg">
         <DialogTitle>
@@ -222,14 +385,47 @@ export function IspdnCreatePage() {
             <ProcessingProcessForm
               key={processDialog?.mode === "edit" ? processDialog.process.clientId : `new-${nextProcessId}`}
               defaultValues={dialogDefaultValues}
-              submitLabel={processDialog?.mode === "edit" ? "Сохранить изменения" : "Создать процесс"}
-              isSubmitting={mutation.isPending}
+              submitLabel={processDialog?.mode === "edit" ? "Сохранить изменения" : "Добавить процесс"}
+              isSubmitting={isBusy}
               onSubmit={handleProcessSubmit}
               onCancel={() => setProcessDialog(null)}
             />
           </Box>
         </DialogContent>
       </Dialog>
+    </Stack>
+  );
+}
+
+function WizardNavigation({
+  activeStep,
+  isBusy,
+  nextFormId,
+  nextLabel,
+  onBack,
+  onNext,
+}: {
+  activeStep: number;
+  isBusy: boolean;
+  nextFormId?: string;
+  nextLabel: string;
+  onBack: () => void;
+  onNext?: () => void;
+}) {
+  return (
+    <Stack direction="row" spacing={2} sx={{ justifyContent: "space-between" }}>
+      <Button variant="outlined" onClick={onBack} disabled={isBusy || activeStep === 0}>
+        Назад
+      </Button>
+      <Button
+        type={nextFormId ? "submit" : "button"}
+        form={nextFormId}
+        variant="contained"
+        onClick={onNext}
+        disabled={isBusy}
+      >
+        {isBusy ? "Сохранение..." : nextLabel}
+      </Button>
     </Stack>
   );
 }

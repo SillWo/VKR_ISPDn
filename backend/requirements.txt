@@ -6,3 +6,5 @@ psycopg[binary]
 pydantic
 python-dotenv
 docxtpl
+python-multipart
+httpx

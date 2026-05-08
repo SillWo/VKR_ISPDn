@@ -13,6 +13,7 @@ from app.models import (
     OrganizationCard,
     ProcessingProcess,
     ProcessingPurpose,
+    SecurityLevelRecord,
     ispdn_processing_purposes,
 )
 

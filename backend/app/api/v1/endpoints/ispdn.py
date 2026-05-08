@@ -53,3 +53,11 @@ def update_ispdn(ispdn_id: int, payload: IspdnUpdate, service: IspdnService = De
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Responsible employee not found") from exc
     except IspdnProcessingPurposeNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Processing purpose not found") from exc
+
+
+@router.delete("/{ispdn_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_ispdn(ispdn_id: int, service: IspdnService = Depends(get_ispdn_service)):
+    try:
+        service.delete_card(ispdn_id)
+    except IspdnNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc

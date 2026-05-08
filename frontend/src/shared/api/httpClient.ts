@@ -10,12 +10,17 @@ export class HttpError extends Error {
 }
 
 export async function httpClient<TResponse>(path: string, init?: RequestInit): Promise<TResponse> {
+  const isFormData = init?.body instanceof FormData;
+  const headers = isFormData
+    ? init?.headers
+    : {
+        "Content-Type": "application/json",
+        ...init?.headers,
+      };
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...init?.headers,
-    },
     ...init,
+    headers,
   });
 
   if (!response.ok) {

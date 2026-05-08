@@ -5,6 +5,7 @@ import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
 
 import { getIspdnById, updateIspdn } from "../../entities/ispdn/api/ispdnApi";
 import type { IspdnCard, IspdnFormValues, IspdnStatus } from "../../entities/ispdn/model/types";
+import { getIspdnSecurityLevel } from "../../entities/security-level/api/securityLevelApi";
 import { IspdnCardForm } from "../../features/ispdn-card-form/ui/IspdnCardForm";
 import { HttpError } from "../../shared/api/httpClient";
 
@@ -48,6 +49,13 @@ export function IspdnCardPage() {
     queryKey: ["ispdn", numericId],
     queryFn: () => getIspdnById(numericId),
     enabled: isValidId,
+    retry: false,
+  });
+
+  const securityLevelQuery = useQuery({
+    queryKey: ["ispdnSecurityLevel", numericId],
+    queryFn: () => getIspdnSecurityLevel(numericId),
+    enabled: isValidId && Boolean(data),
     retry: false,
   });
 
@@ -165,6 +173,55 @@ export function IspdnCardPage() {
               </Button>
             ))}
           </Stack>
+        </Stack>
+      </Paper>
+
+      <Paper variant="outlined" sx={{ p: 3, borderRadius: 2 }}>
+        <Stack spacing={2}>
+          <Box>
+            <Typography component="h2" variant="h6" sx={{ fontWeight: 600 }}>
+              Статус модулей
+            </Typography>
+            <Typography color="text.secondary" sx={{ mt: 0.5 }}>
+              Быстрый контроль заполненности данных, связанных с выбранной ИСПДн.
+            </Typography>
+          </Box>
+          {securityLevelQuery.isLoading && <Alert severity="info">Проверка данных уровня защищённости.</Alert>}
+          {securityLevelQuery.isError && (
+            <Alert
+              severity="warning"
+              action={
+                <Button
+                  color="inherit"
+                  size="small"
+                  component={RouterLink}
+                  to={`/ispdns/${data.id}/security-level`}
+                >
+                  Заполнить уровень защищённости
+                </Button>
+              }
+            >
+              Информация о субъектах ПДн и уровне защищённости не заполнена.
+            </Alert>
+          )}
+          {securityLevelQuery.data && (
+            <Alert
+              severity="success"
+              action={
+                <Button
+                  color="inherit"
+                  size="small"
+                  component={RouterLink}
+                  to={`/ispdns/${data.id}/security-level`}
+                >
+                  Открыть
+                </Button>
+              }
+            >
+              Рекомендуемый уровень: {securityLevelQuery.data.recommendedLevel}. Фактический уровень:{" "}
+              {securityLevelQuery.data.actualLevel}.
+            </Alert>
+          )}
         </Stack>
       </Paper>
     </Stack>

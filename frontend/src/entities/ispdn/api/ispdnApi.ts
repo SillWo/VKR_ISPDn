@@ -168,3 +168,9 @@ export function updateIspdn(id: number, payload: IspdnFormValues) {
     body: JSON.stringify(mapPayload(payload)),
   }).then(mapCard);
 }
+
+export function deleteIspdn(id: number) {
+  return httpClient<void>(`/api/v1/ispdns/${id}`, {
+    method: "DELETE",
+  });
+}

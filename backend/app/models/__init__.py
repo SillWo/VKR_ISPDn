@@ -6,6 +6,7 @@ from app.models.ispdn_processing_purpose import ispdn_processing_purposes
 from app.models.organization import OrganizationCard
 from app.models.processing_process import ProcessingProcess
 from app.models.processing_purpose import ProcessingPurpose
+from app.models.security_level import SecurityLevelRecord
 
 __all__ = [
     "Department",
@@ -15,4 +16,5 @@ __all__ = [
     "OrganizationCard",
     "ProcessingProcess",
     "ProcessingPurpose",
+    "SecurityLevelRecord",
 ]
