@@ -20,3 +20,7 @@ class DocumentRequiresIspdnError(DocumentGenerationError):
 
 class DocumentEmployeeNotFoundError(DocumentGenerationError):
     pass
+
+
+class DocumentControlEventNotFoundError(DocumentGenerationError):
+    pass

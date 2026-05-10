@@ -17,7 +17,7 @@ export type DocumentType = {
 };
 
 export type ActIspdnCommissioningEvent = {
-  eventName: string;
+  controlEventId: number | null;
   responsibleEmployeeId: number | null;
 };
 
@@ -33,7 +33,7 @@ export type GenerateIspdnDocumentPayload = {
     description_of_violations_and_disadvantages: string;
     recommendation: string;
     events: Array<{
-      event_name: string;
+      control_event_id: number;
       responsible_employee_id: number;
     }>;
   };

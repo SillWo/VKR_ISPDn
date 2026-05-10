@@ -14,6 +14,7 @@ import type {
   GenerateIspdnDocumentPayload,
 } from "../../../entities/document/model/types";
 import { requiredText } from "../../../shared/lib/validation";
+import { ControlEventSelect } from "../../../shared/ui/control-event-select/ControlEventSelect";
 import { EmployeeSelect } from "../../../shared/ui/employee-select/EmployeeSelect";
 
 const actIspdnCommissioningSchema = z.object({
@@ -23,8 +24,12 @@ const actIspdnCommissioningSchema = z.object({
     .array(
       z
         .object({
-          eventName: requiredText("Укажите название мероприятия"),
+          controlEventId: z.number().nullable(),
           responsibleEmployeeId: z.number().nullable(),
+        })
+        .refine((event) => event.controlEventId !== null, {
+          message: "Выберите контрольное мероприятие из реестра",
+          path: ["controlEventId"],
         })
         .refine((event) => event.responsibleEmployeeId !== null, {
           message: "Выберите ответственного сотрудника из реестра",
@@ -41,7 +46,7 @@ function mapToPayload(values: ActIspdnCommissioningFormValues): GenerateIspdnDoc
       description_of_violations_and_disadvantages: values.descriptionOfViolationsAndDisadvantages.trim(),
       recommendation: values.recommendation.trim(),
       events: values.events.map((event) => ({
-        event_name: event.eventName.trim(),
+        control_event_id: event.controlEventId ?? 0,
         responsible_employee_id: event.responsibleEmployeeId ?? 0,
       })),
     },
@@ -76,7 +81,7 @@ export function GenerateActIspdnDocumentForm({ ispdnId, disabled = false }: Gene
     defaultValues: {
       descriptionOfViolationsAndDisadvantages: "Недостатки не выявлены",
       recommendation: "Допустить ИСПДн к эксплуатации",
-      events: [{ eventName: "Проверка состава ИСПДн", responsibleEmployeeId: null }],
+      events: [{ controlEventId: null, responsibleEmployeeId: null }],
     },
   });
 
@@ -146,7 +151,7 @@ export function GenerateActIspdnDocumentForm({ ispdnId, disabled = false }: Gene
               Проведённые мероприятия
             </Typography>
             <Typography color="text.secondary" sx={{ mt: 0.5 }}>
-              Укажите название и ответственного для каждого мероприятия.
+              Выберите контрольное мероприятие из реестра и ответственного сотрудника для каждого пункта.
             </Typography>
           </Box>
 
@@ -183,13 +188,23 @@ export function GenerateActIspdnDocumentForm({ ispdnId, disabled = false }: Gene
                     </Button>
                   </Stack>
                   <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-                    <TextField
-                      label="Название мероприятия"
-                      fullWidth
-                      disabled={disabled || mutation.isPending}
-                      error={Boolean(errors.events?.[index]?.eventName)}
-                      helperText={errors.events?.[index]?.eventName?.message}
-                      {...register(`events.${index}.eventName`)}
+                    <Controller
+                      name={`events.${index}.controlEventId`}
+                      control={control}
+                      render={({ field: controlEventField }) => (
+                        <ControlEventSelect
+                          value={controlEventField.value}
+                          onChange={controlEventField.onChange}
+                          label="Контрольное мероприятие"
+                          required
+                          allowQuickCreate
+                          quickCreateButtonPlacement="below"
+                          quickCreateButtonLabel="Создать мероприятие"
+                          disabled={disabled || mutation.isPending}
+                          error={Boolean(errors.events?.[index]?.controlEventId)}
+                          helperText={errors.events?.[index]?.controlEventId?.message}
+                        />
+                      )}
                     />
                     <Controller
                       name={`events.${index}.responsibleEmployeeId`}
@@ -218,7 +233,7 @@ export function GenerateActIspdnDocumentForm({ ispdnId, disabled = false }: Gene
             variant="outlined"
             startIcon={<AddIcon />}
             disabled={disabled || mutation.isPending}
-            onClick={() => append({ eventName: "", responsibleEmployeeId: null })}
+            onClick={() => append({ controlEventId: null, responsibleEmployeeId: null })}
             sx={{ alignSelf: "flex-start" }}
           >
             Добавить мероприятие

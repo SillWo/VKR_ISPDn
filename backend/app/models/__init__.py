@@ -1,4 +1,5 @@
 """SQLAlchemy models package."""
+from app.models.control_event import ControlEvent, ControlEventFile
 from app.models.department import Department
 from app.models.employee import Employee
 from app.models.ispdn import IspdnCard
@@ -11,6 +12,8 @@ from app.models.security_measure import IspdnSecurityTools, TechnicalSecurityMea
 
 __all__ = [
     "Department",
+    "ControlEvent",
+    "ControlEventFile",
     "Employee",
     "IspdnCard",
     "ispdn_processing_purposes",

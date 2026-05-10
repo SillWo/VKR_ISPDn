@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.document_generation.core.errors import (
+    DocumentControlEventNotFoundError,
     DocumentEmployeeNotFoundError,
     DocumentRenderError,
     DocumentRequiresIspdnError,
@@ -56,6 +57,8 @@ def generate_ispdn_document(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc
     except DocumentEmployeeNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Employee not found") from exc
+    except DocumentControlEventNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Control event not found") from exc
     except (DocumentRequiresIspdnError, ValidationError) as exc:
         detail = jsonable_encoder(exc.errors()) if isinstance(exc, ValidationError) else str(exc)
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=detail) from exc

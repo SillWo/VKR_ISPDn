@@ -43,8 +43,8 @@ class ActIspdnCommissioningGenerator(DocumentGenerator):
                 required=True,
                 items=[
                     DocumentManualField(
-                        name="event_name",
-                        label="Название мероприятия",
+                        name="control_event_id",
+                        label="Контрольное мероприятие",
                         type="text",
                         required=True,
                     ),
@@ -74,7 +74,7 @@ class ActIspdnCommissioningGenerator(DocumentGenerator):
         events = [
             {
                 "event_number": index,
-                "event_name": event["event_name"],
+                "event_name": context_builder.control_event_name(event["control_event_id"]),
                 "responsible_for_the_event": context_builder.employee_name(
                     event["responsible_employee_id"],
                     self.employee_name_mode,

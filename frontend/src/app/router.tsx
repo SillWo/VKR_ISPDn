@@ -1,5 +1,6 @@
 import { Navigate, createBrowserRouter } from "react-router-dom";
 
+import { ControlEventsRegistryPage } from "../pages/control-events-registry/ControlEventsRegistryPage";
 import { EmployeesRegistryPage } from "../pages/employees-registry/EmployeesRegistryPage";
 import { IspdnCardPage } from "../pages/ispdn-card/IspdnCardPage";
 import { IspdnCreatePage } from "../pages/ispdn-card/IspdnCreatePage";
@@ -76,6 +77,10 @@ export const router = createBrowserRouter([
       {
         path: "processing-purposes",
         element: <ProcessingPurposesRegistryPage />,
+      },
+      {
+        path: "control-events",
+        element: <ControlEventsRegistryPage />,
       },
       {
         path: "tasks",

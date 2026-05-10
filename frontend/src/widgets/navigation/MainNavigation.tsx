@@ -1,5 +1,6 @@
 import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
 import BusinessIcon from "@mui/icons-material/Business";
+import FactCheckIcon from "@mui/icons-material/FactCheck";
 import FolderSharedIcon from "@mui/icons-material/FolderShared";
 import GroupsIcon from "@mui/icons-material/Groups";
 import ListAltIcon from "@mui/icons-material/ListAlt";
@@ -11,6 +12,7 @@ const navigationItems = [
   { label: "Карточка организации", path: "/organization", icon: <BusinessIcon /> },
   { label: "Реестр сотрудников", path: "/employees", icon: <GroupsIcon /> },
   { label: "Реестр целей обработки", path: "/processing-purposes", icon: <ListAltIcon /> },
+  { label: "Реестр контрольных мероприятий", path: "/control-events", icon: <FactCheckIcon /> },
   { label: "Задачи и несоответствия", path: "/tasks", icon: <AssignmentTurnedInIcon /> },
 ];
 

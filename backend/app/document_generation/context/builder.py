@@ -23,7 +23,7 @@ class DocumentContextBuilder:
         self.security_measures_provider = SecurityMeasuresContextProvider(db)
         self.threat_model_provider = ThreatModelContextProvider()
         self.tasks_provider = TasksContextProvider()
-        self.control_events_provider = ControlEventsContextProvider()
+        self.control_events_provider = ControlEventsContextProvider(db)
 
     def system(self) -> dict:
         return self.system_provider.get_context()
@@ -33,6 +33,9 @@ class DocumentContextBuilder:
 
     def employee_name(self, employee_id: int, mode: EmployeeNameMode) -> str:
         return self.employee_provider.get_employee_name(employee_id, mode)
+
+    def control_event_name(self, control_event_id: int) -> str:
+        return self.control_events_provider.get_control_event_name(control_event_id)
 
     def ispdn(self, ispdn_id: int) -> dict:
         return self.ispdn_provider.get_context(ispdn_id)

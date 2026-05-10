@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from app.api.v1.endpoints.control_events import router as control_events_router
 from app.api.v1.endpoints.departments import router as departments_router
 from app.api.v1.endpoints.documents import router as documents_router
 from app.api.v1.endpoints.employees import router as employees_router
@@ -19,6 +20,7 @@ api_router.include_router(departments_router)
 api_router.include_router(employees_router)
 api_router.include_router(documents_router)
 api_router.include_router(processing_purposes_router)
+api_router.include_router(control_events_router)
 api_router.include_router(processing_processes_router)
 api_router.include_router(security_level_router)
 api_router.include_router(security_measures_router)
