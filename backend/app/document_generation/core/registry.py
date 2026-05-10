@@ -3,6 +3,9 @@ from app.document_generation.core.errors import DocumentTypeNotFoundError
 from app.document_generation.documents.act_ispdn_commissioning.generator import (
     ActIspdnCommissioningGenerator,
 )
+from app.document_generation.documents.act_safety_level_of_ISPDn.generator import (
+    ActSafetyLevelOfIspdnGenerator,
+)
 
 
 class DocumentRegistry:
@@ -23,5 +26,6 @@ def get_document_registry() -> DocumentRegistry:
     return DocumentRegistry(
         generators=[
             ActIspdnCommissioningGenerator(),
+            ActSafetyLevelOfIspdnGenerator(),
         ],
     )

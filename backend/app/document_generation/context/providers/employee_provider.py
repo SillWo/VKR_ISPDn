@@ -19,3 +19,23 @@ class EmployeeContextProvider:
         if mode == "full_name":
             return employee.full_name
         return employee.document_initials
+
+    def get_employee_document_context(self, employee_id: int) -> dict:
+        employee = self.repository.get_by_id(employee_id)
+        if employee is None:
+            raise DocumentEmployeeNotFoundError(f"Employee not found: {employee_id}")
+        return {
+            "id": employee.id,
+            "full_name": employee.full_name,
+            "document_initials": employee.document_initials,
+            "position": employee.position,
+        }
+
+    def get_employee_document_info(self, employee_id: int) -> dict:
+        employee = self.repository.get_by_id(employee_id)
+        if employee is None:
+            raise DocumentEmployeeNotFoundError(f"Employee not found: {employee_id}")
+        return {
+            "name": employee.document_initials,
+            "position": employee.position,
+        }

@@ -34,6 +34,12 @@ class DocumentContextBuilder:
     def employee_name(self, employee_id: int, mode: EmployeeNameMode) -> str:
         return self.employee_provider.get_employee_name(employee_id, mode)
 
+    def employee_document_context(self, employee_id: int) -> dict:
+        return self.employee_provider.get_employee_document_context(employee_id)
+
+    def employee_document_info(self, employee_id: int) -> dict:
+        return self.employee_provider.get_employee_document_info(employee_id)
+
     def control_event_name(self, control_event_id: int) -> str:
         return self.control_events_provider.get_control_event_name(control_event_id)
 

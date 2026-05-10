@@ -24,3 +24,7 @@ class DocumentEmployeeNotFoundError(DocumentGenerationError):
 
 class DocumentControlEventNotFoundError(DocumentGenerationError):
     pass
+
+
+class DocumentPrerequisiteMissingError(DocumentGenerationError):
+    pass

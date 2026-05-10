@@ -5,6 +5,7 @@ import { Link as RouterLink, useParams } from "react-router-dom";
 
 import { getDocumentTypes } from "../../entities/document/api/documentApi";
 import { GenerateActIspdnDocumentForm } from "../../features/document-generation/ui/GenerateActIspdnDocumentForm";
+import { GenerateActSafetyLevelDocumentForm } from "../../features/document-generation/ui/GenerateActSafetyLevelDocumentForm";
 
 export function IspdnDocumentsPage() {
   const { ispdnId } = useParams();
@@ -22,6 +23,9 @@ export function IspdnDocumentsPage() {
   }
 
   const actDocumentType = documentTypesQuery.data?.find((item) => item.code === "act_ispdn_commissioning");
+  const safetyLevelDocumentType = documentTypesQuery.data?.find(
+    (item) => item.code === "act_safety_level_of_ISPDn",
+  );
 
   return (
     <Stack spacing={3}>
@@ -63,6 +67,12 @@ export function IspdnDocumentsPage() {
         <Alert severity="warning">Документ «Акт ввода ИСПДн» не зарегистрирован на backend.</Alert>
       )}
 
+      {!documentTypesQuery.isLoading && !documentTypesQuery.isError && !safetyLevelDocumentType && (
+        <Alert severity="warning">
+          Документ «Акт оценки необходимого уровня защищённости ИСПДн» не зарегистрирован на backend.
+        </Alert>
+      )}
+
       {actDocumentType && (
         <Paper variant="outlined" sx={{ p: 3, borderRadius: 2, bgcolor: "background.paper" }}>
           <Stack spacing={2.5}>
@@ -75,6 +85,22 @@ export function IspdnDocumentsPage() {
               </Typography>
             </Box>
             <GenerateActIspdnDocumentForm ispdnId={numericId} />
+          </Stack>
+        </Paper>
+      )}
+
+      {safetyLevelDocumentType && (
+        <Paper variant="outlined" sx={{ p: 3, borderRadius: 2, bgcolor: "background.paper" }}>
+          <Stack spacing={2.5}>
+            <Box>
+              <Typography component="h2" variant="h6" sx={{ fontWeight: 600 }}>
+                {safetyLevelDocumentType.title}
+              </Typography>
+              <Typography color="text.secondary" sx={{ mt: 0.5 }}>
+                {safetyLevelDocumentType.description}
+              </Typography>
+            </Box>
+            <GenerateActSafetyLevelDocumentForm ispdnId={numericId} />
           </Stack>
         </Paper>
       )}
