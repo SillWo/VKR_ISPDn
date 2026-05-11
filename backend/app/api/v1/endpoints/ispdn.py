@@ -4,12 +4,10 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.repositories.employee import EmployeeRepository
 from app.repositories.ispdn import IspdnRepository
-from app.repositories.processing_purpose import ProcessingPurposeRepository
 from app.repositories.task_event import TaskEventRepository
 from app.schemas.ispdn import IspdnCreate, IspdnListItem, IspdnRead, IspdnStatus, IspdnUpdate
 from app.services.ispdn import (
     IspdnNotFoundError,
-    IspdnProcessingPurposeNotFoundError,
     IspdnResponsibleEmployeeNotFoundError,
     IspdnService,
 )
@@ -25,7 +23,6 @@ def get_ispdn_service(db: Session = Depends(get_db)) -> IspdnService:
     return IspdnService(
         ispdn_repository,
         employee_repository,
-        ProcessingPurposeRepository(db),
         task_event_service,
     )
 
@@ -41,8 +38,6 @@ def create_ispdn(payload: IspdnCreate, service: IspdnService = Depends(get_ispdn
         return service.create_card(payload)
     except IspdnResponsibleEmployeeNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Responsible employee not found") from exc
-    except IspdnProcessingPurposeNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Processing purpose not found") from exc
 
 
 @router.get("/{ispdn_id}", response_model=IspdnRead)
@@ -61,8 +56,6 @@ def update_ispdn(ispdn_id: int, payload: IspdnUpdate, service: IspdnService = De
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc
     except IspdnResponsibleEmployeeNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Responsible employee not found") from exc
-    except IspdnProcessingPurposeNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Processing purpose not found") from exc
 
 
 @router.delete("/{ispdn_id}", status_code=status.HTTP_204_NO_CONTENT)

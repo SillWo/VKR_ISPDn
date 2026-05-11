@@ -1,5 +1,4 @@
 import AddIcon from "@mui/icons-material/Add";
-import DeleteIcon from "@mui/icons-material/Delete";
 import {
   Alert,
   Box,
@@ -8,8 +7,12 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  IconButton,
+  FormControl,
+  FormHelperText,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Stack,
   Step,
   StepLabel,
@@ -22,7 +25,6 @@ import {
   TableHead,
   TableRow,
   TextField,
-  Tooltip,
   Typography,
 } from "@mui/material";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -33,10 +35,16 @@ import { createIspdn, deleteIspdn, updateIspdn } from "../../entities/ispdn/api/
 import type { IspdnCard, IspdnFormValues, IspdnSecurityTools } from "../../entities/ispdn/model/types";
 import { updateIspdnDataCenters } from "../../entities/data-center/api/dataCenterApi";
 import { updateIspdnCryptography } from "../../entities/crypto-tool/api/cryptoToolApi";
-import { getProcessingPurposeOptions } from "../../entities/processing-purpose/api/processingPurposeApi";
-import type { ProcessingPurposeOption } from "../../entities/processing-purpose/model/types";
-import { createIspdnProcessingProcess } from "../../entities/processing-process/api/processingProcessApi";
-import type { ProcessingProcessFormValues } from "../../entities/processing-process/model/types";
+import {
+  createAndLinkIspdnProcessingProcess,
+  getIspdnProcessingProcesses,
+  getProcessingProcessOptions,
+  linkExistingProcessingProcessToIspdn,
+} from "../../entities/processing-process/api/processingProcessApi";
+import type {
+  ProcessingProcess,
+  ProcessingProcessFormValues,
+} from "../../entities/processing-process/model/types";
 import { saveIspdnSecurityLevel } from "../../entities/security-level/api/securityLevelApi";
 import type { SecurityLevelFormValues } from "../../entities/security-level/model/types";
 import { defaultIspdnFormValues } from "../../features/ispdn-card-form/model/schema";
@@ -70,21 +78,14 @@ const securityToolOptions = [
   { key: "physicalSecurity", label: "СКУД, сигнализация" },
 ] as const;
 
-type LocalProcessingProcess = {
-  clientId: number;
-  values: ProcessingProcessFormValues;
-};
-
 type ProcessDialogState =
   | { mode: "create" }
-  | { mode: "edit"; process: LocalProcessingProcess };
+  | { mode: "link" };
 
 function toFormValues(card: IspdnCard): IspdnFormValues {
   return {
     name: card.name,
     shortDescription: card.shortDescription,
-    processingPurposes: card.processingPurposes,
-    processingPurposeIds: card.processingPurposeIds,
     commissioningDate: card.commissioningDate,
     decommissioningDate: card.decommissioningDate ?? "",
     websiteUrl: card.websiteUrl ?? "",
@@ -108,9 +109,8 @@ export function IspdnCreatePage() {
   const [cardValues, setCardValues] = useState<IspdnFormValues>(defaultIspdnFormValues);
   const [securityLevelValues, setSecurityLevelValues] =
     useState<SecurityLevelFormValues>(defaultSecurityLevelFormValues);
-  const [processes, setProcesses] = useState<LocalProcessingProcess[]>([]);
   const [processDialog, setProcessDialog] = useState<ProcessDialogState | null>(null);
-  const [nextProcessId, setNextProcessId] = useState(1);
+  const [selectedExistingProcessId, setSelectedExistingProcessId] = useState<number | "">("");
   const [processingStepError, setProcessingStepError] = useState(false);
   const [dataCenterIds, setDataCenterIds] = useState<number[]>([]);
   const [usesCryptography, setUsesCryptography] = useState(false);
@@ -130,10 +130,16 @@ export function IspdnCreatePage() {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, []);
 
-  const purposesQuery = useQuery({
-    queryKey: ["processingPurposeOptions"],
-    queryFn: getProcessingPurposeOptions,
-    enabled: activeStep === 3,
+  const linkedProcessesQuery = useQuery({
+    queryKey: ["ispdnProcessingProcesses", card?.id],
+    queryFn: () => getIspdnProcessingProcesses(card!.id),
+    enabled: activeStep === 3 && Boolean(card),
+  });
+
+  const processOptionsQuery = useQuery({
+    queryKey: ["processingProcessOptions"],
+    queryFn: getProcessingProcessOptions,
+    enabled: activeStep === 3 || processDialog?.mode === "link",
   });
 
   const cardMutation = useMutation({
@@ -182,29 +188,40 @@ export function IspdnCreatePage() {
     },
   });
 
-  const finishMutation = useMutation({
-    mutationFn: async () => {
+  const createProcessMutation = useMutation({
+    mutationFn: (values: ProcessingProcessFormValues) => {
       if (!card) {
         throw new Error("Ispdn card must be created before processing processes");
       }
-      if (processes.length === 0) {
-        throw new Error("At least one processing process is required");
-      }
-
-      const updatedCardValues = withProcessPurposes(cardValues, processes.map((process) => process.values));
-      const updatedCard = await updateIspdn(card.id, updatedCardValues);
-      for (const process of processes) {
-        await createIspdnProcessingProcess(card.id, process.values);
-      }
-      return updatedCard;
+      return createAndLinkIspdnProcessingProcess(card.id, values);
     },
-    onSuccess: async (savedCard) => {
-      setCard(savedCard);
-      setCardValues(toFormValues(savedCard));
-      await queryClient.invalidateQueries({ queryKey: ["ispdns"] });
-      await queryClient.invalidateQueries({ queryKey: ["ispdn", savedCard.id] });
-      await queryClient.invalidateQueries({ queryKey: ["ispdnProcessingProcesses", savedCard.id] });
-      setActiveStep(4);
+    onSuccess: async () => {
+      if (!card) {
+        return;
+      }
+      await queryClient.invalidateQueries({ queryKey: ["processingProcesses"] });
+      await queryClient.invalidateQueries({ queryKey: ["processingProcessOptions"] });
+      await queryClient.invalidateQueries({ queryKey: ["ispdnProcessingProcesses", card.id] });
+      setProcessingStepError(false);
+      setProcessDialog(null);
+    },
+  });
+
+  const linkProcessMutation = useMutation({
+    mutationFn: (processId: number) => {
+      if (!card) {
+        throw new Error("Ispdn card must be created before processing processes");
+      }
+      return linkExistingProcessingProcessToIspdn(card.id, processId);
+    },
+    onSuccess: async () => {
+      if (!card) {
+        return;
+      }
+      await queryClient.invalidateQueries({ queryKey: ["ispdnProcessingProcesses", card.id] });
+      setSelectedExistingProcessId("");
+      setProcessingStepError(false);
+      setProcessDialog(null);
     },
   });
 
@@ -275,37 +292,31 @@ export function IspdnCreatePage() {
     cardMutation.isPending ||
     securityToolsMutation.isPending ||
     securityLevelMutation.isPending ||
-    finishMutation.isPending ||
+    createProcessMutation.isPending ||
+    linkProcessMutation.isPending ||
     dataCentersMutation.isPending ||
     cryptographyMutation.isPending ||
     cancelCreationMutation.isPending;
-  const dialogDefaultValues =
-    processDialog?.mode === "edit" ? processDialog.process.values : defaultProcessingProcessFormValues;
+  const dialogDefaultValues = defaultProcessingProcessFormValues;
 
   const handleProcessSubmit = (values: ProcessingProcessFormValues) => {
-    setProcessingStepError(false);
-    if (processDialog?.mode === "edit") {
-      setProcesses((current) =>
-        current.map((process) =>
-          process.clientId === processDialog.process.clientId ? { ...process, values } : process,
-        ),
-      );
-      setProcessDialog(null);
-      return;
-    }
-
-    setProcesses((current) => [...current, { clientId: nextProcessId, values }]);
-    setNextProcessId((current) => current + 1);
-    setProcessDialog(null);
+    createProcessMutation.mutate(values);
   };
 
   const handleFinish = () => {
-    if (processes.length === 0) {
+    if ((linkedProcessesQuery.data?.length ?? 0) === 0) {
       setProcessingStepError(true);
       return;
     }
     setProcessingStepError(false);
-    finishMutation.mutate();
+    setActiveStep(4);
+  };
+
+  const handleLinkExistingProcess = () => {
+    if (!selectedExistingProcessId) {
+      return;
+    }
+    linkProcessMutation.mutate(selectedExistingProcessId);
   };
 
   const handleCryptographyFinish = () => {
@@ -354,7 +365,7 @@ export function IspdnCreatePage() {
           Не удалось сохранить сведения о средствах защиты. Проверьте доступность API и повторите попытку.
         </Alert>
       )}
-      {finishMutation.isError && (
+      {(createProcessMutation.isError || linkProcessMutation.isError) && (
         <Alert severity="error">
           Не удалось сохранить процессы обработки. Проверьте процессы обработки и доступность API.
         </Alert>
@@ -383,7 +394,6 @@ export function IspdnCreatePage() {
             submitLabel="Далее"
             isSubmitting={isBusy}
             showActions={false}
-            showProcessingPurposes
             showSecurityTools={false}
             onSubmit={(values) => cardMutation.mutate(values)}
             onCancel={() => undefined}
@@ -424,18 +434,17 @@ export function IspdnCreatePage() {
                 будут сохранены, а wizard перейдёт к заполнению информации о ЦОД.
               </Typography>
             </Box>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => setProcessDialog({ mode: "create" })}
-              disabled={isBusy}
-              sx={{ alignSelf: { sm: "flex-start" } }}
-            >
-              Добавить процесс обработки
-            </Button>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ alignSelf: { sm: "flex-start" } }}>
+              <Button variant="outlined" onClick={() => setProcessDialog({ mode: "link" })} disabled={isBusy}>
+                Выбрать существующий
+              </Button>
+              <Button variant="contained" startIcon={<AddIcon />} onClick={() => setProcessDialog({ mode: "create" })} disabled={isBusy}>
+                Создать процесс обработки
+              </Button>
+            </Stack>
           </Stack>
 
-          {(processingStepError || processes.length === 0) && (
+          {(processingStepError || (linkedProcessesQuery.data?.length ?? 0) === 0) && (
             <Alert severity={processingStepError ? "error" : "warning"}>
               Добавьте хотя бы один процесс обработки, чтобы завершить создание ИСПДн.
             </Alert>
@@ -443,14 +452,9 @@ export function IspdnCreatePage() {
 
           <Paper variant="outlined" sx={{ borderRadius: 2, bgcolor: "background.paper" }}>
             <Box sx={{ p: 2 }}>
-              <LocalProcessingProcessesTable
-                processes={processes}
-                purposes={purposesQuery.data ?? []}
-                isLoadingPurposes={purposesQuery.isLoading}
-                onEdit={(process) => setProcessDialog({ mode: "edit", process })}
-                onDelete={(process) =>
-                  setProcesses((current) => current.filter((item) => item.clientId !== process.clientId))
-                }
+              <LinkedProcessingProcessesTable
+                processes={linkedProcessesQuery.data ?? []}
+                isLoading={linkedProcessesQuery.isLoading}
               />
             </Box>
           </Paper>
@@ -582,21 +586,49 @@ export function IspdnCreatePage() {
       </Dialog>
 
       <Dialog open={processDialog !== null} onClose={() => setProcessDialog(null)} fullWidth maxWidth="lg">
-        <DialogTitle>
-          {processDialog?.mode === "edit" ? "Редактирование процесса обработки" : "Добавить процесс обработки"}
-        </DialogTitle>
+        <DialogTitle>{processDialog?.mode === "link" ? "Выбрать процесс обработки" : "Создать процесс обработки"}</DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 1 }}>
-            <ProcessingProcessForm
-              key={processDialog?.mode === "edit" ? processDialog.process.clientId : `new-${nextProcessId}`}
-              defaultValues={dialogDefaultValues}
-              submitLabel={processDialog?.mode === "edit" ? "Сохранить изменения" : "Добавить процесс"}
-              isSubmitting={isBusy}
-              onSubmit={handleProcessSubmit}
-              onCancel={() => setProcessDialog(null)}
-            />
+            {processDialog?.mode === "link" ? (
+              <FormControl fullWidth>
+                <InputLabel id="processing-process-select-label">Процесс обработки</InputLabel>
+                <Select
+                  labelId="processing-process-select-label"
+                  label="Процесс обработки"
+                  value={selectedExistingProcessId}
+                  onChange={(event) => setSelectedExistingProcessId(Number(event.target.value))}
+                  disabled={isBusy || processOptionsQuery.isLoading}
+                >
+                  {processOptionsQuery.data?.map((process) => (
+                    <MenuItem key={process.id} value={process.id}>
+                      {process.name} - {process.purposeName}
+                    </MenuItem>
+                  ))}
+                </Select>
+                <FormHelperText>Выберите процесс из глобального реестра.</FormHelperText>
+              </FormControl>
+            ) : (
+              <ProcessingProcessForm
+                key="new-processing-process"
+                defaultValues={dialogDefaultValues}
+                submitLabel="Создать и связать"
+                isSubmitting={isBusy}
+                onSubmit={handleProcessSubmit}
+                onCancel={() => setProcessDialog(null)}
+              />
+            )}
           </Box>
         </DialogContent>
+        {processDialog?.mode === "link" && (
+          <DialogActions>
+            <Button variant="outlined" onClick={() => setProcessDialog(null)} disabled={isBusy}>
+              Отмена
+            </Button>
+            <Button variant="contained" onClick={handleLinkExistingProcess} disabled={isBusy || !selectedExistingProcessId}>
+              Связать
+            </Button>
+          </DialogActions>
+        )}
       </Dialog>
     </Stack>
   );
@@ -714,21 +746,19 @@ function WizardNavigation({
   );
 }
 
-function LocalProcessingProcessesTable({
+function LinkedProcessingProcessesTable({
   processes,
-  purposes,
-  isLoadingPurposes,
-  onEdit,
-  onDelete,
+  isLoading,
 }: {
-  processes: LocalProcessingProcess[];
-  purposes: ProcessingPurposeOption[];
-  isLoadingPurposes: boolean;
-  onEdit: (process: LocalProcessingProcess) => void;
-  onDelete: (process: LocalProcessingProcess) => void;
+  processes: ProcessingProcess[];
+  isLoading: boolean;
 }) {
+  if (isLoading) {
+    return <Alert severity="info">Загрузка процессов обработки...</Alert>;
+  }
+
   if (processes.length === 0) {
-    return <Alert severity="info">Создайте первый процесс обработки для новой ИСПДн.</Alert>;
+    return <Alert severity="info">Добавьте первый процесс обработки для новой ИСПДн.</Alert>;
   }
 
   return (
@@ -736,56 +766,23 @@ function LocalProcessingProcessesTable({
       <Table size="small">
         <TableHead>
           <TableRow>
+            <TableCell>Наименование процесса</TableCell>
             <TableCell>Цель обработки</TableCell>
-            <TableCell align="right">Действия</TableCell>
+            <TableCell>Период обработки</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
-          {processes.map((process) => {
-            const purpose = purposes.find((item) => item.id === process.values.processingPurposeId);
-            return (
-              <TableRow key={process.clientId} hover>
-                <TableCell>
-                  <Typography sx={{ fontWeight: 600 }}>
-                    {purpose?.name ?? (isLoadingPurposes ? "Загрузка цели..." : `Цель #${process.values.processingPurposeId}`)}
-                  </Typography>
-                  {purpose && (
-                    <Typography variant="body2" color="text.secondary">
-                      {purpose.processingPeriod}
-                    </Typography>
-                  )}
-                </TableCell>
-                <TableCell align="right">
-                  <Button variant="outlined" size="small" onClick={() => onEdit(process)} sx={{ mr: 1 }}>
-                    Подробнее
-                  </Button>
-                  <Tooltip title="Удалить">
-                    <IconButton aria-label="Удалить" color="error" onClick={() => onDelete(process)}>
-                      <DeleteIcon />
-                    </IconButton>
-                  </Tooltip>
-                </TableCell>
-              </TableRow>
-            );
-          })}
+          {processes.map((process) => (
+            <TableRow key={process.id} hover>
+              <TableCell>
+                <Typography sx={{ fontWeight: 600 }}>{process.name}</Typography>
+              </TableCell>
+              <TableCell>{process.purposeName}</TableCell>
+              <TableCell>{process.processingPeriod}</TableCell>
+            </TableRow>
+          ))}
         </TableBody>
       </Table>
     </TableContainer>
   );
-}
-
-function withProcessPurposes(values: IspdnFormValues, processValues: ProcessingProcessFormValues[]) {
-  const processingPurposeIds = Array.from(
-    new Set([
-      ...values.processingPurposeIds,
-      ...processValues
-        .map((process) => process.processingPurposeId)
-        .filter((purposeId): purposeId is number => purposeId !== null),
-    ]),
-  );
-
-  return {
-    ...values,
-    processingPurposeIds,
-  };
 }

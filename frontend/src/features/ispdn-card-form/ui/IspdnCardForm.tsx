@@ -12,14 +12,12 @@ import {
   Switch,
   TextField,
 } from "@mui/material";
-import { useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 
 import type { IspdnFormValues } from "../../../entities/ispdn/model/types";
 import { FormSection } from "../../../shared/ui/FormSection";
 import { EmployeeSelect } from "../../../shared/ui/employee-select/EmployeeSelect";
-import { ispdnCardFormSchema, ispdnCardMainInfoFormSchema } from "../model/schema";
-import { IspdnProcessingPurposesField } from "./IspdnProcessingPurposesField";
+import { ispdnCardFormSchema } from "../model/schema";
 
 const securityToolSwitches = [
   { name: "securityTools.dlp", label: "DLP" },
@@ -40,7 +38,6 @@ type IspdnCardFormProps = {
   isSubmitting?: boolean;
   legacyResponsiblePerson?: string | null;
   showActions?: boolean;
-  showProcessingPurposes?: boolean;
   showSecurityTools?: boolean;
   onSubmit: (values: IspdnFormValues) => void;
   onCancel: () => void;
@@ -52,23 +49,17 @@ export function IspdnCardForm({
   isSubmitting,
   legacyResponsiblePerson,
   showActions = true,
-  showProcessingPurposes = true,
   showSecurityTools = true,
   onSubmit,
   onCancel,
 }: IspdnCardFormProps) {
-  const schema = useMemo(
-    () => (showProcessingPurposes ? ispdnCardFormSchema : ispdnCardMainInfoFormSchema),
-    [showProcessingPurposes],
-  );
-
   const {
     control,
     handleSubmit,
     register,
     formState: { errors },
   } = useForm<IspdnFormValues>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(ispdnCardFormSchema),
     defaultValues,
   });
 
@@ -93,21 +84,6 @@ export function IspdnCardForm({
           error={Boolean(errors.shortDescription)}
           helperText={errors.shortDescription?.message ?? "Опишите назначение системы и основной контур обработки."}
         />
-        {showProcessingPurposes && (
-          <Controller
-            name="processingPurposeIds"
-            control={control}
-            render={({ field }) => (
-              <IspdnProcessingPurposesField
-                value={field.value}
-                onChange={field.onChange}
-                disabled={isSubmitting}
-                error={Boolean(errors.processingPurposeIds)}
-                helperText={errors.processingPurposeIds?.message ?? "Цели обработки выбираются из единого реестра."}
-              />
-            )}
-          />
-        )}
         <TextField
           label="Сайт ИСПДн"
           fullWidth

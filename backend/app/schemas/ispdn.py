@@ -5,7 +5,6 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from app.schemas.employee import EmployeeShortRead
 from app.schemas.data_center import DataCenterOption
-from app.schemas.processing_purpose import ProcessingPurposeOption
 from app.schemas.security_measure import IspdnSecurityToolsRead, IspdnSecurityToolsUpsert
 from app.schemas.text import strip_required_text
 
@@ -15,8 +14,6 @@ IspdnStatus = Literal["active", "archived"]
 class IspdnBase(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     short_description: str = Field(min_length=1)
-    processing_purposes: str = ""
-    processing_purpose_ids: list[int] = []
     commissioning_date: date
     decommissioning_date: date | None = None
     website_url: str | None = Field(default=None, max_length=2048)
@@ -48,13 +45,11 @@ class IspdnBase(BaseModel):
 
 class IspdnCreate(IspdnBase):
     responsible_employee_id: int
-    processing_purpose_ids: list[int] = Field(min_length=1)
     security_tools: IspdnSecurityToolsUpsert | None = None
 
 
 class IspdnUpdate(IspdnBase):
     responsible_employee_id: int
-    processing_purpose_ids: list[int] = Field(min_length=1)
     security_tools: IspdnSecurityToolsUpsert | None = None
 
 
@@ -65,7 +60,6 @@ class IspdnRead(IspdnBase):
     responsible_person: str
     responsible_employee_id: int | None
     responsible_employee: EmployeeShortRead | None = None
-    processing_purpose_options: list[ProcessingPurposeOption] = []
     data_centers: list[DataCenterOption] = []
     security_tools: IspdnSecurityToolsRead = Field(default_factory=IspdnSecurityToolsRead)
     created_at: datetime
@@ -87,8 +81,6 @@ class IspdnListItem(BaseModel):
     responsible_person: str
     responsible_employee_id: int | None
     responsible_employee: EmployeeShortRead | None = None
-    processing_purpose_options: list[ProcessingPurposeOption] = []
-    processing_purposes: str
     commissioning_date: date
     decommissioning_date: date | None
     updated_at: datetime

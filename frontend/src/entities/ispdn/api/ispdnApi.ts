@@ -1,3 +1,5 @@
+import { httpClient } from "../../../shared/api/httpClient";
+import type { DataCenterOption } from "../../data-center/model/types";
 import type {
   IspdnCard,
   IspdnFormValues,
@@ -6,9 +8,6 @@ import type {
   IspdnSecurityTools,
   IspdnStatus,
 } from "../model/types";
-import { httpClient } from "../../../shared/api/httpClient";
-import type { DataCenterOption } from "../../data-center/model/types";
-import type { ProcessingPurposeOption } from "../../processing-purpose/model/types";
 
 type ResponsibleEmployeeDto = {
   id: number;
@@ -23,9 +22,6 @@ type IspdnCardDto = {
   id: number;
   name: string;
   short_description: string;
-  processing_purposes: string;
-  processing_purpose_ids: number[];
-  processing_purpose_options: ProcessingPurposeOptionDto[];
   data_centers: DataCenterOptionDto[];
   commissioning_date: string;
   decommissioning_date: string | null;
@@ -44,9 +40,6 @@ type IspdnListItemDto = {
   id: number;
   name: string;
   short_description: string;
-  processing_purposes: string;
-  processing_purpose_ids: number[];
-  processing_purpose_options: ProcessingPurposeOptionDto[];
   status: IspdnStatus;
   responsible_person: string;
   responsible_employee_id: number | null;
@@ -59,8 +52,6 @@ type IspdnListItemDto = {
 type IspdnPayloadDto = {
   name: string;
   short_description: string;
-  processing_purposes: string;
-  processing_purpose_ids: number[];
   commissioning_date: string;
   decommissioning_date: string | null;
   website_url: string | null;
@@ -82,12 +73,6 @@ type IspdnSecurityToolsDto = {
   access_control: boolean;
   physical_security: boolean;
   other_security_tools: string | null;
-};
-
-type ProcessingPurposeOptionDto = {
-  id: number;
-  name: string;
-  processing_period: string;
 };
 
 type DataCenterOptionDto = {
@@ -117,14 +102,6 @@ function mapResponsibleEmployee(dto: ResponsibleEmployeeDto | null): IspdnRespon
   };
 }
 
-function mapProcessingPurposeOption(dto: ProcessingPurposeOptionDto): ProcessingPurposeOption {
-  return {
-    id: dto.id,
-    name: dto.name,
-    processingPeriod: dto.processing_period,
-  };
-}
-
 function mapDataCenterOption(dto: DataCenterOptionDto): DataCenterOption {
   return {
     id: dto.id,
@@ -133,29 +110,6 @@ function mapDataCenterOption(dto: DataCenterOptionDto): DataCenterOption {
     locationAddress: dto.location_address,
     isOwnDataCenter: dto.is_own_data_center,
     ownerDisplayName: dto.owner_display_name,
-  };
-}
-
-function mapCard(dto: IspdnCardDto): IspdnCard {
-  return {
-    id: dto.id,
-    name: dto.name,
-    shortDescription: dto.short_description,
-    processingPurposes: dto.processing_purposes,
-    processingPurposeIds: dto.processing_purpose_ids,
-    processingPurposeOptions: dto.processing_purpose_options.map(mapProcessingPurposeOption),
-    dataCenters: dto.data_centers.map(mapDataCenterOption),
-    commissioningDate: dto.commissioning_date,
-    decommissioningDate: dto.decommissioning_date,
-    websiteUrl: dto.website_url,
-    responsiblePerson: dto.responsible_person,
-    responsibleEmployeeId: dto.responsible_employee_id,
-    responsibleEmployee: mapResponsibleEmployee(dto.responsible_employee),
-    systemComposition: dto.system_composition,
-    securityTools: mapSecurityTools(dto.security_tools),
-    status: dto.status,
-    createdAt: dto.created_at,
-    updatedAt: dto.updated_at,
   };
 }
 
@@ -191,14 +145,31 @@ function mapSecurityToolsPayload(values: IspdnSecurityTools): IspdnSecurityTools
   };
 }
 
+function mapCard(dto: IspdnCardDto): IspdnCard {
+  return {
+    id: dto.id,
+    name: dto.name,
+    shortDescription: dto.short_description,
+    dataCenters: dto.data_centers.map(mapDataCenterOption),
+    commissioningDate: dto.commissioning_date,
+    decommissioningDate: dto.decommissioning_date,
+    websiteUrl: dto.website_url,
+    responsiblePerson: dto.responsible_person,
+    responsibleEmployeeId: dto.responsible_employee_id,
+    responsibleEmployee: mapResponsibleEmployee(dto.responsible_employee),
+    systemComposition: dto.system_composition,
+    securityTools: mapSecurityTools(dto.security_tools),
+    status: dto.status,
+    createdAt: dto.created_at,
+    updatedAt: dto.updated_at,
+  };
+}
+
 function mapListItem(dto: IspdnListItemDto): IspdnListItem {
   return {
     id: dto.id,
     name: dto.name,
     shortDescription: dto.short_description,
-    processingPurposes: dto.processing_purposes,
-    processingPurposeIds: dto.processing_purpose_ids,
-    processingPurposeOptions: dto.processing_purpose_options.map(mapProcessingPurposeOption),
     status: dto.status,
     responsiblePerson: dto.responsible_person,
     responsibleEmployeeId: dto.responsible_employee_id,
@@ -213,8 +184,6 @@ function mapPayload(values: IspdnFormValues): IspdnPayloadDto {
   return {
     name: values.name.trim(),
     short_description: values.shortDescription.trim(),
-    processing_purposes: values.processingPurposes.trim(),
-    processing_purpose_ids: values.processingPurposeIds,
     commissioning_date: values.commissioningDate,
     decommissioning_date: values.decommissioningDate || null,
     website_url: values.websiteUrl.trim() || null,

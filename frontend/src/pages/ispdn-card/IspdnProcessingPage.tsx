@@ -6,10 +6,16 @@ import {
   Box,
   Button,
   Dialog,
+  DialogActions,
   DialogContent,
   DialogTitle,
+  FormControl,
+  FormHelperText,
   IconButton,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Snackbar,
   Stack,
   Table,
@@ -26,9 +32,11 @@ import { useState } from "react";
 import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
 
 import {
-  createIspdnProcessingProcess,
-  deleteIspdnProcessingProcess,
+  createAndLinkIspdnProcessingProcess,
   getIspdnProcessingProcesses,
+  getProcessingProcessOptions,
+  linkExistingProcessingProcessToIspdn,
+  unlinkIspdnProcessingProcess,
   updateIspdnProcessingProcess,
 } from "../../entities/processing-process/api/processingProcessApi";
 import {
@@ -36,16 +44,14 @@ import {
   mergeDataCategoryValues,
   mergePersonalDataActionValues,
   mergeSwitchValues,
-  personalDataActionCatalog,
   subjectCategoryCatalog,
 } from "../../entities/processing-process/model/catalogs";
-import type {
-  ProcessingProcess,
-  ProcessingProcessFormValues,
-} from "../../entities/processing-process/model/types";
+import type { ProcessingProcess, ProcessingProcessFormValues } from "../../entities/processing-process/model/types";
 import { defaultProcessingProcessFormValues } from "../../features/processing-process-form/model/schema";
 import { ProcessingProcessForm } from "../../features/processing-process-form/ui/ProcessingProcessForm";
 import { HttpError } from "../../shared/api/httpClient";
+
+type DialogState = { mode: "create" } | { mode: "edit"; process: ProcessingProcess } | { mode: "link" };
 
 export function IspdnProcessingPage() {
   const { ispdnId } = useParams();
@@ -53,7 +59,8 @@ export function IspdnProcessingPage() {
   const queryClient = useQueryClient();
   const numericId = Number(ispdnId);
   const isValidId = Number.isInteger(numericId) && numericId > 0;
-  const [dialog, setDialog] = useState<{ mode: "create" | "edit"; process?: ProcessingProcess } | null>(null);
+  const [dialog, setDialog] = useState<DialogState | null>(null);
+  const [selectedExistingProcessId, setSelectedExistingProcessId] = useState<number | "">("");
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const processesQuery = useQuery({
@@ -63,12 +70,28 @@ export function IspdnProcessingPage() {
     retry: false,
   });
 
+  const optionsQuery = useQuery({
+    queryKey: ["processingProcessOptions"],
+    queryFn: getProcessingProcessOptions,
+    enabled: dialog?.mode === "link",
+  });
+
   const createMutation = useMutation({
-    mutationFn: (values: ProcessingProcessFormValues) => createIspdnProcessingProcess(numericId, values),
+    mutationFn: (values: ProcessingProcessFormValues) => createAndLinkIspdnProcessingProcess(numericId, values),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["ispdnProcessingProcesses", numericId] });
+      await invalidateProcessingQueries(queryClient, numericId);
       setDialog(null);
-      setSuccessMessage("Процесс обработки создан.");
+      setSuccessMessage("Процесс обработки создан и связан с ИСПДн.");
+    },
+  });
+
+  const linkMutation = useMutation({
+    mutationFn: (processId: number) => linkExistingProcessingProcessToIspdn(numericId, processId),
+    onSuccess: async () => {
+      await invalidateProcessingQueries(queryClient, numericId);
+      setSelectedExistingProcessId("");
+      setDialog(null);
+      setSuccessMessage("Процесс обработки связан с ИСПДн.");
     },
   });
 
@@ -76,17 +99,17 @@ export function IspdnProcessingPage() {
     mutationFn: ({ processId, values }: { processId: number; values: ProcessingProcessFormValues }) =>
       updateIspdnProcessingProcess(numericId, processId, values),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["ispdnProcessingProcesses", numericId] });
+      await invalidateProcessingQueries(queryClient, numericId);
       setDialog(null);
-      setSuccessMessage("Процесс обработки обновлен.");
+      setSuccessMessage("Процесс обработки изменен только для этой ИСПДн.");
     },
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: (processId: number) => deleteIspdnProcessingProcess(numericId, processId),
+  const unlinkMutation = useMutation({
+    mutationFn: (processId: number) => unlinkIspdnProcessingProcess(numericId, processId),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["ispdnProcessingProcesses", numericId] });
-      setSuccessMessage("Процесс обработки удален.");
+      await invalidateProcessingQueries(queryClient, numericId);
+      setSuccessMessage("Связь процесса с ИСПДн удалена.");
     },
   });
 
@@ -94,46 +117,47 @@ export function IspdnProcessingPage() {
     return <Alert severity="error">Некорректный идентификатор ИСПДн в маршруте.</Alert>;
   }
 
-  const formValues = dialog?.process ? toFormValues(dialog.process) : defaultProcessingProcessFormValues;
-  const isSubmitting = createMutation.isPending || updateMutation.isPending;
+  const formValues = dialog?.mode === "edit" ? toFormValues(dialog.process) : defaultProcessingProcessFormValues;
+  const isSubmitting = createMutation.isPending || updateMutation.isPending || linkMutation.isPending;
   const isNotFound = processesQuery.error instanceof HttpError && processesQuery.error.status === 404;
 
   const handleSubmit = (values: ProcessingProcessFormValues) => {
-    if (dialog?.mode === "edit" && dialog.process) {
+    if (dialog?.mode === "edit") {
       updateMutation.mutate({ processId: dialog.process.id, values });
       return;
     }
     createMutation.mutate(values);
   };
 
+  const handleLinkExisting = () => {
+    if (!selectedExistingProcessId) {
+      return;
+    }
+    linkMutation.mutate(selectedExistingProcessId);
+  };
+
   return (
     <Stack spacing={3}>
       <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ justifyContent: "space-between" }}>
         <Box>
-          <Button
-            component={RouterLink}
-            to={`/ispdns/${numericId}`}
-            startIcon={<ArrowBackIcon />}
-            variant="text"
-            sx={{ mb: 1 }}
-          >
+          <Button component={RouterLink} to={`/ispdns/${numericId}`} startIcon={<ArrowBackIcon />} variant="text" sx={{ mb: 1 }}>
             Назад к карточке ИСПДн
           </Button>
           <Typography component="h1" variant="h5" sx={{ fontWeight: 600 }}>
             Процессы обработки
           </Typography>
           <Typography color="text.secondary" sx={{ mt: 0.5, maxWidth: 820 }}>
-            Процессы обработки выбранной ИСПДн. Каждый процесс связан с целью обработки из единого реестра.
+            Здесь отображаются процессы, связанные с конкретной ИСПДн. Редактирование на этой странице работает через copy-on-write и не меняет процесс у других ИСПДн.
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setDialog({ mode: "create" })}
-          sx={{ alignSelf: { sm: "flex-start" } }}
-        >
-          Добавить процесс обработки
-        </Button>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ alignSelf: { sm: "flex-start" } }}>
+          <Button variant="outlined" onClick={() => setDialog({ mode: "link" })}>
+            Добавить существующий процесс
+          </Button>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setDialog({ mode: "create" })}>
+            Создать новый процесс
+          </Button>
+        </Stack>
       </Stack>
 
       {processesQuery.isError && (
@@ -152,15 +176,13 @@ export function IspdnProcessingPage() {
             : "Не удалось загрузить процессы обработки. Проверьте доступность backend API."}
         </Alert>
       )}
-      {(createMutation.isError || updateMutation.isError) && (
+      {(createMutation.isError || updateMutation.isError || linkMutation.isError) && (
         <Alert severity="error">Не удалось сохранить процесс обработки. Проверьте обязательные поля.</Alert>
       )}
-      {deleteMutation.isError && <Alert severity="error">Не удалось удалить процесс обработки.</Alert>}
+      {unlinkMutation.isError && <Alert severity="error">Не удалось удалить связь процесса с ИСПДн.</Alert>}
 
       {processesQuery.data?.length === 0 && (
-        <Alert severity="warning">
-          У этой ИСПДн нет ни одного процесса обработки. Модуль процессов обработки считается незаполненным.
-        </Alert>
+        <Alert severity="warning">У этой ИСПДн нет связанных процессов обработки.</Alert>
       )}
 
       <Paper variant="outlined" sx={{ borderRadius: 2, bgcolor: "background.paper" }}>
@@ -170,12 +192,8 @@ export function IspdnProcessingPage() {
             isLoading={processesQuery.isLoading}
             onEdit={(process) => setDialog({ mode: "edit", process })}
             onDelete={(process) => {
-              const isLast = (processesQuery.data?.length ?? 0) === 1;
-              const warning = isLast
-                ? "После удаления у ИСПДн не останется процессов обработки, модуль будет незаполненным. "
-                : "";
-              if (window.confirm(`${warning}Удалить процесс "${process.processingPurpose.name}"?`)) {
-                deleteMutation.mutate(process.id);
+              if (window.confirm(`Удалить связь с процессом "${process.name}"? Глобальная запись останется в реестре.`)) {
+                unlinkMutation.mutate(process.id);
               }
             }}
           />
@@ -184,28 +202,64 @@ export function IspdnProcessingPage() {
 
       <Dialog open={dialog !== null} onClose={() => setDialog(null)} fullWidth maxWidth="lg">
         <DialogTitle>
-          {dialog?.mode === "edit" ? "Редактирование процесса обработки" : "Добавить процесс обработки"}
+          {dialog?.mode === "edit"
+            ? "Редактировать для этой ИСПДн"
+            : dialog?.mode === "link"
+              ? "Добавить существующий процесс"
+              : "Создать новый процесс"}
         </DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 1 }}>
-            <ProcessingProcessForm
-              key={dialog?.process?.id ?? "new-processing-process"}
-              defaultValues={formValues}
-              submitLabel={dialog?.mode === "edit" ? "Сохранить изменения" : "Создать процесс"}
-              isSubmitting={isSubmitting}
-              onSubmit={handleSubmit}
-              onCancel={() => setDialog(null)}
-            />
+            {dialog?.mode === "link" ? (
+              <FormControl fullWidth>
+                <InputLabel id="processing-process-link-select-label">Процесс обработки</InputLabel>
+                <Select
+                  labelId="processing-process-link-select-label"
+                  label="Процесс обработки"
+                  value={selectedExistingProcessId}
+                  onChange={(event) => setSelectedExistingProcessId(Number(event.target.value))}
+                  disabled={isSubmitting || optionsQuery.isLoading}
+                >
+                  {optionsQuery.data?.map((process) => (
+                    <MenuItem key={process.id} value={process.id}>
+                      {process.name} - {process.purposeName}
+                    </MenuItem>
+                  ))}
+                </Select>
+                <FormHelperText>Выберите процесс из глобального реестра.</FormHelperText>
+              </FormControl>
+            ) : (
+              <Stack spacing={2}>
+                {dialog?.mode === "edit" && (
+                  <Alert severity="info">
+                    Изменения будут применены только к этой ИСПДн. Если после изменения такой процесс уже есть в реестре, система привяжет его. Если нет - создаст новый процесс обработки.
+                  </Alert>
+                )}
+                <ProcessingProcessForm
+                  key={dialog?.mode === "edit" ? dialog.process.id : "new-processing-process"}
+                  defaultValues={formValues}
+                  submitLabel={dialog?.mode === "edit" ? "Сохранить для этой ИСПДн" : "Создать и связать"}
+                  isSubmitting={isSubmitting}
+                  onSubmit={handleSubmit}
+                  onCancel={() => setDialog(null)}
+                />
+              </Stack>
+            )}
           </Box>
         </DialogContent>
+        {dialog?.mode === "link" && (
+          <DialogActions>
+            <Button variant="outlined" onClick={() => setDialog(null)} disabled={isSubmitting}>
+              Отмена
+            </Button>
+            <Button variant="contained" onClick={handleLinkExisting} disabled={isSubmitting || !selectedExistingProcessId}>
+              Связать
+            </Button>
+          </DialogActions>
+        )}
       </Dialog>
 
-      <Snackbar
-        open={Boolean(successMessage)}
-        autoHideDuration={3000}
-        onClose={() => setSuccessMessage(null)}
-        message={successMessage}
-      />
+      <Snackbar open={Boolean(successMessage)} autoHideDuration={3000} onClose={() => setSuccessMessage(null)} message={successMessage} />
     </Stack>
   );
 }
@@ -226,7 +280,7 @@ function ProcessingProcessesTable({
   }
 
   if (processes.length === 0) {
-    return <Alert severity="info">Создайте первый процесс обработки для выбранной ИСПДн.</Alert>;
+    return <Alert severity="info">Добавьте первый процесс обработки для выбранной ИСПДн.</Alert>;
   }
 
   return (
@@ -234,7 +288,9 @@ function ProcessingProcessesTable({
       <Table size="small">
         <TableHead>
           <TableRow>
+            <TableCell>Наименование процесса</TableCell>
             <TableCell>Цель обработки</TableCell>
+            <TableCell>Период обработки</TableCell>
             <TableCell align="right">Действия</TableCell>
           </TableRow>
         </TableHead>
@@ -242,17 +298,16 @@ function ProcessingProcessesTable({
           {processes.map((process) => (
             <TableRow key={process.id} hover>
               <TableCell>
-                <Typography sx={{ fontWeight: 600 }}>{process.processingPurpose.name}</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {process.processingPurpose.processingPeriod}
-                </Typography>
+                <Typography sx={{ fontWeight: 600 }}>{process.name}</Typography>
               </TableCell>
+              <TableCell>{process.purposeName}</TableCell>
+              <TableCell>{process.processingPeriod}</TableCell>
               <TableCell align="right">
                 <Button variant="outlined" size="small" onClick={() => onEdit(process)} sx={{ mr: 1 }}>
-                  Подробнее
+                  Редактировать для этой ИСПДн
                 </Button>
-                <Tooltip title="Удалить">
-                  <IconButton aria-label="Удалить" color="error" onClick={() => onDelete(process)}>
+                <Tooltip title="Удалить из этой ИСПДн">
+                  <IconButton aria-label="Удалить из этой ИСПДн" color="error" onClick={() => onDelete(process)}>
                     <DeleteIcon />
                   </IconButton>
                 </Tooltip>
@@ -267,7 +322,9 @@ function ProcessingProcessesTable({
 
 function toFormValues(process: ProcessingProcess): ProcessingProcessFormValues {
   return {
-    processingPurposeId: process.processingPurposeId,
+    name: process.name,
+    purposeName: process.purposeName,
+    processingPeriod: process.processingPeriod,
     subjectCategories: mergeSwitchValues(subjectCategoryCatalog, process.subjectCategories),
     dataCategories: mergeDataCategoryValues(process.dataCategories),
     legalBases: mergeSwitchValues(legalBasisCatalog, process.legalBases),
@@ -277,4 +334,10 @@ function toFormValues(process: ProcessingProcess): ProcessingProcessFormValues {
     internetTransfer: process.internetTransfer,
     crossBorderTransfer: process.crossBorderTransfer,
   };
+}
+
+async function invalidateProcessingQueries(queryClient: ReturnType<typeof useQueryClient>, ispdnId: number) {
+  await queryClient.invalidateQueries({ queryKey: ["ispdnProcessingProcesses", ispdnId] });
+  await queryClient.invalidateQueries({ queryKey: ["processingProcesses"] });
+  await queryClient.invalidateQueries({ queryKey: ["processingProcessOptions"] });
 }

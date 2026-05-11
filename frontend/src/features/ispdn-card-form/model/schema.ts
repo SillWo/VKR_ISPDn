@@ -5,8 +5,6 @@ import { requiredText } from "../../../shared/lib/validation";
 const ispdnCardBaseSchema = z.object({
   name: requiredText("Укажите название ИСПДн"),
   shortDescription: requiredText("Заполните краткое описание"),
-  processingPurposes: z.string(),
-  processingPurposeIds: z.array(z.number()),
   commissioningDate: requiredText("Укажите дату ввода в работу"),
   decommissioningDate: z.string(),
   websiteUrl: z
@@ -48,12 +46,7 @@ const withRequiredCardFields = (schema: typeof ispdnCardBaseSchema) =>
       },
     );
 
-export const ispdnCardFormSchema = withRequiredCardFields(
-  ispdnCardBaseSchema.refine((values) => values.processingPurposeIds.length > 0, {
-    message: "Добавьте хотя бы одну цель обработки",
-    path: ["processingPurposeIds"],
-  }),
-);
+export const ispdnCardFormSchema = withRequiredCardFields(ispdnCardBaseSchema);
 
 export const ispdnCardMainInfoFormSchema = withRequiredCardFields(ispdnCardBaseSchema);
 
@@ -62,8 +55,6 @@ export type IspdnCardFormSchema = z.infer<typeof ispdnCardFormSchema>;
 export const defaultIspdnFormValues: IspdnCardFormSchema = {
   name: "",
   shortDescription: "",
-  processingPurposes: "",
-  processingPurposeIds: [],
   commissioningDate: "",
   decommissioningDate: "",
   websiteUrl: "",

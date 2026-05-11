@@ -12,7 +12,6 @@ if TYPE_CHECKING:
     from app.models.employee import Employee
     from app.models.data_center import DataCenter
     from app.models.processing_process import ProcessingProcess
-    from app.models.processing_purpose import ProcessingPurpose
     from app.models.security_level import SecurityLevelRecord
     from app.models.security_measure import (
         IspdnSecurityTools,
@@ -21,7 +20,7 @@ if TYPE_CHECKING:
     )
     from app.models.task_event import TaskEvent
 
-from app.models.ispdn_processing_purpose import ispdn_processing_purposes
+from app.models.ispdn_processing_process import ispdn_processing_processes
 from app.models.data_center import ispdn_data_centers
 from app.models.crypto_tool import ispdn_crypto_tools
 
@@ -39,7 +38,6 @@ class IspdnCard(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     short_description: Mapped[str] = mapped_column(Text, nullable=False)
-    processing_purposes: Mapped[str] = mapped_column(Text, nullable=False)
     commissioning_date: Mapped[date] = mapped_column(Date, nullable=False)
     decommissioning_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     website_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
@@ -67,9 +65,8 @@ class IspdnCard(Base):
         back_populates="responsible_ispdn_cards",
     )
     processing_processes: Mapped[list["ProcessingProcess"]] = relationship(
-        back_populates="ispdn",
-        cascade="all, delete-orphan",
-        passive_deletes=True,
+        secondary=ispdn_processing_processes,
+        back_populates="ispdn_cards",
     )
     security_level_record: Mapped["SecurityLevelRecord | None"] = relationship(
         back_populates="ispdn",
@@ -93,10 +90,6 @@ class IspdnCard(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
-    processing_purpose_options: Mapped[list["ProcessingPurpose"]] = relationship(
-        secondary=ispdn_processing_purposes,
-        back_populates="ispdn_cards",
-    )
     data_centers: Mapped[list["DataCenter"]] = relationship(
         secondary=ispdn_data_centers,
         back_populates="ispdn_cards",
@@ -116,7 +109,3 @@ class IspdnCard(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
-
-    @property
-    def processing_purpose_ids(self) -> list[int]:
-        return [purpose.id for purpose in self.processing_purpose_options]

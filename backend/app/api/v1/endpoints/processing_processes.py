@@ -4,55 +4,174 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.repositories.ispdn import IspdnRepository
 from app.repositories.processing_process import ProcessingProcessRepository
-from app.repositories.processing_purpose import ProcessingPurposeRepository
 from app.schemas.processing_process import (
+    IspdnProcessingProcessLinkCreate,
     ProcessingProcessCreate,
     ProcessingProcessDocumentContext,
     ProcessingProcessListItem,
+    ProcessingProcessOption,
     ProcessingProcessRead,
+    ProcessingProcessRegistryItem,
     ProcessingProcessUpdate,
 )
 from app.services.ispdn import IspdnNotFoundError
-from app.services.processing_process import ProcessingProcessNotFoundError, ProcessingProcessService
-from app.services.processing_purpose import ProcessingPurposeNotFoundError
+from app.services.processing_process import (
+    ProcessingProcessInUseError,
+    ProcessingProcessLinkedItemNotFoundError,
+    ProcessingProcessNotFoundError,
+    ProcessingProcessService,
+)
 
-router = APIRouter(prefix="/ispdns/{ispdn_id}/processing-processes", tags=["processing-processes"])
+router = APIRouter(tags=["processing-processes"])
 
 
 def get_processing_process_service(db: Session = Depends(get_db)) -> ProcessingProcessService:
     return ProcessingProcessService(
         ProcessingProcessRepository(db),
         IspdnRepository(db),
-        ProcessingPurposeRepository(db),
     )
 
 
-@router.get("", response_model=list[ProcessingProcessListItem])
-def list_processing_processes(
+@router.get("/processing-processes", response_model=list[ProcessingProcessRegistryItem])
+def list_processing_processes(service: ProcessingProcessService = Depends(get_processing_process_service)):
+    return service.list_registry()
+
+
+@router.post("/processing-processes", response_model=ProcessingProcessRead, status_code=status.HTTP_201_CREATED)
+def create_processing_process(
+    payload: ProcessingProcessCreate,
+    service: ProcessingProcessService = Depends(get_processing_process_service),
+):
+    return service.create_registry_process(payload)
+
+
+@router.get("/processing-processes/options", response_model=list[ProcessingProcessOption])
+def list_processing_process_options(service: ProcessingProcessService = Depends(get_processing_process_service)):
+    return service.list_options()
+
+
+@router.get("/processing-processes/active-unique", response_model=list[ProcessingProcessListItem])
+def list_unique_active_processing_processes(
+    service: ProcessingProcessService = Depends(get_processing_process_service),
+):
+    return service.list_unique_for_active_ispdns()
+
+
+@router.get("/processing-processes/{process_id}", response_model=ProcessingProcessRead)
+def get_processing_process(
+    process_id: int,
+    service: ProcessingProcessService = Depends(get_processing_process_service),
+):
+    try:
+        return service.get_registry_process(process_id)
+    except ProcessingProcessNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Processing process not found") from exc
+
+
+@router.put("/processing-processes/{process_id}", response_model=ProcessingProcessRead)
+def update_processing_process(
+    process_id: int,
+    payload: ProcessingProcessUpdate,
+    service: ProcessingProcessService = Depends(get_processing_process_service),
+):
+    try:
+        return service.update_registry_process(process_id, payload)
+    except ProcessingProcessNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Processing process not found") from exc
+    except ProcessingProcessInUseError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Processing process is linked to Ispdn cards and cannot be edited in registry",
+        ) from exc
+
+
+@router.delete("/processing-processes/{process_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_processing_process(
+    process_id: int,
+    service: ProcessingProcessService = Depends(get_processing_process_service),
+):
+    try:
+        service.delete_registry_process(process_id)
+    except ProcessingProcessNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Processing process not found") from exc
+    except ProcessingProcessInUseError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Processing process is linked to Ispdn cards and cannot be deleted",
+        ) from exc
+
+
+@router.get("/ispdns/{ispdn_id}/processing-processes", response_model=list[ProcessingProcessListItem])
+def list_ispdn_processing_processes(
     ispdn_id: int,
     service: ProcessingProcessService = Depends(get_processing_process_service),
 ):
     try:
-        return service.list_processes(ispdn_id)
+        return service.list_processes_for_ispdn(ispdn_id)
     except IspdnNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc
 
 
-@router.post("", response_model=ProcessingProcessRead, status_code=status.HTTP_201_CREATED)
-def create_processing_process(
+@router.post(
+    "/ispdns/{ispdn_id}/processing-processes",
+    response_model=ProcessingProcessRead,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_ispdn_processing_process(
     ispdn_id: int,
     payload: ProcessingProcessCreate,
     service: ProcessingProcessService = Depends(get_processing_process_service),
 ):
     try:
-        return service.create_process(ispdn_id, payload)
+        return service.create_and_link_process_to_ispdn(ispdn_id, payload)
     except IspdnNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc
-    except ProcessingPurposeNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Processing purpose not found") from exc
 
 
-@router.get("/document-context", response_model=ProcessingProcessDocumentContext)
+@router.post("/ispdns/{ispdn_id}/processing-processes/link", response_model=ProcessingProcessRead)
+def link_ispdn_processing_process(
+    ispdn_id: int,
+    payload: IspdnProcessingProcessLinkCreate,
+    service: ProcessingProcessService = Depends(get_processing_process_service),
+):
+    try:
+        return service.link_existing_process_to_ispdn(ispdn_id, payload)
+    except IspdnNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc
+    except ProcessingProcessNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Processing process not found") from exc
+
+
+@router.put("/ispdns/{ispdn_id}/processing-processes/{process_id}", response_model=ProcessingProcessRead)
+def update_ispdn_processing_process(
+    ispdn_id: int,
+    process_id: int,
+    payload: ProcessingProcessUpdate,
+    service: ProcessingProcessService = Depends(get_processing_process_service),
+):
+    try:
+        return service.update_process_for_ispdn(ispdn_id, process_id, payload)
+    except IspdnNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc
+    except (ProcessingProcessNotFoundError, ProcessingProcessLinkedItemNotFoundError) as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Processing process not found") from exc
+
+
+@router.delete("/ispdns/{ispdn_id}/processing-processes/{process_id}", status_code=status.HTTP_204_NO_CONTENT)
+def unlink_ispdn_processing_process(
+    ispdn_id: int,
+    process_id: int,
+    service: ProcessingProcessService = Depends(get_processing_process_service),
+):
+    try:
+        service.unlink_process_from_ispdn(ispdn_id, process_id)
+    except IspdnNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc
+    except (ProcessingProcessNotFoundError, ProcessingProcessLinkedItemNotFoundError) as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Processing process not found") from exc
+
+
+@router.get("/ispdns/{ispdn_id}/processing-processes/document-context", response_model=ProcessingProcessDocumentContext)
 def get_processing_process_document_context(
     ispdn_id: int,
     service: ProcessingProcessService = Depends(get_processing_process_service),
@@ -61,48 +180,3 @@ def get_processing_process_document_context(
         return service.get_document_context(ispdn_id)
     except IspdnNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc
-
-
-@router.get("/{process_id}", response_model=ProcessingProcessRead)
-def get_processing_process(
-    ispdn_id: int,
-    process_id: int,
-    service: ProcessingProcessService = Depends(get_processing_process_service),
-):
-    try:
-        return service.get_process(ispdn_id, process_id)
-    except IspdnNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc
-    except ProcessingProcessNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Processing process not found") from exc
-
-
-@router.put("/{process_id}", response_model=ProcessingProcessRead)
-def update_processing_process(
-    ispdn_id: int,
-    process_id: int,
-    payload: ProcessingProcessUpdate,
-    service: ProcessingProcessService = Depends(get_processing_process_service),
-):
-    try:
-        return service.update_process(ispdn_id, process_id, payload)
-    except IspdnNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc
-    except ProcessingProcessNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Processing process not found") from exc
-    except ProcessingPurposeNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Processing purpose not found") from exc
-
-
-@router.delete("/{process_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_processing_process(
-    ispdn_id: int,
-    process_id: int,
-    service: ProcessingProcessService = Depends(get_processing_process_service),
-):
-    try:
-        service.delete_process(ispdn_id, process_id)
-    except IspdnNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc
-    except ProcessingProcessNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Processing process not found") from exc

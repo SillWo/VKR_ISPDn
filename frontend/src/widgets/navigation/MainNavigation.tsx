@@ -13,7 +13,7 @@ const navigationItems = [
   { label: "Реестр ИСПДн", path: "/ispdns", icon: <FolderSharedIcon /> },
   { label: "Карточка организации", path: "/organization", icon: <BusinessIcon /> },
   { label: "Реестр сотрудников", path: "/employees", icon: <GroupsIcon /> },
-  { label: "Реестр целей обработки", path: "/processing-purposes", icon: <ListAltIcon /> },
+  { label: "Реестр процессов обработки", path: "/processing-processes", icon: <ListAltIcon /> },
   { label: "Реестр контрольных мероприятий", path: "/control-events", icon: <FactCheckIcon /> },
   { label: "Реестр ЦОД", path: "/data-centers", icon: <DnsIcon /> },
   { label: "Криптография", path: "/cryptography", icon: <VpnKeyIcon /> },

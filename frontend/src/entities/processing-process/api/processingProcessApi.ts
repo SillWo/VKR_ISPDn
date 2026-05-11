@@ -1,23 +1,25 @@
 import { httpClient } from "../../../shared/api/httpClient";
-import type { ProcessingPurposeOption } from "../../processing-purpose/model/types";
+import type { InternalNetworkTransfer, InternetTransfer, ProcessingType } from "../model/catalogs";
 import type {
+  LinkedIspdnShort,
   ProcessingProcess,
   ProcessingProcessDocumentContext,
   ProcessingProcessFormValues,
+  ProcessingProcessOption,
+  ProcessingProcessRegistryItem,
 } from "../model/types";
-import type { InternalNetworkTransfer, InternetTransfer, ProcessingType } from "../model/catalogs";
 
-type ProcessingPurposeOptionDto = {
+type LinkedIspdnDto = {
   id: number;
   name: string;
-  processing_period: string;
+  status: string;
 };
 
 type ProcessingProcessDto = {
   id: number;
-  ispdn_id: number;
-  processing_purpose_id: number;
-  processing_purpose: ProcessingPurposeOptionDto;
+  name: string;
+  purpose_name: string;
+  processing_period: string;
   subject_categories: Record<string, boolean>;
   data_categories: Record<string, boolean | string>;
   legal_bases: Record<string, boolean>;
@@ -26,12 +28,35 @@ type ProcessingProcessDto = {
   internal_network_transfer: InternalNetworkTransfer;
   internet_transfer: InternetTransfer;
   cross_border_transfer: boolean;
+  process_signature: string;
+  linked_ispdns: LinkedIspdnDto[];
+  linked_ispdns_count: number;
   created_at: string;
   updated_at: string;
 };
 
+type ProcessingProcessRegistryItemDto = {
+  id: number;
+  name: string;
+  purpose_name: string;
+  processing_period: string;
+  linked_ispdns_count: number;
+  linked_ispdns: LinkedIspdnDto[];
+  created_at: string;
+  updated_at: string;
+};
+
+type ProcessingProcessOptionDto = {
+  id: number;
+  name: string;
+  purpose_name: string;
+  processing_period: string;
+};
+
 type ProcessingProcessPayloadDto = {
-  processing_purpose_id: number;
+  name: string;
+  purpose_name: string;
+  processing_period: string;
   subject_categories: Record<string, boolean>;
   data_categories: Record<string, boolean | string>;
   legal_bases: Record<string, boolean>;
@@ -46,7 +71,9 @@ type ProcessingProcessDocumentContextDto = {
   ispdn_id: number;
   processes: Array<{
     id: number;
-    purpose: ProcessingPurposeOptionDto;
+    name: string;
+    purpose_name: string;
+    processing_period: string;
     subject_categories: string[];
     data_categories: string[];
     legal_bases: string[];
@@ -58,22 +85,26 @@ type ProcessingProcessDocumentContextDto = {
       cross_border_transfer: boolean;
     };
   }>;
+  processing_purpose_periods: Array<{
+    purpose_name: string;
+    processing_period: string;
+  }>;
 };
 
-function mapPurpose(dto: ProcessingPurposeOptionDto): ProcessingPurposeOption {
+function mapLinkedIspdn(dto: LinkedIspdnDto): LinkedIspdnShort {
   return {
     id: dto.id,
     name: dto.name,
-    processingPeriod: dto.processing_period,
+    status: dto.status,
   };
 }
 
 function mapProcess(dto: ProcessingProcessDto): ProcessingProcess {
   return {
     id: dto.id,
-    ispdnId: dto.ispdn_id,
-    processingPurposeId: dto.processing_purpose_id,
-    processingPurpose: mapPurpose(dto.processing_purpose),
+    name: dto.name,
+    purposeName: dto.purpose_name,
+    processingPeriod: dto.processing_period,
     subjectCategories: dto.subject_categories,
     dataCategories: dto.data_categories,
     legalBases: dto.legal_bases,
@@ -82,18 +113,45 @@ function mapProcess(dto: ProcessingProcessDto): ProcessingProcess {
     internalNetworkTransfer: dto.internal_network_transfer,
     internetTransfer: dto.internet_transfer,
     crossBorderTransfer: dto.cross_border_transfer,
+    processSignature: dto.process_signature,
+    linkedIspdns: dto.linked_ispdns.map(mapLinkedIspdn),
+    linkedIspdnsCount: dto.linked_ispdns_count,
     createdAt: dto.created_at,
     updatedAt: dto.updated_at,
   };
 }
 
+function mapRegistryItem(dto: ProcessingProcessRegistryItemDto): ProcessingProcessRegistryItem {
+  return {
+    id: dto.id,
+    name: dto.name,
+    purposeName: dto.purpose_name,
+    processingPeriod: dto.processing_period,
+    linkedIspdnsCount: dto.linked_ispdns_count,
+    linkedIspdns: dto.linked_ispdns.map(mapLinkedIspdn),
+    createdAt: dto.created_at,
+    updatedAt: dto.updated_at,
+  };
+}
+
+function mapOption(dto: ProcessingProcessOptionDto): ProcessingProcessOption {
+  return {
+    id: dto.id,
+    name: dto.name,
+    purposeName: dto.purpose_name,
+    processingPeriod: dto.processing_period,
+  };
+}
+
 function mapPayload(values: ProcessingProcessFormValues): ProcessingProcessPayloadDto {
-  if (!values.processingPurposeId || !values.processingType || !values.internalNetworkTransfer || !values.internetTransfer) {
+  if (!values.processingType || !values.internalNetworkTransfer || !values.internetTransfer) {
     throw new Error("Processing process form is incomplete");
   }
 
   return {
-    processing_purpose_id: values.processingPurposeId,
+    name: values.name.trim(),
+    purpose_name: values.purposeName.trim(),
+    processing_period: values.processingPeriod.trim(),
     subject_categories: values.subjectCategories,
     data_categories: values.dataCategories,
     legal_bases: values.legalBases,
@@ -110,7 +168,9 @@ function mapDocumentContext(dto: ProcessingProcessDocumentContextDto): Processin
     ispdnId: dto.ispdn_id,
     processes: dto.processes.map((process) => ({
       id: process.id,
-      purpose: mapPurpose(process.purpose),
+      name: process.name,
+      purposeName: process.purpose_name,
+      processingPeriod: process.processing_period,
       subjectCategories: process.subject_categories,
       dataCategories: process.data_categories,
       legalBases: process.legal_bases,
@@ -122,7 +182,51 @@ function mapDocumentContext(dto: ProcessingProcessDocumentContextDto): Processin
         crossBorderTransfer: process.processing_methods.cross_border_transfer,
       },
     })),
+    processingPurposePeriods: dto.processing_purpose_periods.map((item) => ({
+      purposeName: item.purpose_name,
+      processingPeriod: item.processing_period,
+    })),
   };
+}
+
+export function getProcessingProcesses() {
+  return httpClient<ProcessingProcessRegistryItemDto[]>("/api/v1/processing-processes").then((items) =>
+    items.map(mapRegistryItem),
+  );
+}
+
+export function getProcessingProcessOptions() {
+  return httpClient<ProcessingProcessOptionDto[]>("/api/v1/processing-processes/options").then((items) =>
+    items.map(mapOption),
+  );
+}
+
+export function getUniqueActiveProcessingProcesses() {
+  return httpClient<ProcessingProcessDto[]>("/api/v1/processing-processes/active-unique").then((items) =>
+    items.map(mapProcess),
+  );
+}
+
+export function getProcessingProcessById(processId: number) {
+  return httpClient<ProcessingProcessDto>(`/api/v1/processing-processes/${processId}`).then(mapProcess);
+}
+
+export function createProcessingProcess(payload: ProcessingProcessFormValues) {
+  return httpClient<ProcessingProcessDto>("/api/v1/processing-processes", {
+    method: "POST",
+    body: JSON.stringify(mapPayload(payload)),
+  }).then(mapProcess);
+}
+
+export function updateProcessingProcess(processId: number, payload: ProcessingProcessFormValues) {
+  return httpClient<ProcessingProcessDto>(`/api/v1/processing-processes/${processId}`, {
+    method: "PUT",
+    body: JSON.stringify(mapPayload(payload)),
+  }).then(mapProcess);
+}
+
+export function deleteProcessingProcess(processId: number) {
+  return httpClient<void>(`/api/v1/processing-processes/${processId}`, { method: "DELETE" });
 }
 
 export function getIspdnProcessingProcesses(ispdnId: number) {
@@ -131,16 +235,17 @@ export function getIspdnProcessingProcesses(ispdnId: number) {
   );
 }
 
-export function getIspdnProcessingProcessById(ispdnId: number, processId: number) {
-  return httpClient<ProcessingProcessDto>(`/api/v1/ispdns/${ispdnId}/processing-processes/${processId}`).then(
-    mapProcess,
-  );
-}
-
-export function createIspdnProcessingProcess(ispdnId: number, payload: ProcessingProcessFormValues) {
+export function createAndLinkIspdnProcessingProcess(ispdnId: number, payload: ProcessingProcessFormValues) {
   return httpClient<ProcessingProcessDto>(`/api/v1/ispdns/${ispdnId}/processing-processes`, {
     method: "POST",
     body: JSON.stringify(mapPayload(payload)),
+  }).then(mapProcess);
+}
+
+export function linkExistingProcessingProcessToIspdn(ispdnId: number, processId: number) {
+  return httpClient<ProcessingProcessDto>(`/api/v1/ispdns/${ispdnId}/processing-processes/link`, {
+    method: "POST",
+    body: JSON.stringify({ processing_process_id: processId }),
   }).then(mapProcess);
 }
 
@@ -155,11 +260,11 @@ export function updateIspdnProcessingProcess(
   }).then(mapProcess);
 }
 
-export function deleteIspdnProcessingProcess(ispdnId: number, processId: number) {
+export function unlinkIspdnProcessingProcess(ispdnId: number, processId: number) {
   return httpClient<void>(`/api/v1/ispdns/${ispdnId}/processing-processes/${processId}`, { method: "DELETE" });
 }
 
-export function getIspdnProcessingProcessesDocumentContext(ispdnId: number) {
+export function getIspdnProcessingProcessDocumentContext(ispdnId: number) {
   return httpClient<ProcessingProcessDocumentContextDto>(
     `/api/v1/ispdns/${ispdnId}/processing-processes/document-context`,
   ).then(mapDocumentContext);

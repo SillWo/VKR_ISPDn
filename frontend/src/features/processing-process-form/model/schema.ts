@@ -36,9 +36,9 @@ const dataCategorySchema = z
   );
 
 export const processingProcessFormSchema = z.object({
-  processingPurposeId: z
-    .union([z.number().int().positive(), z.null()])
-    .refine((value) => value !== null, { message: "Выберите цель обработки." }),
+  name: z.string().trim().min(1, "Укажите наименование процесса обработки."),
+  purposeName: z.string().trim().min(1, "Укажите цель обработки."),
+  processingPeriod: z.string().trim().min(1, "Укажите период обработки."),
   subjectCategories: switchGroupSchema,
   dataCategories: dataCategorySchema,
   legalBases: switchGroupSchema,
@@ -56,7 +56,9 @@ export const processingProcessFormSchema = z.object({
 });
 
 export const defaultProcessingProcessFormValues: ProcessingProcessFormValues = {
-  processingPurposeId: null,
+  name: "",
+  purposeName: "",
+  processingPeriod: "",
   subjectCategories: createEmptySwitchValues(subjectCategoryCatalog),
   dataCategories: createEmptyDataCategoryValues(),
   legalBases: createEmptySwitchValues(legalBasisCatalog),

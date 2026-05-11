@@ -1,4 +1,3 @@
-import type { ProcessingPurposeOption } from "../../processing-purpose/model/types";
 import type { DataCenterOption } from "../../data-center/model/types";
 
 export type IspdnStatus = "active" | "archived";
@@ -16,9 +15,6 @@ export type IspdnCard = {
   id: number;
   name: string;
   shortDescription: string;
-  processingPurposes: string;
-  processingPurposeIds: number[];
-  processingPurposeOptions: ProcessingPurposeOption[];
   dataCenters: DataCenterOption[];
   commissioningDate: string;
   decommissioningDate: string | null;
@@ -37,9 +33,6 @@ export type IspdnListItem = {
   id: number;
   name: string;
   shortDescription: string;
-  processingPurposes: string;
-  processingPurposeIds: number[];
-  processingPurposeOptions: ProcessingPurposeOption[];
   status: IspdnStatus;
   responsiblePerson: string;
   responsibleEmployeeId: number | null;
@@ -52,8 +45,6 @@ export type IspdnListItem = {
 export type IspdnFormValues = {
   name: string;
   shortDescription: string;
-  processingPurposes: string;
-  processingPurposeIds: number[];
   commissioningDate: string;
   decommissioningDate: string;
   websiteUrl: string;

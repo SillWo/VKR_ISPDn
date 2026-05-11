@@ -16,12 +16,11 @@ from app.models import (
     OrganizationCard,
     OrganizationOkved,
     ProcessingProcess,
-    ProcessingPurpose,
     IspdnSecurityTools,
     SecurityLevelRecord,
     TechnicalSecurityMeasureRecord,
     ispdn_crypto_tools,
-    ispdn_processing_purposes,
+    ispdn_processing_processes,
 )
 
 load_dotenv()

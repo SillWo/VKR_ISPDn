@@ -16,7 +16,7 @@ from app.domain.processing_catalogs import (
     ProcessingType,
     get_catalog_keys,
 )
-from app.schemas.processing_purpose import ProcessingPurposeOption
+from app.schemas.text import strip_required_text
 
 
 def validate_switch_group(value: Any, allowed_keys: set[str], field_name: str) -> dict[str, bool]:
@@ -109,7 +109,9 @@ def validate_data_category_group(value: Any) -> dict[str, bool | str]:
 
 
 class ProcessingProcessBase(BaseModel):
-    processing_purpose_id: int = Field(gt=0)
+    name: str = Field(min_length=1, max_length=255)
+    purpose_name: str = Field(min_length=1, max_length=255)
+    processing_period: str = Field(min_length=1, max_length=1000)
     subject_categories: dict[str, bool]
     data_categories: dict[str, bool | str]
     legal_bases: dict[str, bool]
@@ -118,6 +120,13 @@ class ProcessingProcessBase(BaseModel):
     internal_network_transfer: InternalNetworkTransfer
     internet_transfer: InternetTransfer
     cross_border_transfer: bool
+
+    _validate_required_text = field_validator(
+        "name",
+        "purpose_name",
+        "processing_period",
+        mode="before",
+    )(strip_required_text)
 
     @field_validator("subject_categories", mode="before")
     @classmethod
@@ -148,12 +157,23 @@ class ProcessingProcessUpdate(ProcessingProcessBase):
     pass
 
 
+class IspdnProcessingProcessLinkCreate(BaseModel):
+    processing_process_id: int = Field(gt=0)
+
+
+class ProcessingProcessLinkedIspdn(BaseModel):
+    id: int
+    name: str
+    status: str
+
+
 class ProcessingProcessRead(ProcessingProcessBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    ispdn_id: int
-    processing_purpose: ProcessingPurposeOption
+    process_signature: str
+    linked_ispdns: list[ProcessingProcessLinkedIspdn] = []
+    linked_ispdns_count: int = 0
     created_at: datetime
     updated_at: datetime
 
@@ -162,15 +182,34 @@ class ProcessingProcessListItem(ProcessingProcessRead):
     pass
 
 
-class ProcessingProcessDocumentPurpose(BaseModel):
+class ProcessingProcessOption(BaseModel):
     id: int
     name: str
+    purpose_name: str
+    processing_period: str
+
+
+class ProcessingProcessRegistryItem(BaseModel):
+    id: int
+    name: str
+    purpose_name: str
+    processing_period: str
+    linked_ispdns_count: int
+    linked_ispdns: list[ProcessingProcessLinkedIspdn]
+    created_at: datetime
+    updated_at: datetime
+
+
+class ProcessPurposePeriod(BaseModel):
+    purpose_name: str
     processing_period: str
 
 
 class ProcessingProcessDocumentItem(BaseModel):
     id: int
-    purpose: ProcessingProcessDocumentPurpose
+    name: str
+    purpose_name: str
+    processing_period: str
     subject_categories: list[str]
     data_categories: list[str]
     legal_bases: list[str]
@@ -181,6 +220,7 @@ class ProcessingProcessDocumentItem(BaseModel):
 class ProcessingProcessDocumentContext(BaseModel):
     ispdn_id: int
     processes: list[ProcessingProcessDocumentItem]
+    processing_purpose_periods: list[ProcessPurposePeriod]
 
 
 ALLOWED_PROCESSING_TYPE_VALUES = set(PROCESSING_TYPE_LABELS)

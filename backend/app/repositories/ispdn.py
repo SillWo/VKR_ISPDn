@@ -4,7 +4,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.ispdn import IspdnCard
-from app.models.processing_purpose import ProcessingPurpose
 from app.models.security_measure import IspdnSecurityTools
 from app.schemas.ispdn import IspdnCreate, IspdnStatus, IspdnUpdate
 
@@ -18,7 +17,6 @@ class IspdnRepository:
             select(IspdnCard)
             .options(
                 joinedload(IspdnCard.responsible_employee),
-                joinedload(IspdnCard.processing_purpose_options),
                 joinedload(IspdnCard.security_tools),
                 joinedload(IspdnCard.data_centers),
             )
@@ -33,7 +31,6 @@ class IspdnRepository:
             select(IspdnCard)
             .options(
                 joinedload(IspdnCard.responsible_employee),
-                joinedload(IspdnCard.processing_purpose_options),
                 joinedload(IspdnCard.security_tools),
                 joinedload(IspdnCard.data_centers),
             )
@@ -45,12 +42,9 @@ class IspdnRepository:
         self,
         payload: IspdnCreate,
         responsible_person: str,
-        processing_purposes: list[ProcessingPurpose],
     ) -> IspdnCard:
-        values = payload.model_dump(exclude={"processing_purpose_ids", "security_tools"})
-        values["processing_purposes"] = self._build_legacy_processing_purposes(processing_purposes)
+        values = payload.model_dump(exclude={"security_tools"})
         card = IspdnCard(**values, responsible_person=responsible_person)
-        card.processing_purpose_options = processing_purposes
         card.security_tools = IspdnSecurityTools(**payload.security_tools.model_dump()) if payload.security_tools else None
         self.db.add(card)
         self.db.commit()
@@ -62,14 +56,11 @@ class IspdnRepository:
         card: IspdnCard,
         payload: IspdnUpdate,
         responsible_person: str,
-        processing_purposes: list[ProcessingPurpose],
     ) -> IspdnCard:
-        values = payload.model_dump(exclude={"processing_purpose_ids", "security_tools"})
-        values["processing_purposes"] = self._build_legacy_processing_purposes(processing_purposes)
+        values = payload.model_dump(exclude={"security_tools"})
         for field, value in values.items():
             setattr(card, field, value)
         card.responsible_person = responsible_person
-        card.processing_purpose_options = processing_purposes
         if payload.security_tools is not None:
             security_tools_values = payload.security_tools.model_dump()
             if card.security_tools is None:
@@ -84,7 +75,3 @@ class IspdnRepository:
     def delete(self, card: IspdnCard) -> None:
         self.db.delete(card)
         self.db.commit()
-
-    @staticmethod
-    def _build_legacy_processing_purposes(processing_purposes: list[ProcessingPurpose]) -> str:
-        return "\n".join(purpose.name for purpose in processing_purposes)

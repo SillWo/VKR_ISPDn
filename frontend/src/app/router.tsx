@@ -17,7 +17,7 @@ import { IspdnThreatModelPage } from "../pages/ispdn-card/IspdnThreatModelPage";
 import { IspdnArchivePage } from "../pages/ispdn-registry/IspdnArchivePage";
 import { IspdnRegistryPage } from "../pages/ispdn-registry/IspdnRegistryPage";
 import { OrganizationCardPage } from "../pages/organization-card/OrganizationCardPage";
-import { ProcessingPurposesRegistryPage } from "../pages/processing-purposes-registry/ProcessingPurposesRegistryPage";
+import { ProcessingProcessesRegistryPage } from "../pages/processing-processes-registry/ProcessingProcessesRegistryPage";
 import { TasksPage } from "../pages/tasks/TasksPage";
 import { AppLayout } from "../widgets/layout/AppLayout";
 
@@ -87,8 +87,8 @@ export const router = createBrowserRouter([
         element: <EmployeesRegistryPage />,
       },
       {
-        path: "processing-purposes",
-        element: <ProcessingPurposesRegistryPage />,
+        path: "processing-processes",
+        element: <ProcessingProcessesRegistryPage />,
       },
       {
         path: "control-events",

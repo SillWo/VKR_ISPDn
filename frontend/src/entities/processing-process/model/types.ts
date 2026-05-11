@@ -1,12 +1,19 @@
-import type { ProcessingPurposeOption } from "../../processing-purpose/model/types";
 import type { InternalNetworkTransfer, InternetTransfer, ProcessingType } from "./catalogs";
 
 export type SwitchValues = Record<string, boolean>;
 export type PersonalDataActionValues = Record<string, boolean | string>;
 export type DataCategoryValues = Record<string, boolean | string>;
 
+export type LinkedIspdnShort = {
+  id: number;
+  name: string;
+  status: string;
+};
+
 export type ProcessingProcessFormValues = {
-  processingPurposeId: number | null;
+  name: string;
+  purposeName: string;
+  processingPeriod: string;
   subjectCategories: SwitchValues;
   dataCategories: DataCategoryValues;
   legalBases: SwitchValues;
@@ -19,9 +26,9 @@ export type ProcessingProcessFormValues = {
 
 export type ProcessingProcess = {
   id: number;
-  ispdnId: number;
-  processingPurposeId: number;
-  processingPurpose: ProcessingPurposeOption;
+  name: string;
+  purposeName: string;
+  processingPeriod: string;
   subjectCategories: SwitchValues;
   dataCategories: DataCategoryValues;
   legalBases: SwitchValues;
@@ -30,15 +37,44 @@ export type ProcessingProcess = {
   internalNetworkTransfer: InternalNetworkTransfer;
   internetTransfer: InternetTransfer;
   crossBorderTransfer: boolean;
+  processSignature: string;
+  linkedIspdns: LinkedIspdnShort[];
+  linkedIspdnsCount: number;
   createdAt: string;
   updatedAt: string;
+};
+
+export type ProcessingProcessListItem = ProcessingProcess;
+
+export type ProcessingProcessOption = {
+  id: number;
+  name: string;
+  purposeName: string;
+  processingPeriod: string;
+};
+
+export type ProcessingProcessRegistryItem = {
+  id: number;
+  name: string;
+  purposeName: string;
+  processingPeriod: string;
+  linkedIspdnsCount: number;
+  linkedIspdns: LinkedIspdnShort[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type IspdnProcessingProcessLinkCreate = {
+  processingProcessId: number;
 };
 
 export type ProcessingProcessDocumentContext = {
   ispdnId: number;
   processes: Array<{
     id: number;
-    purpose: ProcessingPurposeOption;
+    name: string;
+    purposeName: string;
+    processingPeriod: string;
     subjectCategories: string[];
     dataCategories: string[];
     legalBases: string[];
@@ -49,5 +85,9 @@ export type ProcessingProcessDocumentContext = {
       internetTransfer: string;
       crossBorderTransfer: boolean;
     };
+  }>;
+  processingPurposePeriods: Array<{
+    purposeName: string;
+    processingPeriod: string;
   }>;
 };
