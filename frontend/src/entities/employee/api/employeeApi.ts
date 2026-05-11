@@ -11,6 +11,8 @@ type EmployeeDto = {
   full_name: string;
   position: string;
   document_initials: string;
+  phone_number: string | null;
+  email: string | null;
   department_id: number | null;
   department: EmployeeDepartmentDto | null;
   created_at: string;
@@ -22,6 +24,8 @@ type EmployeeOptionDto = {
   full_name: string;
   position: string;
   document_initials: string;
+  phone_number: string | null;
+  email: string | null;
   department_id: number | null;
   department_name: string | null;
 };
@@ -30,6 +34,8 @@ type EmployeePayloadDto = {
   full_name: string;
   position: string;
   document_initials: string;
+  phone_number: string | null;
+  email: string | null;
   department_id: number | null;
 };
 
@@ -39,6 +45,8 @@ function mapEmployee(dto: EmployeeDto): Employee {
     fullName: dto.full_name,
     position: dto.position,
     documentInitials: dto.document_initials,
+    phoneNumber: dto.phone_number,
+    email: dto.email,
     departmentId: dto.department_id,
     department: dto.department,
     createdAt: dto.created_at,
@@ -52,6 +60,8 @@ function mapEmployeeOption(dto: EmployeeOptionDto): EmployeeOption {
     fullName: dto.full_name,
     position: dto.position,
     documentInitials: dto.document_initials,
+    phoneNumber: dto.phone_number,
+    email: dto.email,
     departmentId: dto.department_id,
     departmentName: dto.department_name,
   };
@@ -62,6 +72,8 @@ function mapPayload(values: EmployeeFormValues): EmployeePayloadDto {
     full_name: values.fullName.trim(),
     position: values.position.trim(),
     document_initials: values.documentInitials.trim(),
+    phone_number: values.phoneNumber.trim() || null,
+    email: values.email.trim() || null,
     department_id: values.departmentId,
   };
 }

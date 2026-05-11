@@ -4,7 +4,11 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.repositories.organization import OrganizationRepository
 from app.schemas.organization import OrganizationRead, OrganizationUpsert
-from app.services.organization import OrganizationNotFoundError, OrganizationService
+from app.services.organization import (
+    OrganizationEmployeeNotFoundError,
+    OrganizationNotFoundError,
+    OrganizationService,
+)
 
 router = APIRouter(prefix="/organization", tags=["organization"])
 
@@ -29,4 +33,7 @@ def upsert_organization(
     payload: OrganizationUpsert,
     service: OrganizationService = Depends(get_organization_service),
 ):
-    return service.upsert_card(payload)
+    try:
+        return service.upsert_card(payload)
+    except OrganizationEmployeeNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Employee not found") from exc

@@ -4,6 +4,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.schemas.employee import EmployeeShortRead
+from app.schemas.data_center import DataCenterOption
 from app.schemas.processing_purpose import ProcessingPurposeOption
 from app.schemas.security_measure import IspdnSecurityToolsRead, IspdnSecurityToolsUpsert
 from app.schemas.text import strip_required_text
@@ -65,6 +66,7 @@ class IspdnRead(IspdnBase):
     responsible_employee_id: int | None
     responsible_employee: EmployeeShortRead | None = None
     processing_purpose_options: list[ProcessingPurposeOption] = []
+    data_centers: list[DataCenterOption] = []
     security_tools: IspdnSecurityToolsRead = Field(default_factory=IspdnSecurityToolsRead)
     created_at: datetime
     updated_at: datetime

@@ -1,10 +1,14 @@
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from app.models.ispdn import IspdnCard
 from app.repositories.employee import EmployeeRepository
 from app.repositories.ispdn import IspdnRepository
 from app.repositories.processing_purpose import ProcessingPurposeRepository
 from app.schemas.ispdn import IspdnCreate, IspdnStatus, IspdnUpdate
+
+if TYPE_CHECKING:
+    from app.services.task_event import TaskEventService
 
 
 SECURITY_LEVEL_JUSTIFICATION_STORAGE_DIR = (
@@ -30,10 +34,12 @@ class IspdnService:
         repository: IspdnRepository,
         employee_repository: EmployeeRepository,
         processing_purpose_repository: ProcessingPurposeRepository,
+        task_event_service: "TaskEventService | None" = None,
     ) -> None:
         self.repository = repository
         self.employee_repository = employee_repository
         self.processing_purpose_repository = processing_purpose_repository
+        self.task_event_service = task_event_service
 
     def list_cards(self, status: IspdnStatus | None = None) -> list[IspdnCard]:
         return self.repository.list(status)
@@ -49,7 +55,10 @@ class IspdnService:
         if employee is None:
             raise IspdnResponsibleEmployeeNotFoundError
         processing_purposes = self._get_processing_purposes(payload.processing_purpose_ids)
-        return self.repository.create(payload, responsible_person=employee.full_name, processing_purposes=processing_purposes)
+        card = self.repository.create(payload, responsible_person=employee.full_name, processing_purposes=processing_purposes)
+        if self.task_event_service is not None:
+            self.task_event_service.create_ispdn_created_event(card.id, card.name)
+        return card
 
     def update_card(self, ispdn_id: int, payload: IspdnUpdate) -> IspdnCard:
         card = self.get_card(ispdn_id)

@@ -7,6 +7,7 @@ import type {
   IspdnStatus,
 } from "../model/types";
 import { httpClient } from "../../../shared/api/httpClient";
+import type { DataCenterOption } from "../../data-center/model/types";
 import type { ProcessingPurposeOption } from "../../processing-purpose/model/types";
 
 type ResponsibleEmployeeDto = {
@@ -25,6 +26,7 @@ type IspdnCardDto = {
   processing_purposes: string;
   processing_purpose_ids: number[];
   processing_purpose_options: ProcessingPurposeOptionDto[];
+  data_centers: DataCenterOptionDto[];
   commissioning_date: string;
   decommissioning_date: string | null;
   website_url: string | null;
@@ -88,6 +90,15 @@ type ProcessingPurposeOptionDto = {
   processing_period: string;
 };
 
+type DataCenterOptionDto = {
+  id: number;
+  name: string;
+  location_country: string;
+  location_address: string;
+  is_own_data_center: boolean;
+  owner_display_name: string;
+};
+
 type GetIspdnsParams = {
   status?: IspdnStatus;
 };
@@ -114,6 +125,17 @@ function mapProcessingPurposeOption(dto: ProcessingPurposeOptionDto): Processing
   };
 }
 
+function mapDataCenterOption(dto: DataCenterOptionDto): DataCenterOption {
+  return {
+    id: dto.id,
+    name: dto.name,
+    locationCountry: dto.location_country,
+    locationAddress: dto.location_address,
+    isOwnDataCenter: dto.is_own_data_center,
+    ownerDisplayName: dto.owner_display_name,
+  };
+}
+
 function mapCard(dto: IspdnCardDto): IspdnCard {
   return {
     id: dto.id,
@@ -122,6 +144,7 @@ function mapCard(dto: IspdnCardDto): IspdnCard {
     processingPurposes: dto.processing_purposes,
     processingPurposeIds: dto.processing_purpose_ids,
     processingPurposeOptions: dto.processing_purpose_options.map(mapProcessingPurposeOption),
+    dataCenters: dto.data_centers.map(mapDataCenterOption),
     commissioningDate: dto.commissioning_date,
     decommissioningDate: dto.decommissioning_date,
     websiteUrl: dto.website_url,

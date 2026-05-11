@@ -25,6 +25,35 @@ type EmployeeFormProps = {
   onCancel: () => void;
 };
 
+function formatEmployeePhoneInput(value: string) {
+  let digits = value.replace(/\D/g, "");
+  if (digits.startsWith("7") || digits.startsWith("8")) {
+    digits = digits.slice(1);
+  }
+  digits = digits.slice(0, 10);
+  if (!digits) {
+    return "";
+  }
+  const first = digits.slice(0, 3);
+  const second = digits.slice(3, 6);
+  const third = digits.slice(6, 8);
+  const fourth = digits.slice(8, 10);
+  let formatted = `+7 (${first}`;
+  if (first.length === 3) {
+    formatted += ")";
+  }
+  if (second) {
+    formatted += ` ${second}`;
+  }
+  if (third) {
+    formatted += ` ${third}`;
+  }
+  if (fourth) {
+    formatted += ` ${fourth}`;
+  }
+  return formatted;
+}
+
 export function EmployeeForm({
   defaultValues,
   departments,
@@ -72,6 +101,29 @@ export function EmployeeForm({
             error={Boolean(errors.documentInitials)}
             helperText={errors.documentInitials?.message ?? "Например: Иванов И.И."}
             {...register("documentInitials")}
+          />
+          <Controller
+            name="phoneNumber"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                label="Номер телефона"
+                fullWidth
+                disabled={isSubmitting}
+                value={field.value}
+                onChange={(event) => field.onChange(formatEmployeePhoneInput(event.target.value))}
+                error={Boolean(errors.phoneNumber)}
+                helperText={errors.phoneNumber?.message ?? "Формат: +7 (999) 999 99 99."}
+              />
+            )}
+          />
+          <TextField
+            label="Электронная почта"
+            fullWidth
+            disabled={isSubmitting}
+            error={Boolean(errors.email)}
+            helperText={errors.email?.message}
+            {...register("email")}
           />
           <Controller
             name="departmentId"

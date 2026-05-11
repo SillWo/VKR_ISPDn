@@ -10,12 +10,17 @@ from app.models import (
     Department,
     Employee,
     IspdnCard,
+    CryptoTool,
+    IspdnCryptographySettings,
+    OrganizationBranch,
     OrganizationCard,
+    OrganizationOkved,
     ProcessingProcess,
     ProcessingPurpose,
     IspdnSecurityTools,
     SecurityLevelRecord,
     TechnicalSecurityMeasureRecord,
+    ispdn_crypto_tools,
     ispdn_processing_purposes,
 )
 

@@ -5,6 +5,7 @@ from app.core.database import get_db
 from app.repositories.employee import EmployeeRepository
 from app.repositories.ispdn import IspdnRepository
 from app.repositories.processing_purpose import ProcessingPurposeRepository
+from app.repositories.task_event import TaskEventRepository
 from app.schemas.ispdn import IspdnCreate, IspdnListItem, IspdnRead, IspdnStatus, IspdnUpdate
 from app.services.ispdn import (
     IspdnNotFoundError,
@@ -12,12 +13,21 @@ from app.services.ispdn import (
     IspdnResponsibleEmployeeNotFoundError,
     IspdnService,
 )
+from app.services.task_event import TaskEventService
 
 router = APIRouter(prefix="/ispdns", tags=["ispdns"])
 
 
 def get_ispdn_service(db: Session = Depends(get_db)) -> IspdnService:
-    return IspdnService(IspdnRepository(db), EmployeeRepository(db), ProcessingPurposeRepository(db))
+    ispdn_repository = IspdnRepository(db)
+    employee_repository = EmployeeRepository(db)
+    task_event_service = TaskEventService(TaskEventRepository(db), ispdn_repository, employee_repository)
+    return IspdnService(
+        ispdn_repository,
+        employee_repository,
+        ProcessingPurposeRepository(db),
+        task_event_service,
+    )
 
 
 @router.get("", response_model=list[IspdnListItem])

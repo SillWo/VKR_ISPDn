@@ -31,6 +31,8 @@ import { useBlocker, useNavigate } from "react-router-dom";
 
 import { createIspdn, deleteIspdn, updateIspdn } from "../../entities/ispdn/api/ispdnApi";
 import type { IspdnCard, IspdnFormValues, IspdnSecurityTools } from "../../entities/ispdn/model/types";
+import { updateIspdnDataCenters } from "../../entities/data-center/api/dataCenterApi";
+import { updateIspdnCryptography } from "../../entities/crypto-tool/api/cryptoToolApi";
 import { getProcessingPurposeOptions } from "../../entities/processing-purpose/api/processingPurposeApi";
 import type { ProcessingPurposeOption } from "../../entities/processing-purpose/model/types";
 import { createIspdnProcessingProcess } from "../../entities/processing-process/api/processingProcessApi";
@@ -39,12 +41,21 @@ import { saveIspdnSecurityLevel } from "../../entities/security-level/api/securi
 import type { SecurityLevelFormValues } from "../../entities/security-level/model/types";
 import { defaultIspdnFormValues } from "../../features/ispdn-card-form/model/schema";
 import { IspdnCardForm } from "../../features/ispdn-card-form/ui/IspdnCardForm";
+import { DataCenterSelect } from "../../features/data-center-select/DataCenterSelect";
+import { CryptoToolSelect } from "../../features/crypto-tool-select/CryptoToolSelect";
 import { defaultProcessingProcessFormValues } from "../../features/processing-process-form/model/schema";
 import { ProcessingProcessForm } from "../../features/processing-process-form/ui/ProcessingProcessForm";
 import { defaultSecurityLevelFormValues } from "../../features/security-level-form/model/schema";
 import { SecurityLevelForm } from "../../features/security-level-form/ui/SecurityLevelForm";
 
-const steps = ["Основные сведения", "Средства защиты внутри ИСПДн", "Информация о субъектах ПДн", "Процессы обработки"];
+const steps = [
+  "Основные сведения",
+  "Средства защиты внутри ИСПДн",
+  "Информация о субъектах ПДн",
+  "Процессы обработки",
+  "Заполнение информации о ЦОД",
+  "Использование криптографии",
+];
 
 const securityToolOptions = [
   { key: "dlp", label: "DLP" },
@@ -101,6 +112,10 @@ export function IspdnCreatePage() {
   const [processDialog, setProcessDialog] = useState<ProcessDialogState | null>(null);
   const [nextProcessId, setNextProcessId] = useState(1);
   const [processingStepError, setProcessingStepError] = useState(false);
+  const [dataCenterIds, setDataCenterIds] = useState<number[]>([]);
+  const [usesCryptography, setUsesCryptography] = useState(false);
+  const [cryptoToolIds, setCryptoToolIds] = useState<number[]>([]);
+  const [cryptographyStepError, setCryptographyStepError] = useState(false);
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -184,11 +199,50 @@ export function IspdnCreatePage() {
       return updatedCard;
     },
     onSuccess: async (savedCard) => {
+      setCard(savedCard);
+      setCardValues(toFormValues(savedCard));
       await queryClient.invalidateQueries({ queryKey: ["ispdns"] });
       await queryClient.invalidateQueries({ queryKey: ["ispdn", savedCard.id] });
       await queryClient.invalidateQueries({ queryKey: ["ispdnProcessingProcesses", savedCard.id] });
+      setActiveStep(4);
+    },
+  });
+
+  const dataCentersMutation = useMutation({
+    mutationFn: async () => {
+      if (!card) {
+        throw new Error("Ispdn card must be created before data centers");
+      }
+      return updateIspdnDataCenters(card.id, dataCenterIds);
+    },
+    onSuccess: async () => {
+      if (!card) {
+        return;
+      }
+      await queryClient.invalidateQueries({ queryKey: ["ispdn", card.id] });
+      await queryClient.invalidateQueries({ queryKey: ["ispdnDataCenters", card.id] });
+      setActiveStep(5);
+    },
+  });
+
+  const cryptographyMutation = useMutation({
+    mutationFn: async () => {
+      if (!card) {
+        throw new Error("Ispdn card must be created before cryptography data");
+      }
+      return updateIspdnCryptography(card.id, {
+        usesCryptography,
+        cryptoToolIds: usesCryptography ? cryptoToolIds : [],
+      });
+    },
+    onSuccess: async () => {
+      if (!card) {
+        return;
+      }
+      await queryClient.invalidateQueries({ queryKey: ["ispdn", card.id] });
+      await queryClient.invalidateQueries({ queryKey: ["ispdnCryptography", card.id] });
       allowExitRef.current = true;
-      navigate(`/ispdns/${savedCard.id}`);
+      navigate(`/ispdns/${card.id}`);
     },
   });
 
@@ -205,6 +259,8 @@ export function IspdnCreatePage() {
         await queryClient.invalidateQueries({ queryKey: ["ispdnSecurityLevel", card.id] });
         queryClient.removeQueries({ queryKey: ["technicalSecurityMeasures", card.id] });
         await queryClient.invalidateQueries({ queryKey: ["ispdnProcessingProcesses", card.id] });
+        await queryClient.invalidateQueries({ queryKey: ["ispdnDataCenters", card.id] });
+        await queryClient.invalidateQueries({ queryKey: ["ispdnCryptography", card.id] });
       }
       allowExitRef.current = true;
       if (blocker.state === "blocked") {
@@ -220,6 +276,8 @@ export function IspdnCreatePage() {
     securityToolsMutation.isPending ||
     securityLevelMutation.isPending ||
     finishMutation.isPending ||
+    dataCentersMutation.isPending ||
+    cryptographyMutation.isPending ||
     cancelCreationMutation.isPending;
   const dialogDefaultValues =
     processDialog?.mode === "edit" ? processDialog.process.values : defaultProcessingProcessFormValues;
@@ -250,6 +308,15 @@ export function IspdnCreatePage() {
     finishMutation.mutate();
   };
 
+  const handleCryptographyFinish = () => {
+    if (usesCryptography && cryptoToolIds.length === 0) {
+      setCryptographyStepError(true);
+      return;
+    }
+    setCryptographyStepError(false);
+    cryptographyMutation.mutate();
+  };
+
   return (
     <Stack spacing={3}>
       <Box>
@@ -258,7 +325,7 @@ export function IspdnCreatePage() {
         </Typography>
         <Typography color="text.secondary" sx={{ mt: 0.5, maxWidth: 820 }}>
           Заполните обязательные разделы последовательно. Выйти из процесса через интерфейс можно только после
-          завершения раздела «Процессы обработки».
+          завершения раздела «Использование криптографии».
         </Typography>
       </Box>
 
@@ -289,7 +356,17 @@ export function IspdnCreatePage() {
       )}
       {finishMutation.isError && (
         <Alert severity="error">
-          Не удалось завершить создание ИСПДн. Проверьте процессы обработки и доступность API.
+          Не удалось сохранить процессы обработки. Проверьте процессы обработки и доступность API.
+        </Alert>
+      )}
+      {dataCentersMutation.isError && (
+        <Alert severity="error">
+          Не удалось сохранить связанные ЦОД. Проверьте доступность API и повторите попытку.
+        </Alert>
+      )}
+      {cryptographyMutation.isError && (
+        <Alert severity="error">
+          Не удалось сохранить сведения о криптографии. Проверьте выбранные СКЗИ и доступность API.
         </Alert>
       )}
       {cancelCreationMutation.isError && (
@@ -344,7 +421,7 @@ export function IspdnCreatePage() {
               </Typography>
               <Typography color="text.secondary" sx={{ mt: 0.5, maxWidth: 760 }}>
                 Добавьте один или несколько процессов обработки для создаваемой ИСПДн. После нажатия «Далее» процессы
-                будут сохранены, а создание ИСПДн будет завершено.
+                будут сохранены, а wizard перейдёт к заполнению информации о ЦОД.
               </Typography>
             </Box>
             <Button
@@ -380,11 +457,87 @@ export function IspdnCreatePage() {
         </Stack>
       )}
 
+      {activeStep === 4 && card && (
+        <Paper variant="outlined" sx={{ p: 3, borderRadius: 2, bgcolor: "background.paper" }}>
+          <Stack spacing={3}>
+            <Box>
+              <Typography component="h2" variant="h6" sx={{ fontWeight: 600 }}>
+                Заполнение информации о ЦОД
+              </Typography>
+              <Typography color="text.secondary" sx={{ mt: 0.5, maxWidth: 760 }}>
+                Выберите один или несколько ЦОД, связанных с создаваемой ИСПДн. Этот шаг можно оставить пустым.
+              </Typography>
+            </Box>
+            <DataCenterSelect
+              value={dataCenterIds}
+              onChange={setDataCenterIds}
+              disabled={isBusy}
+              label="Связанные ЦОД"
+            />
+          </Stack>
+        </Paper>
+      )}
+
+      {activeStep === 5 && card && (
+        <Paper variant="outlined" sx={{ p: 3, borderRadius: 2, bgcolor: "background.paper" }}>
+          <Stack spacing={3}>
+            <Box>
+              <Typography component="h2" variant="h6" sx={{ fontWeight: 600 }}>
+                Использование криптографии
+              </Typography>
+              <Typography color="text.secondary" sx={{ mt: 0.5, maxWidth: 760 }}>
+                Укажите, используются ли в создаваемой ИСПДн средства криптографической защиты информации.
+              </Typography>
+            </Box>
+            <Box>
+              <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
+                <Typography color={usesCryptography ? "text.secondary" : "text.primary"}>Нет</Typography>
+                <Switch
+                  checked={usesCryptography}
+                  disabled={isBusy}
+                  onChange={(_, checked) => {
+                    setUsesCryptography(checked);
+                    if (!checked) {
+                      setCryptoToolIds([]);
+                      setCryptographyStepError(false);
+                    }
+                  }}
+                />
+                <Typography color={usesCryptography ? "text.primary" : "text.secondary"}>Да</Typography>
+              </Stack>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                Используется СКЗИ в данной ИСПДн
+              </Typography>
+            </Box>
+            {usesCryptography && (
+              <CryptoToolSelect
+                value={cryptoToolIds}
+                onChange={(ids) => {
+                  setCryptoToolIds(ids);
+                  setCryptographyStepError(false);
+                }}
+                disabled={isBusy}
+                label="Связанные СКЗИ"
+              />
+            )}
+            {cryptographyStepError && <Alert severity="error">Выберите минимум одно СКЗИ.</Alert>}
+          </Stack>
+        </Paper>
+      )}
+
       <WizardNavigation
         activeStep={activeStep}
         isBusy={isBusy}
         onBack={() => setActiveStep((current) => Math.max(0, current - 1))}
-        onNext={activeStep === 3 ? handleFinish : undefined}
+        onNext={
+          activeStep === 3
+            ? handleFinish
+            : activeStep === 4
+              ? () => dataCentersMutation.mutate()
+              : activeStep === 5
+                ? handleCryptographyFinish
+              : undefined
+        }
         nextFormId={
           activeStep === 0
             ? "ispdn-card-form"
@@ -394,7 +547,7 @@ export function IspdnCreatePage() {
                 ? "security-level-create-form"
                 : undefined
         }
-        nextLabel="Далее"
+        nextLabel={activeStep === 5 ? "Завершить" : "Далее"}
       />
 
       <Dialog
@@ -410,7 +563,7 @@ export function IspdnCreatePage() {
         <DialogTitle>Создание ИСПДн не завершено</DialogTitle>
         <DialogContent>
           <Typography color="text.secondary">
-            Завершите разделы «Основные сведения», «Средства защиты внутри ИСПДн», «Информация о субъектах ПДн» и «Процессы обработки», чтобы выйти из процесса создания.
+            Завершите разделы «Основные сведения», «Средства защиты внутри ИСПДн», «Информация о субъектах ПДн», «Процессы обработки», «Заполнение информации о ЦОД» и «Использование криптографии», чтобы выйти из процесса создания.
           </Typography>
         </DialogContent>
         <DialogActions>

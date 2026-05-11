@@ -140,6 +140,8 @@ export function EmployeesRegistryPage() {
         fullName: employeeDialog.employee.fullName,
         position: employeeDialog.employee.position,
         documentInitials: employeeDialog.employee.documentInitials,
+        phoneNumber: employeeDialog.employee.phoneNumber ?? "",
+        email: employeeDialog.employee.email ?? "",
         departmentId: employeeDialog.employee.departmentId,
       }
     : defaultEmployeeFormValues;
@@ -300,6 +302,8 @@ function EmployeesTable({
             <TableCell>Должность</TableCell>
             <TableCell>Инициалы для документов</TableCell>
             <TableCell>Подразделение</TableCell>
+            <TableCell>Телефон</TableCell>
+            <TableCell>Электронная почта</TableCell>
             <TableCell align="right">Действия</TableCell>
           </TableRow>
         </TableHead>
@@ -310,6 +314,8 @@ function EmployeesTable({
               <TableCell>{employee.position}</TableCell>
               <TableCell>{employee.documentInitials}</TableCell>
               <TableCell>{employee.department?.name ?? "Без подразделения"}</TableCell>
+              <TableCell>{employee.phoneNumber ?? "Не указан"}</TableCell>
+              <TableCell>{employee.email ?? "Не указана"}</TableCell>
               <TableCell align="right">
                 <Tooltip title="Редактировать">
                   <IconButton aria-label="Редактировать" onClick={() => onEdit(employee)}>

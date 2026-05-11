@@ -20,6 +20,7 @@ class IspdnRepository:
                 joinedload(IspdnCard.responsible_employee),
                 joinedload(IspdnCard.processing_purpose_options),
                 joinedload(IspdnCard.security_tools),
+                joinedload(IspdnCard.data_centers),
             )
             .order_by(IspdnCard.updated_at.desc())
         )
@@ -34,6 +35,7 @@ class IspdnRepository:
                 joinedload(IspdnCard.responsible_employee),
                 joinedload(IspdnCard.processing_purpose_options),
                 joinedload(IspdnCard.security_tools),
+                joinedload(IspdnCard.data_centers),
             )
             .where(IspdnCard.id == ispdn_id)
         )

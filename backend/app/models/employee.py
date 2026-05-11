@@ -9,6 +9,7 @@ from app.core.database import Base
 if TYPE_CHECKING:
     from app.models.department import Department
     from app.models.ispdn import IspdnCard
+    from app.models.task_event import Task
 
 
 class Employee(Base):
@@ -18,6 +19,8 @@ class Employee(Base):
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
     position: Mapped[str] = mapped_column(String(255), nullable=False)
     document_initials: Mapped[str] = mapped_column(String(255), nullable=False)
+    phone_number: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     department_id: Mapped[int | None] = mapped_column(
         ForeignKey("departments.id", ondelete="SET NULL"),
         nullable=True,
@@ -37,6 +40,10 @@ class Employee(Base):
 
     department: Mapped["Department | None"] = relationship(back_populates="employees")
     responsible_ispdn_cards: Mapped[list["IspdnCard"]] = relationship(
+        back_populates="responsible_employee",
+        passive_deletes=True,
+    )
+    task_responsibilities: Mapped[list["Task"]] = relationship(
         back_populates="responsible_employee",
         passive_deletes=True,
     )

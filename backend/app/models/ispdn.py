@@ -8,7 +8,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
 if TYPE_CHECKING:
+    from app.models.crypto_tool import CryptoTool, IspdnCryptographySettings
     from app.models.employee import Employee
+    from app.models.data_center import DataCenter
     from app.models.processing_process import ProcessingProcess
     from app.models.processing_purpose import ProcessingPurpose
     from app.models.security_level import SecurityLevelRecord
@@ -17,8 +19,11 @@ if TYPE_CHECKING:
         TechnicalSecurityMeasureDocument,
         TechnicalSecurityMeasureRecord,
     )
+    from app.models.task_event import TaskEvent
 
 from app.models.ispdn_processing_purpose import ispdn_processing_purposes
+from app.models.data_center import ispdn_data_centers
+from app.models.crypto_tool import ispdn_crypto_tools
 
 
 class IspdnCard(Base):
@@ -91,6 +96,25 @@ class IspdnCard(Base):
     processing_purpose_options: Mapped[list["ProcessingPurpose"]] = relationship(
         secondary=ispdn_processing_purposes,
         back_populates="ispdn_cards",
+    )
+    data_centers: Mapped[list["DataCenter"]] = relationship(
+        secondary=ispdn_data_centers,
+        back_populates="ispdn_cards",
+    )
+    crypto_tools: Mapped[list["CryptoTool"]] = relationship(
+        secondary=ispdn_crypto_tools,
+        back_populates="ispdn_cards",
+    )
+    cryptography_settings: Mapped["IspdnCryptographySettings | None"] = relationship(
+        back_populates="ispdn",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        uselist=False,
+    )
+    task_events: Mapped[list["TaskEvent"]] = relationship(
+        back_populates="ispdn",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
     @property
