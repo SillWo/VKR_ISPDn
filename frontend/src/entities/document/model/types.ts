@@ -56,7 +56,36 @@ export type ActSafetyLevelDocumentPayload = {
   };
 };
 
+export type RknAccessPersonType = "individual" | "individual_entrepreneur" | "legal_entity" | "foreign_organization";
+
+export type RknAccessPersonFormValues = {
+  personType: RknAccessPersonType;
+  name: string;
+  address: string;
+  email: string;
+  phone: string;
+};
+
+export type RknNotificationFormValues = {
+  rknAccessPersons: RknAccessPersonFormValues[];
+};
+
+export type RknNotificationDocumentPayload = {
+  documentType: "RKN_notification";
+  manualData: {
+    rkn_access_persons: Array<{
+      person_type: RknAccessPersonType;
+      name: string;
+      address: string;
+      email: string | null;
+      phone: string | null;
+    }>;
+  };
+};
+
 export type GenerateIspdnDocumentPayload = ActIspdnCommissioningDocumentPayload | ActSafetyLevelDocumentPayload;
+
+export type GenerateGlobalDocumentPayload = RknNotificationDocumentPayload;
 
 export type GeneratedDocumentFile = {
   blob: Blob;

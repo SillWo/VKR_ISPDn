@@ -1,5 +1,10 @@
 import { buildApiUrl, httpClient, HttpError } from "../../../shared/api/httpClient";
-import type { DocumentType, GenerateIspdnDocumentPayload, GeneratedDocumentFile } from "../model/types";
+import type {
+  DocumentType,
+  GenerateGlobalDocumentPayload,
+  GenerateIspdnDocumentPayload,
+  GeneratedDocumentFile,
+} from "../model/types";
 
 type DocumentManualFieldDto = {
   name: string;
@@ -68,6 +73,31 @@ export async function generateIspdnDocument(
   payload: GenerateIspdnDocumentPayload,
 ): Promise<GeneratedDocumentFile> {
   const response = await fetch(buildApiUrl(`/api/v1/ispdns/${ispdnId}/documents/generate`), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      document_type: payload.documentType,
+      manual_data: payload.manualData,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new HttpError(response.status, await getErrorMessage(response));
+  }
+
+  const blob = await response.blob();
+  return {
+    blob,
+    filename: getFilenameFromContentDisposition(response.headers.get("Content-Disposition")),
+  };
+}
+
+export async function generateGlobalDocument(
+  payload: GenerateGlobalDocumentPayload,
+): Promise<GeneratedDocumentFile> {
+  const response = await fetch(buildApiUrl("/api/v1/documents/generate"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

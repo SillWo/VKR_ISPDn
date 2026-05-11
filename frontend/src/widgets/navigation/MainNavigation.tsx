@@ -1,5 +1,6 @@
 import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
 import BusinessIcon from "@mui/icons-material/Business";
+import DescriptionIcon from "@mui/icons-material/Description";
 import DnsIcon from "@mui/icons-material/Dns";
 import FactCheckIcon from "@mui/icons-material/FactCheck";
 import FolderSharedIcon from "@mui/icons-material/FolderShared";
@@ -18,6 +19,7 @@ const navigationItems = [
   { label: "Реестр ЦОД", path: "/data-centers", icon: <DnsIcon /> },
   { label: "Криптография", path: "/cryptography", icon: <VpnKeyIcon /> },
   { label: "Задачи и несоответствия", path: "/tasks", icon: <AssignmentTurnedInIcon /> },
+  { label: "Документы", path: "/documents", icon: <DescriptionIcon /> },
 ];
 
 export function MainNavigation() {

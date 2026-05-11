@@ -272,6 +272,16 @@ export function OrganizationCardForm({
           error={Boolean(errors.activityRegions)}
           helperText={errors.activityRegions?.message}
         />
+        <TextField
+          label="Адрес офиса Роскомнадзора"
+          fullWidth
+          required
+          multiline
+          minRows={2}
+          {...register("rknOfficeAddress")}
+          error={Boolean(errors.rknOfficeAddress)}
+          helperText={errors.rknOfficeAddress?.message}
+        />
         <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
           <Controller
             control={control}

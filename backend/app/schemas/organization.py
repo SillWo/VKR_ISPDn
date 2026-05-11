@@ -62,6 +62,7 @@ class OrganizationBase(BaseModel):
     operator_type: OrganizationOperatorType | None = None
     head_office_region: str | None = Field(default=None, max_length=255)
     activity_regions: str | None = None
+    rkn_office_address: str | None = None
     postal_address_matches_registration: bool = True
     postal_address: str | None = None
     phone: str | None = Field(default=None, pattern=PHONE_PATTERN)
@@ -94,6 +95,7 @@ class OrganizationBase(BaseModel):
     _validate_optional_text = field_validator(
         "head_office_region",
         "activity_regions",
+        "rkn_office_address",
         "postal_address",
         "phone",
         "fax",
@@ -138,6 +140,8 @@ class OrganizationUpsert(OrganizationBase):
             raise ValueError("Head employee is required")
         if self.personal_data_processing_termination_type is None:
             raise ValueError("Termination type is required")
+        if self.rkn_office_address is None:
+            raise ValueError("RKN office address is required")
         return self
 
 

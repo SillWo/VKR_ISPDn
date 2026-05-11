@@ -48,4 +48,7 @@ class DocumentGenerator(ABC):
     def build_output_filename(self, context: dict) -> str:
         raise NotImplementedError
 
+    def get_template_context_schema(self) -> dict:
+        return {}
+
 DocumentManualField.model_rebuild()

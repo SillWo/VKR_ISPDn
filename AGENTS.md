@@ -1110,6 +1110,18 @@ DELETE /api/v1/ispdns/{ispdn_id}/security-measures/documents/{document_id}
 
 ---
 
+## Правила глобальных документов организации
+
+1. Документы уровня организации генерируются через /api/v1/documents/generate и не требуют ispdn_id.
+2. Документы конкретной ИСПДн генерируются через /api/v1/ispdns/{ispdn_id}/documents/generate.
+3. Глобальный модуль /documents показывает только документы, у которых requires_ispdn = false.
+4. Новые системные документы добавляются через app/document_generation/documents/<document_code>/, собственный DocumentGenerator, Pydantic-схему manual_data и регистрацию в DocumentRegistry.
+5. Уведомление в РКН имеет document_type RKN_notification и собирает данные по всем ИСПДн со статусом active.
+6. Для повторяемых блоков уведомления в РКН шаблон использует списки rkn_processing_processes, rkn_data_centers и rkn_access_persons.
+7. Пользовательские docx-шаблоны через UI/API не загружаются.
+
+---
+
 ## 20. Stop rules
 
 Агент должен остановиться и сообщить проблему, если:

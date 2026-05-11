@@ -50,6 +50,7 @@ export type OrganizationCard = {
   operatorType: OrganizationOperatorType | "";
   headOfficeRegion: string;
   activityRegions: string;
+  rknOfficeAddress: string;
   postalAddressMatchesRegistration: boolean;
   postalAddress: string;
   phone: string;
@@ -86,6 +87,7 @@ export type OrganizationFormValues = {
   operatorType: OrganizationOperatorType | "";
   headOfficeRegion: string;
   activityRegions: string;
+  rknOfficeAddress: string;
   postalAddressMatchesRegistration: boolean;
   postalAddress: string;
   phone: string;

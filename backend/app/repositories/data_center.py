@@ -3,7 +3,7 @@ from __future__ import annotations
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
-from app.models.data_center import DataCenter
+from app.models.data_center import DataCenter, ispdn_data_centers
 from app.models.ispdn import IspdnCard
 from app.schemas.data_center import DataCenterCreate, DataCenterUpdate
 
@@ -60,6 +60,20 @@ class DataCenterRepository:
             select(DataCenter)
             .join(DataCenter.ispdn_cards)
             .where(IspdnCard.id == ispdn_id)
+            .order_by(DataCenter.name.asc(), DataCenter.id.asc())
+        )
+        return list(self.db.scalars(statement).all())
+
+    def list_unique_for_active_ispdns(self) -> list[DataCenter]:
+        statement = (
+            select(DataCenter)
+            .join(
+                ispdn_data_centers,
+                ispdn_data_centers.c.data_center_id == DataCenter.id,
+            )
+            .join(IspdnCard, IspdnCard.id == ispdn_data_centers.c.ispdn_id)
+            .where(IspdnCard.status == "active")
+            .distinct()
             .order_by(DataCenter.name.asc(), DataCenter.id.asc())
         )
         return list(self.db.scalars(statement).all())

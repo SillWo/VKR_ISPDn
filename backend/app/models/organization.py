@@ -41,6 +41,7 @@ class OrganizationCard(Base):
     operator_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
     head_office_region: Mapped[str | None] = mapped_column(String(255), nullable=True)
     activity_regions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    rkn_office_address: Mapped[str | None] = mapped_column(Text, nullable=True)
     postal_address_matches_registration: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,

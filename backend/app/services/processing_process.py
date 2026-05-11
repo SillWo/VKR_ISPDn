@@ -9,6 +9,7 @@ from app.domain.processing_catalogs import (
     selected_labels,
 )
 from app.domain.processing_process_signature import build_processing_process_signature
+from app.domain.processing_process_subsumption import filter_subsumed_processing_processes
 from app.models.processing_process import ProcessingProcess
 from app.repositories.ispdn import IspdnRepository
 from app.repositories.processing_process import ProcessingProcessRepository
@@ -60,7 +61,8 @@ class ProcessingProcessService:
         return [self._to_option(process) for process in self.repository.list_options()]
 
     def list_unique_for_active_ispdns(self) -> list[ProcessingProcessListItem]:
-        return [self._to_read(process) for process in self.repository.list_unique_for_active_ispdns()]
+        processes = self.repository.list_unique_for_active_ispdns()
+        return [self._to_read(process) for process in filter_subsumed_processing_processes(processes)]
 
     def get_registry_process(self, process_id: int) -> ProcessingProcessRead:
         return self._to_read(self._get_process(process_id))

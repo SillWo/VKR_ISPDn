@@ -46,6 +46,7 @@ type OrganizationCardDto = {
   operator_type: OrganizationOperatorType | null;
   head_office_region: string | null;
   activity_regions: string | null;
+  rkn_office_address: string | null;
   postal_address_matches_registration: boolean;
   postal_address: string | null;
   phone: string | null;
@@ -82,6 +83,7 @@ type OrganizationPayloadDto = {
   operator_type: OrganizationOperatorType | null;
   head_office_region: string | null;
   activity_regions: string | null;
+  rkn_office_address: string | null;
   postal_address_matches_registration: boolean;
   postal_address: string | null;
   phone: string | null;
@@ -137,6 +139,7 @@ function mapCard(dto: OrganizationCardDto): OrganizationCard {
     operatorType: dto.operator_type ?? "",
     headOfficeRegion: dto.head_office_region ?? "",
     activityRegions: dto.activity_regions ?? "",
+    rknOfficeAddress: dto.rkn_office_address ?? "",
     postalAddressMatchesRegistration: dto.postal_address_matches_registration,
     postalAddress: dto.postal_address ?? "",
     phone: dto.phone ?? "",
@@ -185,6 +188,7 @@ function mapPayload(values: OrganizationFormValues): OrganizationPayloadDto {
     operator_type: values.operatorType || null,
     head_office_region: mapOptionalText(values.headOfficeRegion),
     activity_regions: mapOptionalText(values.activityRegions),
+    rkn_office_address: values.rknOfficeAddress.trim(),
     postal_address_matches_registration: values.postalAddressMatchesRegistration,
     postal_address: values.postalAddressMatchesRegistration ? null : mapOptionalText(values.postalAddress),
     phone: mapOptionalText(values.phone),

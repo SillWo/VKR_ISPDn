@@ -3,6 +3,7 @@ import { Navigate, createBrowserRouter } from "react-router-dom";
 import { ControlEventsRegistryPage } from "../pages/control-events-registry/ControlEventsRegistryPage";
 import { CryptoToolsRegistryPage } from "../pages/crypto-tools-registry/CryptoToolsRegistryPage";
 import { DataCentersRegistryPage } from "../pages/data-centers-registry/DataCentersRegistryPage";
+import { DocumentsPage } from "../pages/documents/DocumentsPage";
 import { EmployeesRegistryPage } from "../pages/employees-registry/EmployeesRegistryPage";
 import { IspdnCardPage } from "../pages/ispdn-card/IspdnCardPage";
 import { IspdnCreatePage } from "../pages/ispdn-card/IspdnCreatePage";
@@ -105,6 +106,10 @@ export const router = createBrowserRouter([
       {
         path: "tasks",
         element: <TasksPage />,
+      },
+      {
+        path: "documents",
+        element: <DocumentsPage />,
       },
     ],
   },

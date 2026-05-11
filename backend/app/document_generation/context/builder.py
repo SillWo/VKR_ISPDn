@@ -5,6 +5,7 @@ from app.document_generation.context.providers.employee_provider import Employee
 from app.document_generation.context.providers.ispdn_provider import IspdnContextProvider
 from app.document_generation.context.providers.organization_provider import OrganizationContextProvider
 from app.document_generation.context.providers.processing_provider import ProcessingContextProvider
+from app.document_generation.context.providers.rkn_notification_provider import RknNotificationContextProvider
 from app.document_generation.context.providers.security_level_provider import SecurityLevelContextProvider
 from app.document_generation.context.providers.security_measures_provider import SecurityMeasuresContextProvider
 from app.document_generation.context.providers.system_provider import SystemContextProvider
@@ -24,6 +25,7 @@ class DocumentContextBuilder:
         self.threat_model_provider = ThreatModelContextProvider()
         self.tasks_provider = TasksContextProvider()
         self.control_events_provider = ControlEventsContextProvider(db)
+        self.rkn_notification_provider = RknNotificationContextProvider(db)
 
     def system(self) -> dict:
         return self.system_provider.get_context()
@@ -63,3 +65,6 @@ class DocumentContextBuilder:
 
     def control_events(self, ispdn_id: int) -> dict:
         return self.control_events_provider.get_context(ispdn_id)
+
+    def rkn_notification(self, manual_data: dict) -> dict:
+        return self.rkn_notification_provider.get_context(manual_data)

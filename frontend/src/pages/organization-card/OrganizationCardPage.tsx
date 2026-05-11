@@ -21,6 +21,7 @@ function toFormValues(card: OrganizationCard): OrganizationFormValues {
     operatorType: card.operatorType,
     headOfficeRegion: card.headOfficeRegion,
     activityRegions: card.activityRegions,
+    rknOfficeAddress: card.rknOfficeAddress,
     postalAddressMatchesRegistration: card.postalAddressMatchesRegistration,
     postalAddress: card.postalAddress,
     phone: card.phone,
