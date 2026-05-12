@@ -2,27 +2,14 @@ from __future__ import annotations
 
 import hashlib
 import json
-from typing import Any, Mapping, TypedDict
+from typing import Any, Mapping
 
 
-class ProcessingProcessSignaturePayload(TypedDict):
-    name: str
-    purpose_name: str
-    processing_period: str
-    subject_categories: Mapping[str, Any]
-    data_categories: Mapping[str, Any]
-    legal_bases: Mapping[str, Any]
-    personal_data_actions: Mapping[str, Any]
-    processing_type: str
-    internal_network_transfer: str
-    internet_transfer: str
-    cross_border_transfer: bool
-
-
-def build_processing_process_signature(payload: ProcessingProcessSignaturePayload) -> str:
+def build_processing_process_signature(payload: Mapping[str, Any]) -> str:
+    purpose_name = _normalize_string(payload["purpose_name"])
     normalized_payload = {
-        "name": _normalize_string(payload["name"]),
-        "purpose_name": _normalize_string(payload["purpose_name"]),
+        "name": purpose_name,
+        "purpose_name": purpose_name,
         "processing_period": _normalize_string(payload["processing_period"]),
         "subject_categories": _normalize_json_value(payload["subject_categories"]),
         "data_categories": _normalize_json_value(payload["data_categories"]),

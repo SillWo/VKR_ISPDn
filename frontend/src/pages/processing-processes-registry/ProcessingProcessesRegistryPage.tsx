@@ -133,7 +133,7 @@ export function ProcessingProcessesRegistryPage() {
             isLoading={processesQuery.isLoading}
             onEdit={(process) => loadProcessMutation.mutate(process.id)}
             onDelete={(process) => {
-              if (window.confirm(`Удалить процесс "${process.name}" из глобального реестра?`)) {
+              if (window.confirm(`Удалить процесс "${process.purposeName}" из глобального реестра?`)) {
                 deleteMutation.mutate(process.id);
               }
             }}
@@ -188,7 +188,6 @@ function ProcessesTable({
       <Table size="small">
         <TableHead>
           <TableRow>
-            <TableCell>Наименование процесса</TableCell>
             <TableCell>Цель обработки</TableCell>
             <TableCell>Период обработки</TableCell>
             <TableCell>Связанные ИСПДн</TableCell>
@@ -201,9 +200,8 @@ function ProcessesTable({
             return (
               <TableRow key={process.id} hover>
                 <TableCell>
-                  <Typography sx={{ fontWeight: 600 }}>{process.name}</Typography>
+                  <Typography sx={{ fontWeight: 600 }}>{process.purposeName}</Typography>
                 </TableCell>
-                <TableCell>{process.purposeName}</TableCell>
                 <TableCell>{process.processingPeriod}</TableCell>
                 <TableCell>
                   <Typography>{process.linkedIspdnsCount}</Typography>
@@ -240,7 +238,6 @@ function ProcessesTable({
 
 function toFormValues(process: ProcessingProcess): ProcessingProcessFormValues {
   return {
-    name: process.name,
     purposeName: process.purposeName,
     processingPeriod: process.processingPeriod,
     subjectCategories: process.subjectCategories,

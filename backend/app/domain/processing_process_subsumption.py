@@ -71,10 +71,18 @@ def processing_process_contains(container: Any, contained: Any) -> bool:
 
 def _same_base_process(left: Any, right: Any) -> bool:
     return (
-        _normalize_text(_value(left, "name")) == _normalize_text(_value(right, "name"))
+        _effective_process_name(left) == _effective_process_name(right)
         and _normalize_text(_value(left, "purpose_name")) == _normalize_text(_value(right, "purpose_name"))
         and _normalize_text(_value(left, "processing_period")) == _normalize_text(_value(right, "processing_period"))
     )
+
+
+def _same_normalized_name(left: Any, right: Any) -> bool:
+    return _effective_process_name(left).casefold() == _effective_process_name(right).casefold()
+
+
+def _effective_process_name(process: Any) -> str:
+    return _normalize_text(_value(process, "purpose_name") or _value(process, "name"))
 
 
 def _selected_values_include(container: Any, contained: Any) -> bool:

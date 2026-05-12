@@ -204,7 +204,7 @@ class RknNotificationContextProvider:
 
     def _process_context(self, process: ProcessingProcess) -> dict:
         return {
-            "process_name": _text(process.name),
+            "process_name": _text(process.purpose_name),
             "purpose_of_processing": _text(process.purpose_name),
             "PDn_list": self._data_category_list(process.data_categories, "regular"),
             "special_PDn_list": self._data_category_list(process.data_categories, "special"),

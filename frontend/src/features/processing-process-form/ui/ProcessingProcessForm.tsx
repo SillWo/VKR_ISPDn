@@ -72,22 +72,16 @@ export const ProcessingProcessForm = forwardRef<ProcessingProcessFormHandle, Pro
       <Stack component="form" spacing={3} onSubmit={handleSubmit(onSubmit)} noValidate>
         <FormSection title="Основные сведения процесса">
           <TextField
-            label="Наименование процесса обработки"
-            fullWidth
-            required
-            disabled={isSubmitting}
-            {...register("name")}
-            error={Boolean(errors.name)}
-            helperText={errors.name?.message ?? "Например: обработка данных сотрудников для кадрового учета."}
-          />
-          <TextField
             label="Цель обработки"
             fullWidth
             required
             disabled={isSubmitting}
             {...register("purposeName")}
             error={Boolean(errors.purposeName)}
-            helperText={errors.purposeName?.message ?? "Укажите цель обработки персональных данных."}
+            helperText={
+              errors.purposeName?.message ??
+              "Цель обработки используется как наименование процесса во всех реестрах и документах."
+            }
           />
           <TextField
             label="Период обработки"

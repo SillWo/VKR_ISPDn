@@ -1,10 +1,11 @@
+from typing import Any
+
 from sqlalchemy import delete, func, insert, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.ispdn import IspdnCard
 from app.models.ispdn_processing_process import ispdn_processing_processes
 from app.models.processing_process import ProcessingProcess
-from app.schemas.processing_process import ProcessingProcessCreate, ProcessingProcessUpdate
 
 
 class ProcessingProcessRepository:
@@ -15,12 +16,12 @@ class ProcessingProcessRepository:
         statement = (
             select(ProcessingProcess)
             .options(selectinload(ProcessingProcess.ispdn_cards))
-            .order_by(ProcessingProcess.name.asc(), ProcessingProcess.id.asc())
+            .order_by(ProcessingProcess.purpose_name.asc(), ProcessingProcess.id.asc())
         )
         return list(self.db.scalars(statement).all())
 
     def list_options(self) -> list[ProcessingProcess]:
-        statement = select(ProcessingProcess).order_by(ProcessingProcess.name.asc(), ProcessingProcess.id.asc())
+        statement = select(ProcessingProcess).order_by(ProcessingProcess.purpose_name.asc(), ProcessingProcess.id.asc())
         return list(self.db.scalars(statement).all())
 
     def list_unique_for_active_ispdns(self) -> list[ProcessingProcess]:
@@ -33,7 +34,7 @@ class ProcessingProcessRepository:
             .join(IspdnCard, IspdnCard.id == ispdn_processing_processes.c.ispdn_id)
             .where(IspdnCard.status == "active")
             .distinct()
-            .order_by(ProcessingProcess.name.asc(), ProcessingProcess.id.asc())
+            .order_by(ProcessingProcess.purpose_name.asc(), ProcessingProcess.id.asc())
         )
         return list(self.db.scalars(statement).all())
 
@@ -53,8 +54,8 @@ class ProcessingProcessRepository:
         )
         return self.db.scalars(statement).first()
 
-    def create(self, payload: ProcessingProcessCreate, process_signature: str) -> ProcessingProcess:
-        process = ProcessingProcess(**payload.model_dump(), process_signature=process_signature)
+    def create(self, values: dict[str, Any], process_signature: str) -> ProcessingProcess:
+        process = ProcessingProcess(**values, process_signature=process_signature)
         self.db.add(process)
         self.db.commit()
         self.db.refresh(process)
@@ -63,10 +64,10 @@ class ProcessingProcessRepository:
     def update(
         self,
         process: ProcessingProcess,
-        payload: ProcessingProcessUpdate,
+        values: dict[str, Any],
         process_signature: str,
     ) -> ProcessingProcess:
-        for field, value in payload.model_dump().items():
+        for field, value in values.items():
             setattr(process, field, value)
         process.process_signature = process_signature
         self.db.commit()

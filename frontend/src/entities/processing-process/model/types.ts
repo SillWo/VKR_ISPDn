@@ -11,7 +11,6 @@ export type LinkedIspdnShort = {
 };
 
 export type ProcessingProcessFormValues = {
-  name: string;
   purposeName: string;
   processingPeriod: string;
   subjectCategories: SwitchValues;

@@ -601,7 +601,7 @@ export function IspdnCreatePage() {
                 >
                   {processOptionsQuery.data?.map((process) => (
                     <MenuItem key={process.id} value={process.id}>
-                      {process.name} - {process.purposeName}
+                      {process.purposeName} — {process.processingPeriod}
                     </MenuItem>
                   ))}
                 </Select>
@@ -766,7 +766,6 @@ function LinkedProcessingProcessesTable({
       <Table size="small">
         <TableHead>
           <TableRow>
-            <TableCell>Наименование процесса</TableCell>
             <TableCell>Цель обработки</TableCell>
             <TableCell>Период обработки</TableCell>
           </TableRow>
@@ -775,9 +774,8 @@ function LinkedProcessingProcessesTable({
           {processes.map((process) => (
             <TableRow key={process.id} hover>
               <TableCell>
-                <Typography sx={{ fontWeight: 600 }}>{process.name}</Typography>
+                <Typography sx={{ fontWeight: 600 }}>{process.purposeName}</Typography>
               </TableCell>
-              <TableCell>{process.purposeName}</TableCell>
               <TableCell>{process.processingPeriod}</TableCell>
             </TableRow>
           ))}

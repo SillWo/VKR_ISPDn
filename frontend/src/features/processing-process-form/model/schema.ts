@@ -36,7 +36,6 @@ const dataCategorySchema = z
   );
 
 export const processingProcessFormSchema = z.object({
-  name: z.string().trim().min(1, "Укажите наименование процесса обработки."),
   purposeName: z.string().trim().min(1, "Укажите цель обработки."),
   processingPeriod: z.string().trim().min(1, "Укажите период обработки."),
   subjectCategories: switchGroupSchema,
@@ -56,7 +55,6 @@ export const processingProcessFormSchema = z.object({
 });
 
 export const defaultProcessingProcessFormValues: ProcessingProcessFormValues = {
-  name: "",
   purposeName: "",
   processingPeriod: "",
   subjectCategories: createEmptySwitchValues(subjectCategoryCatalog),

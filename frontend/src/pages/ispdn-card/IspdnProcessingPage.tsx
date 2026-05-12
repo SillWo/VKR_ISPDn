@@ -192,7 +192,7 @@ export function IspdnProcessingPage() {
             isLoading={processesQuery.isLoading}
             onEdit={(process) => setDialog({ mode: "edit", process })}
             onDelete={(process) => {
-              if (window.confirm(`Удалить связь с процессом "${process.name}"? Глобальная запись останется в реестре.`)) {
+              if (window.confirm(`Удалить связь с процессом "${process.purposeName}"? Глобальная запись останется в реестре.`)) {
                 unlinkMutation.mutate(process.id);
               }
             }}
@@ -222,7 +222,7 @@ export function IspdnProcessingPage() {
                 >
                   {optionsQuery.data?.map((process) => (
                     <MenuItem key={process.id} value={process.id}>
-                      {process.name} - {process.purposeName}
+                      {process.purposeName} — {process.processingPeriod}
                     </MenuItem>
                   ))}
                 </Select>
@@ -288,7 +288,6 @@ function ProcessingProcessesTable({
       <Table size="small">
         <TableHead>
           <TableRow>
-            <TableCell>Наименование процесса</TableCell>
             <TableCell>Цель обработки</TableCell>
             <TableCell>Период обработки</TableCell>
             <TableCell align="right">Действия</TableCell>
@@ -298,9 +297,8 @@ function ProcessingProcessesTable({
           {processes.map((process) => (
             <TableRow key={process.id} hover>
               <TableCell>
-                <Typography sx={{ fontWeight: 600 }}>{process.name}</Typography>
+                <Typography sx={{ fontWeight: 600 }}>{process.purposeName}</Typography>
               </TableCell>
-              <TableCell>{process.purposeName}</TableCell>
               <TableCell>{process.processingPeriod}</TableCell>
               <TableCell align="right">
                 <Button variant="outlined" size="small" onClick={() => onEdit(process)} sx={{ mr: 1 }}>
@@ -322,7 +320,6 @@ function ProcessingProcessesTable({
 
 function toFormValues(process: ProcessingProcess): ProcessingProcessFormValues {
   return {
-    name: process.name,
     purposeName: process.purposeName,
     processingPeriod: process.processingPeriod,
     subjectCategories: mergeSwitchValues(subjectCategoryCatalog, process.subjectCategories),

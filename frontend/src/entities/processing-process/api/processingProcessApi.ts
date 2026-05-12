@@ -54,7 +54,6 @@ type ProcessingProcessOptionDto = {
 };
 
 type ProcessingProcessPayloadDto = {
-  name: string;
   purpose_name: string;
   processing_period: string;
   subject_categories: Record<string, boolean>;
@@ -102,7 +101,7 @@ function mapLinkedIspdn(dto: LinkedIspdnDto): LinkedIspdnShort {
 function mapProcess(dto: ProcessingProcessDto): ProcessingProcess {
   return {
     id: dto.id,
-    name: dto.name,
+    name: dto.purpose_name,
     purposeName: dto.purpose_name,
     processingPeriod: dto.processing_period,
     subjectCategories: dto.subject_categories,
@@ -124,7 +123,7 @@ function mapProcess(dto: ProcessingProcessDto): ProcessingProcess {
 function mapRegistryItem(dto: ProcessingProcessRegistryItemDto): ProcessingProcessRegistryItem {
   return {
     id: dto.id,
-    name: dto.name,
+    name: dto.purpose_name,
     purposeName: dto.purpose_name,
     processingPeriod: dto.processing_period,
     linkedIspdnsCount: dto.linked_ispdns_count,
@@ -137,7 +136,7 @@ function mapRegistryItem(dto: ProcessingProcessRegistryItemDto): ProcessingProce
 function mapOption(dto: ProcessingProcessOptionDto): ProcessingProcessOption {
   return {
     id: dto.id,
-    name: dto.name,
+    name: dto.purpose_name,
     purposeName: dto.purpose_name,
     processingPeriod: dto.processing_period,
   };
@@ -149,7 +148,6 @@ function mapPayload(values: ProcessingProcessFormValues): ProcessingProcessPaylo
   }
 
   return {
-    name: values.name.trim(),
     purpose_name: values.purposeName.trim(),
     processing_period: values.processingPeriod.trim(),
     subject_categories: values.subjectCategories,
@@ -168,7 +166,7 @@ function mapDocumentContext(dto: ProcessingProcessDocumentContextDto): Processin
     ispdnId: dto.ispdn_id,
     processes: dto.processes.map((process) => ({
       id: process.id,
-      name: process.name,
+      name: process.purpose_name,
       purposeName: process.purpose_name,
       processingPeriod: process.processing_period,
       subjectCategories: process.subject_categories,

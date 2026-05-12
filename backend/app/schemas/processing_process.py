@@ -108,8 +108,7 @@ def validate_data_category_group(value: Any) -> dict[str, bool | str]:
     return normalized
 
 
-class ProcessingProcessBase(BaseModel):
-    name: str = Field(min_length=1, max_length=255)
+class ProcessingProcessInputBase(BaseModel):
     purpose_name: str = Field(min_length=1, max_length=255)
     processing_period: str = Field(min_length=1, max_length=1000)
     subject_categories: dict[str, bool]
@@ -122,7 +121,6 @@ class ProcessingProcessBase(BaseModel):
     cross_border_transfer: bool
 
     _validate_required_text = field_validator(
-        "name",
         "purpose_name",
         "processing_period",
         mode="before",
@@ -149,11 +147,11 @@ class ProcessingProcessBase(BaseModel):
         return validate_personal_data_action_group(value)
 
 
-class ProcessingProcessCreate(ProcessingProcessBase):
+class ProcessingProcessCreate(ProcessingProcessInputBase):
     pass
 
 
-class ProcessingProcessUpdate(ProcessingProcessBase):
+class ProcessingProcessUpdate(ProcessingProcessInputBase):
     pass
 
 
@@ -167,10 +165,11 @@ class ProcessingProcessLinkedIspdn(BaseModel):
     status: str
 
 
-class ProcessingProcessRead(ProcessingProcessBase):
+class ProcessingProcessRead(ProcessingProcessInputBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    name: str
     process_signature: str
     linked_ispdns: list[ProcessingProcessLinkedIspdn] = []
     linked_ispdns_count: int = 0

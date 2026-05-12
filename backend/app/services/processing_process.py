@@ -1,3 +1,5 @@
+from typing import Any
+
 from app.domain.processing_catalogs import (
     DATA_CATEGORY_CATALOG,
     INTERNAL_NETWORK_TRANSFER_LABELS,
@@ -76,12 +78,13 @@ class ProcessingProcessService:
         if self.repository.count_linked_ispdns(process_id) > 0:
             raise ProcessingProcessInUseError
 
-        process_signature = build_processing_process_signature(payload.model_dump())
+        values = self._payload_values(payload)
+        process_signature = build_processing_process_signature(values)
         existing = self.repository.get_by_signature(process_signature)
         if existing is not None and existing.id != process_id:
             return self._to_read(existing)
 
-        return self._to_read(self.repository.update(process, payload, process_signature))
+        return self._to_read(self.repository.update(process, values, process_signature))
 
     def delete_registry_process(self, process_id: int) -> None:
         process = self._get_process(process_id)
@@ -120,10 +123,11 @@ class ProcessingProcessService:
         payload: ProcessingProcessUpdate,
     ) -> ProcessingProcessRead:
         self._ensure_link_exists(ispdn_id, process_id)
-        process_signature = build_processing_process_signature(payload.model_dump())
+        values = self._payload_values(payload)
+        process_signature = build_processing_process_signature(values)
         new_process = self.repository.get_by_signature(process_signature)
         if new_process is None:
-            new_process = self.repository.create(ProcessingProcessCreate(**payload.model_dump()), process_signature)
+            new_process = self.repository.create(values, process_signature)
 
         self.repository.replace_link_for_ispdn(ispdn_id, process_id, new_process.id)
         return self._to_read(self.repository.get_by_id(new_process.id) or new_process)
@@ -148,11 +152,18 @@ class ProcessingProcessService:
         )
 
     def _find_or_create_process(self, payload: ProcessingProcessCreate) -> ProcessingProcess:
-        process_signature = build_processing_process_signature(payload.model_dump())
+        values = self._payload_values(payload)
+        process_signature = build_processing_process_signature(values)
         existing = self.repository.get_by_signature(process_signature)
         if existing is not None:
             return existing
-        return self.repository.create(payload, process_signature)
+        return self.repository.create(values, process_signature)
+
+    @staticmethod
+    def _payload_values(payload: ProcessingProcessCreate | ProcessingProcessUpdate) -> dict[str, Any]:
+        values = payload.model_dump()
+        values["name"] = values["purpose_name"]
+        return values
 
     def _get_process(self, process_id: int) -> ProcessingProcess:
         process = self.repository.get_by_id(process_id)
@@ -177,7 +188,7 @@ class ProcessingProcessService:
         linked_ispdns = [self._to_linked_ispdn(card) for card in getattr(process, "ispdn_cards", [])]
         return ProcessingProcessListItem(
             id=process.id,
-            name=process.name,
+            name=process.purpose_name,
             purpose_name=process.purpose_name,
             processing_period=process.processing_period,
             subject_categories=process.subject_categories,
@@ -199,7 +210,7 @@ class ProcessingProcessService:
         linked_ispdns = [self._to_linked_ispdn(card) for card in process.ispdn_cards]
         return ProcessingProcessRegistryItem(
             id=process.id,
-            name=process.name,
+            name=process.purpose_name,
             purpose_name=process.purpose_name,
             processing_period=process.processing_period,
             linked_ispdns_count=len(linked_ispdns),
@@ -212,7 +223,7 @@ class ProcessingProcessService:
     def _to_option(process: ProcessingProcess) -> ProcessingProcessOption:
         return ProcessingProcessOption(
             id=process.id,
-            name=process.name,
+            name=process.purpose_name,
             purpose_name=process.purpose_name,
             processing_period=process.processing_period,
         )
@@ -225,7 +236,7 @@ class ProcessingProcessService:
     def _to_document_item(process: ProcessingProcessListItem) -> ProcessingProcessDocumentItem:
         return ProcessingProcessDocumentItem(
             id=process.id,
-            name=process.name,
+            name=process.purpose_name,
             purpose_name=process.purpose_name,
             processing_period=process.processing_period,
             subject_categories=selected_labels(process.subject_categories, SUBJECT_CATEGORY_CATALOG),
