@@ -8,14 +8,18 @@ from app.repositories.task_event import TaskEventRepository
 from app.schemas.task_event import (
     ActualTaskRead,
     TaskCreate,
+    TaskEventCreate,
     TaskEventListItem,
     TaskEventRead,
     TaskImportance,
+    TaskImportancePatch,
     TaskRead,
     TaskStatus,
+    TaskStatusPatch,
     TaskUpdate,
 )
 from app.services.task_event import (
+    TaskEventIspdnArchivedError,
     TaskEventIspdnNotFoundError,
     TaskEventNotFoundError,
     TaskEventService,
@@ -51,6 +55,19 @@ def list_task_events(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc
     except TaskResponsibleEmployeeNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Responsible employee not found") from exc
+
+
+@router.post("/task-events", response_model=TaskEventRead, status_code=status.HTTP_201_CREATED)
+def create_task_event(payload: TaskEventCreate, service: TaskEventService = Depends(get_task_event_service)):
+    try:
+        return service.create_manual_event(payload)
+    except TaskEventIspdnNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc
+    except TaskEventIspdnArchivedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Task event can be created only for active Ispdn card",
+        ) from exc
 
 
 @router.get("/task-events/{task_event_id}", response_model=TaskEventRead)
@@ -90,6 +107,36 @@ def update_task(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found in task event") from exc
     except TaskResponsibleEmployeeNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Responsible employee not found") from exc
+
+
+@router.patch("/task-events/{task_event_id}/tasks/{task_id}/status", response_model=TaskRead)
+def update_task_status(
+    task_event_id: int,
+    task_id: int,
+    payload: TaskStatusPatch,
+    service: TaskEventService = Depends(get_task_event_service),
+):
+    try:
+        return service.update_task_status(task_event_id, task_id, payload.status)
+    except TaskEventNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task event not found") from exc
+    except TaskNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found in task event") from exc
+
+
+@router.patch("/task-events/{task_event_id}/tasks/{task_id}/importance", response_model=TaskRead)
+def update_task_importance(
+    task_event_id: int,
+    task_id: int,
+    payload: TaskImportancePatch,
+    service: TaskEventService = Depends(get_task_event_service),
+):
+    try:
+        return service.update_task_importance(task_event_id, task_id, payload.importance)
+    except TaskEventNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task event not found") from exc
+    except TaskNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found in task event") from exc
 
 
 @router.delete("/task-events/{task_event_id}/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)

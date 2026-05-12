@@ -2,7 +2,7 @@ from app.models.task_event import Task, TaskEvent
 from app.repositories.employee import EmployeeRepository
 from app.repositories.ispdn import IspdnRepository
 from app.repositories.task_event import TaskEventRepository
-from app.schemas.task_event import ActualTaskRead, TaskCreate, TaskUpdate
+from app.schemas.task_event import ActualTaskRead, TaskCreate, TaskEventCreate, TaskImportance, TaskStatus, TaskUpdate
 
 
 class TaskEventNotFoundError(Exception):
@@ -14,6 +14,10 @@ class TaskNotFoundError(Exception):
 
 
 class TaskEventIspdnNotFoundError(Exception):
+    pass
+
+
+class TaskEventIspdnArchivedError(Exception):
     pass
 
 
@@ -58,6 +62,22 @@ class TaskEventService:
             raise TaskEventNotFoundError
         return task_event
 
+    def create_manual_event(self, payload: TaskEventCreate) -> TaskEvent:
+        ispdn = self.ispdn_repository.get_by_id(payload.ispdn_id)
+        if ispdn is None:
+            raise TaskEventIspdnNotFoundError
+        if ispdn.status != "active":
+            raise TaskEventIspdnArchivedError
+        task_event = self.repository.create_event(
+            ispdn_id=payload.ispdn_id,
+            event_type="manual",
+            source_module="manual",
+            title=self._strip_required(payload.title),
+            description=self._normalize_optional_text(payload.description),
+            automation_key=None,
+        )
+        return self.get_event(task_event.id)
+
     def create_system_event(
         self,
         ispdn_id: int,
@@ -80,9 +100,13 @@ class TaskEventService:
             description=self._normalize_optional_text(description),
             automation_key=automation_key,
         )
+        responsible_employee_id = self._get_ispdn_responsible_employee_id(ispdn_id)
         for task_payload in tasks or []:
             self._ensure_task_payload_is_valid(task_payload)
-            self.repository.create_task(task_event, task_payload)
+            self.repository.create_task(
+                task_event,
+                task_payload.model_copy(update={"responsible_employee_id": responsible_employee_id}),
+            )
         return self.get_event(task_event.id)
 
     def create_task(self, task_event_id: int, payload: TaskCreate) -> Task:
@@ -98,6 +122,25 @@ class TaskEventService:
             raise TaskNotFoundError
         return self.repository.update_task(task, payload)
 
+    def update_task_status(self, task_event_id: int, task_id: int, status: TaskStatus) -> Task:
+        self.get_event(task_event_id)
+        task = self.repository.get_task_in_event(task_event_id, task_id)
+        if task is None:
+            raise TaskNotFoundError
+        return self.repository.update_task_status(task, status)
+
+    def update_task_importance(
+        self,
+        task_event_id: int,
+        task_id: int,
+        importance: TaskImportance | None,
+    ) -> Task:
+        self.get_event(task_event_id)
+        task = self.repository.get_task_in_event(task_event_id, task_id)
+        if task is None:
+            raise TaskNotFoundError
+        return self.repository.update_task_importance(task, importance)
+
     def delete_task(self, task_event_id: int, task_id: int) -> None:
         self.get_event(task_event_id)
         task = self.repository.get_task_in_event(task_event_id, task_id)
@@ -111,6 +154,7 @@ class TaskEventService:
 
     def create_ispdn_created_event(self, ispdn_id: int, ispdn_name: str) -> TaskEvent:
         self._ensure_ispdn_exists(ispdn_id)
+        responsible_employee_id = self._get_ispdn_responsible_employee_id(ispdn_id)
         task_event = self.repository.create_event_once(
             ispdn_id=ispdn_id,
             event_type="ispdn_created",
@@ -129,6 +173,7 @@ class TaskEventService:
             importance="high",
             status="pending",
             automation_key="fill_technical_security_measures",
+            responsible_employee_id=responsible_employee_id,
         )
         return self.get_event(task_event.id)
 
@@ -140,6 +185,12 @@ class TaskEventService:
     def _ensure_ispdn_exists(self, ispdn_id: int) -> None:
         if self.ispdn_repository.get_by_id(ispdn_id) is None:
             raise TaskEventIspdnNotFoundError
+
+    def _get_ispdn_responsible_employee_id(self, ispdn_id: int) -> int | None:
+        ispdn = self.ispdn_repository.get_by_id(ispdn_id)
+        if ispdn is None:
+            raise TaskEventIspdnNotFoundError
+        return ispdn.responsible_employee_id
 
     def _ensure_employee_exists(self, employee_id: int) -> None:
         if self.employee_repository.get_by_id(employee_id) is None:

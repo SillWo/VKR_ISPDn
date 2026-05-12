@@ -11,6 +11,7 @@ export type TaskIspdnShort = {
 export type Task = {
   id: number;
   taskEventId: number;
+  automationKey?: string | null;
   title: string;
   description: string | null;
   importance: TaskImportance | null;
@@ -28,6 +29,7 @@ export type TaskEvent = {
   ispdn: TaskIspdnShort;
   eventType: string;
   sourceModule: string;
+  automationKey?: string | null;
   title: string;
   description: string | null;
   tasks: Task[];
@@ -50,10 +52,17 @@ export type TaskFormValues = {
   status: TaskStatus;
 };
 
+export type TaskEventCreateFormValues = {
+  ispdnId: number | null;
+  title: string;
+  description: string | null;
+};
+
 export type TaskEventFilters = {
   ispdnId?: number | null;
   taskStatus?: TaskStatus | null;
   importance?: TaskImportance | null;
   responsibleEmployeeId?: number | null;
   actualOnly?: boolean;
+  showCompleted?: boolean;
 };

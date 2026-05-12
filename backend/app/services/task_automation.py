@@ -25,6 +25,7 @@ class TaskAutomationService:
         self.security_measure_repository = security_measure_repository
 
     def create_ispdn_created_event(self, ispdn_id: int) -> TaskEvent:
+        responsible_employee_id = self._get_ispdn_responsible_employee_id(ispdn_id)
         task_event = self.task_event_repository.create_event_once(
             ispdn_id=ispdn_id,
             event_type="ispdn_created",
@@ -45,11 +46,13 @@ class TaskAutomationService:
             importance="high",
             status="pending",
             automation_key="fill_technical_security_measures",
+            responsible_employee_id=responsible_employee_id,
         )
         self.sync_fill_technical_security_measures_task(ispdn_id)
         return self.task_event_repository.get_event_by_id(task_event.id) or task_event
 
     def create_actual_security_level_changed_event(self, ispdn_id: int) -> TaskEvent:
+        responsible_employee_id = self._get_ispdn_responsible_employee_id(ispdn_id)
         task_event = self.task_event_repository.create_event(
             ispdn_id=ispdn_id,
             event_type="actual_security_level_changed",
@@ -67,6 +70,7 @@ class TaskAutomationService:
             importance="high",
             status="pending",
             automation_key="review_technical_security_measures",
+            responsible_employee_id=responsible_employee_id,
         )
         return self.task_event_repository.get_event_by_id(task_event.id) or task_event
 
@@ -131,6 +135,7 @@ class TaskAutomationService:
         )
 
         if has_mismatch_without_file:
+            responsible_employee_id = self._get_ispdn_responsible_employee_id(ispdn_id)
             task_event = self.task_event_repository.create_event_once(
                 ispdn_id=ispdn_id,
                 event_type="security_level_mismatch_without_file",
@@ -152,6 +157,7 @@ class TaskAutomationService:
                 importance="high",
                 status="pending",
                 automation_key="add_security_level_deviation_file",
+                responsible_employee_id=responsible_employee_id,
             )
             return
 
@@ -184,6 +190,7 @@ class TaskAutomationService:
 
         created_events: list[TaskEvent] = []
         for ispdn in active_ispdns:
+            responsible_employee_id = ispdn.responsible_employee_id
             task_event = self.task_event_repository.create_event_once(
                 ispdn_id=ispdn.id,
                 event_type="processing_process_created",
@@ -201,6 +208,7 @@ class TaskAutomationService:
                 importance="high",
                 status="pending",
                 automation_key="send_rkn_notification",
+                responsible_employee_id=responsible_employee_id,
             )
             self.task_event_repository.create_task_once(
                 task_event_id=task_event.id,
@@ -212,9 +220,14 @@ class TaskAutomationService:
                 importance="medium",
                 status="pending",
                 automation_key="issue_pdn_processing_policy",
+                responsible_employee_id=responsible_employee_id,
             )
             created_events.append(self.task_event_repository.get_event_by_id(task_event.id) or task_event)
         return created_events
+
+    def _get_ispdn_responsible_employee_id(self, ispdn_id: int) -> int | None:
+        ispdn = self.ispdn_repository.get_by_id(ispdn_id)
+        return ispdn.responsible_employee_id if ispdn is not None else None
 
     @staticmethod
     def _ispdn_created_key(ispdn_id: int) -> str:

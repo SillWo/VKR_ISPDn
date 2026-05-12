@@ -80,15 +80,15 @@ export function TaskEventsFilters({ filters, onChange }: TaskEventsFiltersProps)
           sx={{ minWidth: 220 }}
           control={
             <Checkbox
-              checked={Boolean(filters.actualOnly)}
-              onChange={(event) => onChange({ ...filters, actualOnly: event.target.checked })}
+              checked={Boolean(filters.showCompleted)}
+              onChange={(event) => onChange({ ...filters, showCompleted: event.target.checked })}
             />
           }
-          label="Только актуальные задачи"
+          label="Отображать выполненные задачи"
         />
         <Button
           variant="outlined"
-          onClick={() => onChange({ actualOnly: false })}
+          onClick={() => onChange({ showCompleted: false })}
           sx={{ flex: "0 0 auto" }}
         >
           Сбросить

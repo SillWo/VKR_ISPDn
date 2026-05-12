@@ -1,8 +1,9 @@
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import {
-  Chip,
   IconButton,
+  MenuItem,
+  Select,
   Stack,
   Table,
   TableBody,
@@ -14,17 +15,20 @@ import {
   Typography,
 } from "@mui/material";
 
-import type { Task } from "../../entities/task/model/types";
+import type { Task, TaskImportance, TaskStatus } from "../../entities/task/model/types";
 import { formatTaskImportance } from "./TaskImportanceSelect";
 import { taskStatusLabels } from "./TaskStatusSelect";
+import { getTaskImportanceControlSx, getTaskStatusControlSx } from "./taskVisuals";
 
 type TaskListProps = {
   tasks: Task[];
   onEdit: (task: Task) => void;
   onDelete: (task: Task) => void;
+  onStatusChange: (task: Task, status: TaskStatus) => void;
+  onImportanceChange: (task: Task, importance: TaskImportance | null) => void;
 };
 
-export function TaskList({ tasks, onEdit, onDelete }: TaskListProps) {
+export function TaskList({ tasks, onEdit, onDelete, onStatusChange, onImportanceChange }: TaskListProps) {
   if (tasks.length === 0) {
     return (
       <Typography variant="body2" color="text.secondary">
@@ -60,10 +64,33 @@ export function TaskList({ tasks, onEdit, onDelete }: TaskListProps) {
                 </Stack>
               </TableCell>
               <TableCell>
-                <Chip size="small" label={taskStatusLabels[task.status]} color={task.status === "done" ? "success" : "default"} />
+                <Select
+                  size="small"
+                  value={task.status}
+                  onChange={(event) => onStatusChange(task, event.target.value as TaskStatus)}
+                  sx={getTaskStatusControlSx(task.status)}
+                >
+                  <MenuItem value="pending">{taskStatusLabels.pending}</MenuItem>
+                  <MenuItem value="in_progress">{taskStatusLabels.in_progress}</MenuItem>
+                  <MenuItem value="done">{taskStatusLabels.done}</MenuItem>
+                </Select>
               </TableCell>
               <TableCell>
-                <Chip size="small" label={formatTaskImportance(task.importance)} color={task.importance === "critical" ? "error" : task.importance === "high" ? "warning" : "default"} />
+                <Select
+                  size="small"
+                  value={task.importance ?? ""}
+                  onChange={(event) =>
+                    onImportanceChange(task, (event.target.value || null) as TaskImportance | null)
+                  }
+                  displayEmpty
+                  sx={getTaskImportanceControlSx(task.importance)}
+                >
+                  <MenuItem value="">{formatTaskImportance(null)}</MenuItem>
+                  <MenuItem value="low">{formatTaskImportance("low")}</MenuItem>
+                  <MenuItem value="medium">{formatTaskImportance("medium")}</MenuItem>
+                  <MenuItem value="high">{formatTaskImportance("high")}</MenuItem>
+                  <MenuItem value="critical">{formatTaskImportance("critical")}</MenuItem>
+                </Select>
               </TableCell>
               <TableCell>{task.deadline ? formatDateOnly(task.deadline) : "Не указан"}</TableCell>
               <TableCell>{task.responsibleEmployee?.fullName ?? "Не назначен"}</TableCell>

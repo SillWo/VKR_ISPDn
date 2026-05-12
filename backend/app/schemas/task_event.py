@@ -37,6 +37,23 @@ class TaskCreate(BaseModel):
         return value.strip() if isinstance(value, str) else value
 
 
+class TaskEventCreate(BaseModel):
+    ispdn_id: int
+    title: str = Field(min_length=1, max_length=255)
+    description: str | None = None
+
+    _validate_title = field_validator("title", mode="before")(strip_required_text)
+
+    @field_validator("description", mode="before")
+    @classmethod
+    def normalize_description(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value.strip() if isinstance(value, str) else value
+
+
 class TaskUpdate(BaseModel):
     title: str = Field(min_length=1, max_length=255)
     description: str | None = None
@@ -55,6 +72,14 @@ class TaskUpdate(BaseModel):
         if isinstance(value, str) and not value.strip():
             return None
         return value.strip() if isinstance(value, str) else value
+
+
+class TaskStatusPatch(BaseModel):
+    status: TaskStatus
+
+
+class TaskImportancePatch(BaseModel):
+    importance: TaskImportance | None
 
 
 class TaskRead(BaseModel):

@@ -1,6 +1,15 @@
 import { httpClient } from "../../../shared/api/httpClient";
 import type { EmployeeOption } from "../../employee/model/types";
-import type { ActualTask, Task, TaskEvent, TaskEventFilters, TaskFormValues } from "../model/types";
+import type {
+  ActualTask,
+  Task,
+  TaskEvent,
+  TaskEventCreateFormValues,
+  TaskEventFilters,
+  TaskFormValues,
+  TaskImportance,
+  TaskStatus,
+} from "../model/types";
 
 type EmployeeOptionDto = {
   id: number;
@@ -16,6 +25,7 @@ type EmployeeOptionDto = {
 type TaskDto = {
   id: number;
   task_event_id: number;
+  automation_key: string | null;
   title: string;
   description: string | null;
   importance: Task["importance"];
@@ -36,6 +46,7 @@ type TaskEventDto = {
   };
   event_type: string;
   source_module: string;
+  automation_key: string | null;
   title: string;
   description: string | null;
   tasks: TaskDto[];
@@ -58,6 +69,12 @@ type TaskPayloadDto = {
   status: Task["status"];
 };
 
+type TaskEventCreatePayloadDto = {
+  ispdn_id: number;
+  title: string;
+  description: string | null;
+};
+
 function mapEmployee(dto: EmployeeOptionDto | null): EmployeeOption | null {
   if (!dto) {
     return null;
@@ -78,6 +95,7 @@ function mapTask(dto: TaskDto): Task {
   return {
     id: dto.id,
     taskEventId: dto.task_event_id,
+    automationKey: dto.automation_key,
     title: dto.title,
     description: dto.description,
     importance: dto.importance,
@@ -97,6 +115,7 @@ function mapTaskEvent(dto: TaskEventDto): TaskEvent {
     ispdn: dto.ispdn,
     eventType: dto.event_type,
     sourceModule: dto.source_module,
+    automationKey: dto.automation_key,
     title: dto.title,
     description: dto.description,
     tasks: dto.tasks.map(mapTask),
@@ -125,6 +144,14 @@ function mapPayload(values: TaskFormValues): TaskPayloadDto {
   };
 }
 
+function mapTaskEventCreatePayload(values: TaskEventCreateFormValues): TaskEventCreatePayloadDto {
+  return {
+    ispdn_id: values.ispdnId ?? 0,
+    title: values.title.trim(),
+    description: values.description?.trim() || null,
+  };
+}
+
 function buildTaskEventQuery(filters?: TaskEventFilters): string {
   const searchParams = new URLSearchParams();
   if (filters?.ispdnId) {
@@ -139,7 +166,10 @@ function buildTaskEventQuery(filters?: TaskEventFilters): string {
   if (filters?.responsibleEmployeeId) {
     searchParams.set("responsible_employee_id", String(filters.responsibleEmployeeId));
   }
-  if (filters?.actualOnly) {
+  const shouldRequestActualOnly = filters?.taskStatus
+    ? false
+    : filters?.showCompleted === false || filters?.actualOnly === true;
+  if (shouldRequestActualOnly) {
     searchParams.set("actual_only", "true");
   }
   const query = searchParams.toString();
@@ -156,6 +186,13 @@ export function getTaskEventById(taskEventId: number) {
   return httpClient<TaskEventDto>(`/api/v1/task-events/${taskEventId}`).then(mapTaskEvent);
 }
 
+export function createTaskEvent(payload: TaskEventCreateFormValues) {
+  return httpClient<TaskEventDto>("/api/v1/task-events", {
+    method: "POST",
+    body: JSON.stringify(mapTaskEventCreatePayload(payload)),
+  }).then(mapTaskEvent);
+}
+
 export function createTask(taskEventId: number, payload: TaskFormValues) {
   return httpClient<TaskDto>(`/api/v1/task-events/${taskEventId}/tasks`, {
     method: "POST",
@@ -167,6 +204,20 @@ export function updateTask(taskEventId: number, taskId: number, payload: TaskFor
   return httpClient<TaskDto>(`/api/v1/task-events/${taskEventId}/tasks/${taskId}`, {
     method: "PUT",
     body: JSON.stringify(mapPayload(payload)),
+  }).then(mapTask);
+}
+
+export function updateTaskStatus(taskEventId: number, taskId: number, status: TaskStatus) {
+  return httpClient<TaskDto>(`/api/v1/task-events/${taskEventId}/tasks/${taskId}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  }).then(mapTask);
+}
+
+export function updateTaskImportance(taskEventId: number, taskId: number, importance: TaskImportance | null) {
+  return httpClient<TaskDto>(`/api/v1/task-events/${taskEventId}/tasks/${taskId}/importance`, {
+    method: "PATCH",
+    body: JSON.stringify({ importance }),
   }).then(mapTask);
 }
 

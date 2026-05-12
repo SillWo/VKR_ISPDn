@@ -134,6 +134,7 @@ class TaskEventRepository:
         importance: str | None,
         status: str,
         automation_key: str,
+        responsible_employee_id: int | None = None,
     ) -> Task:
         existing_task = self.get_task_by_automation_key(task_event_id, automation_key)
         if existing_task is not None:
@@ -145,6 +146,7 @@ class TaskEventRepository:
             importance=importance,
             status=status,
             automation_key=automation_key,
+            responsible_employee_id=responsible_employee_id,
         )
         self.db.add(task)
         self.db.commit()
@@ -165,6 +167,18 @@ class TaskEventRepository:
     def update_task(self, task: Task, payload: TaskUpdate) -> Task:
         for field, value in payload.model_dump().items():
             setattr(task, field, value)
+        self.db.commit()
+        self.db.refresh(task)
+        return self.get_task_in_event(task.task_event_id, task.id) or task
+
+    def update_task_status(self, task: Task, status: str) -> Task:
+        task.status = status
+        self.db.commit()
+        self.db.refresh(task)
+        return self.get_task_in_event(task.task_event_id, task.id) or task
+
+    def update_task_importance(self, task: Task, importance: str | None) -> Task:
+        task.importance = importance
         self.db.commit()
         self.db.refresh(task)
         return self.get_task_in_event(task.task_event_id, task.id) or task

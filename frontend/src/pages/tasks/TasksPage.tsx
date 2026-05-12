@@ -1,17 +1,30 @@
-import { Alert, Box, Paper, Snackbar, Stack, Typography } from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
+import { Alert, Box, Button, Paper, Snackbar, Stack, Typography } from "@mui/material";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import {
   createTask,
+  createTaskEvent,
   deleteTask,
   getTaskEvents,
   updateTask,
+  updateTaskImportance,
+  updateTaskStatus,
 } from "../../entities/task/api/taskEventsApi";
-import type { Task, TaskEvent, TaskEventFilters, TaskFormValues } from "../../entities/task/model/types";
+import type {
+  Task,
+  TaskEvent,
+  TaskEventCreateFormValues,
+  TaskEventFilters,
+  TaskFormValues,
+  TaskImportance,
+  TaskStatus,
+} from "../../entities/task/model/types";
 import { DeleteTaskConfirmDialog } from "../../features/tasks/DeleteTaskConfirmDialog";
 import { TaskEventCard } from "../../features/tasks/TaskEventCard";
+import { TaskEventFormDialog } from "../../features/tasks/TaskEventFormDialog";
 import { TaskEventsFilters } from "../../features/tasks/TaskEventsFilters";
 import { TaskFormDialog } from "../../features/tasks/TaskFormDialog";
 
@@ -25,8 +38,9 @@ export function TasksPage() {
   const [searchParams] = useSearchParams();
   const [filters, setFilters] = useState<TaskEventFilters>(() => ({
     ispdnId: toNumberFilter(searchParams.get("ispdn_id")),
-    actualOnly: searchParams.get("actual_only") === "true",
+    showCompleted: searchParams.get("actual_only") === "false",
   }));
+  const [eventDialogOpen, setEventDialogOpen] = useState(false);
   const [taskDialog, setTaskDialog] = useState<TaskDialogState | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<{ taskEvent: TaskEvent; task: Task } | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -36,6 +50,15 @@ export function TasksPage() {
   const taskEventsQuery = useQuery({
     queryKey: ["taskEvents", queryFilters],
     queryFn: () => getTaskEvents(queryFilters),
+  });
+
+  const createEventMutation = useMutation({
+    mutationFn: (values: TaskEventCreateFormValues) => createTaskEvent(values),
+    onSuccess: async () => {
+      await invalidateTaskQueries(queryClient);
+      setEventDialogOpen(false);
+      setSuccessMessage("Событие создано.");
+    },
   });
 
   const createMutation = useMutation({
@@ -67,6 +90,35 @@ export function TasksPage() {
     },
   });
 
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ taskEventId, taskId, status }: { taskEventId: number; taskId: number; status: TaskStatus }) =>
+      updateTaskStatus(taskEventId, taskId, status),
+    onSuccess: async () => {
+      await invalidateTaskQueries(queryClient);
+      setSuccessMessage("Статус задачи обновлён.");
+    },
+  });
+
+  const updateImportanceMutation = useMutation({
+    mutationFn: ({
+      taskEventId,
+      taskId,
+      importance,
+    }: {
+      taskEventId: number;
+      taskId: number;
+      importance: TaskImportance | null;
+    }) => updateTaskImportance(taskEventId, taskId, importance),
+    onSuccess: async () => {
+      await invalidateTaskQueries(queryClient);
+      setSuccessMessage("Важность задачи обновлена.");
+    },
+  });
+
+  const handleSubmitTaskEvent = (values: TaskEventCreateFormValues) => {
+    createEventMutation.mutate(values);
+  };
+
   const handleSubmitTask = (values: TaskFormValues) => {
     if (!taskDialog) {
       return;
@@ -86,15 +138,25 @@ export function TasksPage() {
 
   return (
     <Stack spacing={3}>
-      <Box>
-        <Typography component="h1" variant="h5" sx={{ fontWeight: 600 }}>
-          Задачи и несоответствия
-        </Typography>
-        <Typography color="text.secondary" sx={{ mt: 0.5, maxWidth: 860 }}>
-          Глобальный список событий и задач по всем ИСПДн. Используйте фильтры, чтобы оставить задачи конкретной
-          ИСПДн, ответственного сотрудника, статуса или важности.
-        </Typography>
-      </Box>
+      <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ justifyContent: "space-between" }}>
+        <Box>
+          <Typography component="h1" variant="h5" sx={{ fontWeight: 600 }}>
+            Задачи и несоответствия
+          </Typography>
+          <Typography color="text.secondary" sx={{ mt: 0.5, maxWidth: 860 }}>
+            Глобальный список событий и задач по всем ИСПДн. Используйте фильтры, чтобы оставить задачи конкретной
+            ИСПДн, ответственного сотрудника, статуса или важности.
+          </Typography>
+        </Box>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => setEventDialogOpen(true)}
+          sx={{ alignSelf: { xs: "flex-start", md: "center" } }}
+        >
+          Создать событие
+        </Button>
+      </Stack>
 
       <TaskEventsFilters filters={filters} onChange={setFilters} />
 
@@ -103,6 +165,12 @@ export function TasksPage() {
       )}
       {(createMutation.isError || updateMutation.isError) && (
         <Alert severity="error">Не удалось сохранить задачу. Проверьте данные и повторите попытку.</Alert>
+      )}
+      {createEventMutation.isError && (
+        <Alert severity="error">Не удалось создать событие. Проверьте данные и повторите попытку.</Alert>
+      )}
+      {(updateStatusMutation.isError || updateImportanceMutation.isError) && (
+        <Alert severity="error">Не удалось быстро обновить задачу. Повторите попытку.</Alert>
       )}
       {deleteMutation.isError && <Alert severity="error">Не удалось удалить задачу.</Alert>}
 
@@ -122,10 +190,26 @@ export function TasksPage() {
             onAddTask={(event) => setTaskDialog({ mode: "create", taskEvent: event, task: null })}
             onEditTask={(event, task) => setTaskDialog({ mode: "edit", taskEvent: event, task })}
             onDeleteTask={(event, task) => setDeleteDialog({ taskEvent: event, task })}
+            onTaskStatusChange={(event, task, status) => {
+              if (task.status !== status) {
+                updateStatusMutation.mutate({ taskEventId: event.id, taskId: task.id, status });
+              }
+            }}
+            onTaskImportanceChange={(event, task, importance) => {
+              if (task.importance !== importance) {
+                updateImportanceMutation.mutate({ taskEventId: event.id, taskId: task.id, importance });
+              }
+            }}
           />
         ))}
       </Stack>
 
+      <TaskEventFormDialog
+        open={eventDialogOpen}
+        isSubmitting={createEventMutation.isPending}
+        onClose={() => setEventDialogOpen(false)}
+        onSubmit={handleSubmitTaskEvent}
+      />
       <TaskFormDialog
         open={Boolean(taskDialog)}
         task={taskDialog?.task ?? null}
@@ -164,7 +248,7 @@ function compactFilters(filters: TaskEventFilters): TaskEventFilters {
     taskStatus: filters.taskStatus || null,
     importance: filters.importance || null,
     responsibleEmployeeId: filters.responsibleEmployeeId || null,
-    actualOnly: Boolean(filters.actualOnly),
+    showCompleted: Boolean(filters.showCompleted),
   };
 }
 
