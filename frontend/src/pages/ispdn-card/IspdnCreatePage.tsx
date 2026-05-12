@@ -1,4 +1,5 @@
 import AddIcon from "@mui/icons-material/Add";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import {
   Alert,
   Box,
@@ -55,6 +56,8 @@ import { defaultProcessingProcessFormValues } from "../../features/processing-pr
 import { ProcessingProcessForm } from "../../features/processing-process-form/ui/ProcessingProcessForm";
 import { defaultSecurityLevelFormValues } from "../../features/security-level-form/model/schema";
 import { SecurityLevelForm } from "../../features/security-level-form/ui/SecurityLevelForm";
+import { GenerateActIspdnDocumentForm } from "../../features/document-generation/ui/GenerateActIspdnDocumentForm";
+import { GenerateActSafetyLevelDocumentForm } from "../../features/document-generation/ui/GenerateActSafetyLevelDocumentForm";
 
 const steps = [
   "Основные сведения",
@@ -63,6 +66,7 @@ const steps = [
   "Процессы обработки",
   "Заполнение информации о ЦОД",
   "Использование криптографии",
+  "Выпуск документов",
 ];
 
 const securityToolOptions = [
@@ -116,6 +120,8 @@ export function IspdnCreatePage() {
   const [usesCryptography, setUsesCryptography] = useState(false);
   const [cryptoToolIds, setCryptoToolIds] = useState<number[]>([]);
   const [cryptographyStepError, setCryptographyStepError] = useState(false);
+  const [actIspdnGenerated, setActIspdnGenerated] = useState(false);
+  const [safetyLevelActGenerated, setSafetyLevelActGenerated] = useState(false);
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -258,8 +264,7 @@ export function IspdnCreatePage() {
       }
       await queryClient.invalidateQueries({ queryKey: ["ispdn", card.id] });
       await queryClient.invalidateQueries({ queryKey: ["ispdnCryptography", card.id] });
-      allowExitRef.current = true;
-      navigate(`/ispdns/${card.id}`);
+      setActiveStep(6);
     },
   });
 
@@ -328,6 +333,14 @@ export function IspdnCreatePage() {
     cryptographyMutation.mutate();
   };
 
+  const handleDocumentsFinish = () => {
+    if (!card || !actIspdnGenerated || !safetyLevelActGenerated) {
+      return;
+    }
+    allowExitRef.current = true;
+    navigate(`/ispdns/${card.id}`);
+  };
+
   return (
     <Stack spacing={3}>
       <Box>
@@ -336,7 +349,7 @@ export function IspdnCreatePage() {
         </Typography>
         <Typography color="text.secondary" sx={{ mt: 0.5, maxWidth: 820 }}>
           Заполните обязательные разделы последовательно. Выйти из процесса через интерфейс можно только после
-          завершения раздела «Использование криптографии».
+          завершения всех 7 шагов, включая выпуск документов.
         </Typography>
       </Box>
 
@@ -529,6 +542,58 @@ export function IspdnCreatePage() {
         </Paper>
       )}
 
+      {activeStep === 6 && card && (
+        <Stack spacing={3}>
+          <Box>
+            <Typography component="h2" variant="h6" sx={{ fontWeight: 600 }}>
+              Выпуск документов
+            </Typography>
+            <Typography color="text.secondary" sx={{ mt: 0.5, maxWidth: 760 }}>
+              Сформируйте обязательные документы по созданной ИСПДн. Завершить мастер можно после выпуска обоих
+              документов.
+            </Typography>
+          </Box>
+
+          <Paper variant="outlined" sx={{ p: 3, borderRadius: 2, bgcolor: "background.paper" }}>
+            <Stack spacing={2.5}>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ justifyContent: "space-between" }}>
+                <Box>
+                  <Typography component="h3" variant="h6" sx={{ fontWeight: 600 }}>
+                    1. Акт ввода ИСПДн
+                  </Typography>
+                </Box>
+                {actIspdnGenerated && <DocumentGeneratedStatus />}
+              </Stack>
+              <GenerateActIspdnDocumentForm
+                ispdnId={card.id}
+                onGenerated={() => setActIspdnGenerated(true)}
+              />
+            </Stack>
+          </Paper>
+
+          <Paper variant="outlined" sx={{ p: 3, borderRadius: 2, bgcolor: "background.paper" }}>
+            <Stack spacing={2.5}>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ justifyContent: "space-between" }}>
+                <Box>
+                  <Typography component="h3" variant="h6" sx={{ fontWeight: 600 }}>
+                    2. Акт оценки необходимого уровня защищённости ИСПДн
+                  </Typography>
+                </Box>
+                {safetyLevelActGenerated && <DocumentGeneratedStatus />}
+              </Stack>
+              <GenerateActSafetyLevelDocumentForm
+                ispdnId={card.id}
+                onGenerated={() => setSafetyLevelActGenerated(true)}
+              />
+            </Stack>
+          </Paper>
+
+          {(!actIspdnGenerated || !safetyLevelActGenerated) && (
+            <Alert severity="info">Сформируйте оба документа, чтобы завершить создание ИСПДн.</Alert>
+          )}
+        </Stack>
+      )}
+
       <WizardNavigation
         activeStep={activeStep}
         isBusy={isBusy}
@@ -538,8 +603,10 @@ export function IspdnCreatePage() {
             ? handleFinish
             : activeStep === 4
               ? () => dataCentersMutation.mutate()
-              : activeStep === 5
+            : activeStep === 5
                 ? handleCryptographyFinish
+                : activeStep === 6
+                  ? handleDocumentsFinish
               : undefined
         }
         nextFormId={
@@ -551,7 +618,8 @@ export function IspdnCreatePage() {
                 ? "security-level-create-form"
                 : undefined
         }
-        nextLabel={activeStep === 5 ? "Завершить" : "Далее"}
+        nextLabel={activeStep === 6 ? "Завершить" : "Далее"}
+        nextDisabled={activeStep === 6 && (!actIspdnGenerated || !safetyLevelActGenerated)}
       />
 
       <Dialog
@@ -567,7 +635,9 @@ export function IspdnCreatePage() {
         <DialogTitle>Создание ИСПДн не завершено</DialogTitle>
         <DialogContent>
           <Typography color="text.secondary">
-            Завершите разделы «Основные сведения», «Средства защиты внутри ИСПДн», «Информация о субъектах ПДн», «Процессы обработки», «Заполнение информации о ЦОД» и «Использование криптографии», чтобы выйти из процесса создания.
+            Завершите разделы «Основные сведения», «Средства защиты внутри ИСПДн», «Информация о субъектах ПДн»,
+            «Процессы обработки», «Заполнение информации о ЦОД», «Использование криптографии» и «Выпуск документов»,
+            чтобы выйти из процесса создания.
           </Typography>
         </DialogContent>
         <DialogActions>
@@ -718,6 +788,7 @@ function WizardNavigation({
   isBusy,
   nextFormId,
   nextLabel,
+  nextDisabled = false,
   onBack,
   onNext,
 }: {
@@ -725,6 +796,7 @@ function WizardNavigation({
   isBusy: boolean;
   nextFormId?: string;
   nextLabel: string;
+  nextDisabled?: boolean;
   onBack: () => void;
   onNext?: () => void;
 }) {
@@ -738,10 +810,21 @@ function WizardNavigation({
         form={nextFormId}
         variant="contained"
         onClick={onNext}
-        disabled={isBusy}
+        disabled={isBusy || nextDisabled}
       >
         {isBusy ? "Сохранение..." : nextLabel}
       </Button>
+    </Stack>
+  );
+}
+
+function DocumentGeneratedStatus() {
+  return (
+    <Stack direction="row" spacing={0.75} sx={{ alignItems: "center", color: "success.main" }}>
+      <CheckCircleIcon fontSize="small" />
+      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+        Документ сформирован
+      </Typography>
     </Stack>
   );
 }

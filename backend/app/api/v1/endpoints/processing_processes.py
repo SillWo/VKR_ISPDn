@@ -4,6 +4,9 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.repositories.ispdn import IspdnRepository
 from app.repositories.processing_process import ProcessingProcessRepository
+from app.repositories.security_level import SecurityLevelRepository
+from app.repositories.security_measure import SecurityMeasureRepository
+from app.repositories.task_event import TaskEventRepository
 from app.schemas.processing_process import (
     IspdnProcessingProcessLinkCreate,
     ProcessingProcessCreate,
@@ -21,14 +24,24 @@ from app.services.processing_process import (
     ProcessingProcessNotFoundError,
     ProcessingProcessService,
 )
+from app.services.task_automation import TaskAutomationService
 
 router = APIRouter(tags=["processing-processes"])
 
 
 def get_processing_process_service(db: Session = Depends(get_db)) -> ProcessingProcessService:
+    ispdn_repository = IspdnRepository(db)
+    processing_process_repository = ProcessingProcessRepository(db)
     return ProcessingProcessService(
-        ProcessingProcessRepository(db),
-        IspdnRepository(db),
+        processing_process_repository,
+        ispdn_repository,
+        TaskAutomationService(
+            TaskEventRepository(db),
+            ispdn_repository,
+            processing_process_repository,
+            SecurityLevelRepository(db),
+            SecurityMeasureRepository(db),
+        ),
     )
 
 

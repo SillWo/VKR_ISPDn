@@ -12,7 +12,6 @@ const sections = [
   { label: "Уровень защищённости", path: "security-level" },
   { label: "Технические меры защиты", path: "security-measures" },
   { label: "Процессы обработки", path: "processing" },
-  { label: "Документы", path: "documents" },
   { label: "Связанные ЦОД", path: "data-centers" },
   { label: "Криптография", path: "cryptography" },
   { label: "Модель угроз", path: "threat-model" },

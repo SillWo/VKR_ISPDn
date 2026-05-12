@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from fastapi import UploadFile
@@ -23,6 +24,9 @@ from app.schemas.security_level import (
 )
 from app.services.ispdn import IspdnNotFoundError
 
+if TYPE_CHECKING:
+    from app.services.task_automation import TaskAutomationService
+
 
 ALLOWED_JUSTIFICATION_EXTENSIONS = {".pdf", ".docx"}
 ALLOWED_JUSTIFICATION_MIME_TYPES = {
@@ -45,9 +49,15 @@ class SecurityLevelFileNotFoundError(Exception):
 
 
 class SecurityLevelService:
-    def __init__(self, repository: SecurityLevelRepository, ispdn_repository: IspdnRepository) -> None:
+    def __init__(
+        self,
+        repository: SecurityLevelRepository,
+        ispdn_repository: IspdnRepository,
+        task_automation_service: "TaskAutomationService | None" = None,
+    ) -> None:
         self.repository = repository
         self.ispdn_repository = ispdn_repository
+        self.task_automation_service = task_automation_service
 
     def get_record(self, ispdn_id: int) -> SecurityLevelRecord:
         self._ensure_ispdn_exists(ispdn_id)
@@ -76,6 +86,8 @@ class SecurityLevelService:
         calculation = self.calculate(ispdn_id, payload)
         actual_level_matches_recommended = payload.actual_level == calculation.recommended_level
         existing_record = self.repository.get_by_ispdn(ispdn_id)
+        had_existing_record = existing_record is not None
+        previous_actual_level = existing_record.actual_level if existing_record is not None else None
 
         file_metadata = self._build_existing_file_metadata(existing_record)
         if deviation_justification_file is not None:
@@ -108,12 +120,27 @@ class SecurityLevelService:
         }
 
         if existing_record is None:
-            return self.repository.create(values)
+            created_record = self.repository.create(values)
+            if self.task_automation_service is not None:
+                self.task_automation_service.sync_after_security_level_saved(
+                    ispdn_id,
+                    previous_actual_level=previous_actual_level,
+                    current_actual_level=created_record.actual_level,
+                    had_existing_record=had_existing_record,
+                )
+            return created_record
 
         old_file_path = existing_record.deviation_justification_file_path
         updated_record = self.repository.update(existing_record, values)
         if deviation_justification_file is not None and old_file_path != updated_record.deviation_justification_file_path:
             self._delete_existing_file(old_file_path)
+        if self.task_automation_service is not None:
+            self.task_automation_service.sync_after_security_level_saved(
+                ispdn_id,
+                previous_actual_level=previous_actual_level,
+                current_actual_level=updated_record.actual_level,
+                had_existing_record=had_existing_record,
+            )
         return updated_record
 
     def get_document_context(self, ispdn_id: int) -> SecurityLevelDocumentContext:

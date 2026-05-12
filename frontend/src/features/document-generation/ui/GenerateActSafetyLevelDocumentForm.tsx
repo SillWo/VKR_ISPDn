@@ -80,11 +80,13 @@ function getGenerationErrorMessage(error: unknown) {
 type GenerateActSafetyLevelDocumentFormProps = {
   ispdnId: number;
   disabled?: boolean;
+  onGenerated?: () => void;
 };
 
 export function GenerateActSafetyLevelDocumentForm({
   ispdnId,
   disabled = false,
+  onGenerated,
 }: GenerateActSafetyLevelDocumentFormProps) {
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const {
@@ -109,6 +111,7 @@ export function GenerateActSafetyLevelDocumentForm({
       setDownloadError(null);
       try {
         downloadBlob(blob, filename);
+        onGenerated?.();
       } catch {
         setDownloadError("Файл сформирован, но браузер не смог начать скачивание.");
       }

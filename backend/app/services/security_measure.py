@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from fastapi import UploadFile
@@ -17,6 +18,9 @@ from app.schemas.security_measure import (
     TechnicalSecurityMeasuresSummary,
     TechnicalSecurityMeasuresTableRead,
 )
+
+if TYPE_CHECKING:
+    from app.services.task_automation import TaskAutomationService
 
 TECHNICAL_SECURITY_MEASURE_DOCUMENT_STORAGE_DIR = (
     Path(__file__).resolve().parents[2] / "storage" / "technical_security_measure_documents"
@@ -56,10 +60,12 @@ class SecurityMeasureService:
         repository: SecurityMeasureRepository,
         ispdn_repository: IspdnRepository,
         security_level_repository: SecurityLevelRepository,
+        task_automation_service: "TaskAutomationService | None" = None,
     ) -> None:
         self.repository = repository
         self.ispdn_repository = ispdn_repository
         self.security_level_repository = security_level_repository
+        self.task_automation_service = task_automation_service
 
     def get_security_tools(self, ispdn_id: int) -> IspdnSecurityToolsRead:
         self._ensure_ispdn_exists(ispdn_id)
@@ -128,6 +134,8 @@ class SecurityMeasureService:
             record = self.repository.create_measure_record(values)
         else:
             record = self.repository.update_measure_record(existing_record, values)
+        if self.task_automation_service is not None:
+            self.task_automation_service.sync_fill_technical_security_measures_task(ispdn_id)
 
         return self._build_measure_read(measure, record, security_level.actual_level)
 

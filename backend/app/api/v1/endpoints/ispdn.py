@@ -4,6 +4,9 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.repositories.employee import EmployeeRepository
 from app.repositories.ispdn import IspdnRepository
+from app.repositories.processing_process import ProcessingProcessRepository
+from app.repositories.security_level import SecurityLevelRepository
+from app.repositories.security_measure import SecurityMeasureRepository
 from app.repositories.task_event import TaskEventRepository
 from app.schemas.ispdn import IspdnCreate, IspdnListItem, IspdnRead, IspdnStatus, IspdnUpdate
 from app.services.ispdn import (
@@ -11,7 +14,7 @@ from app.services.ispdn import (
     IspdnResponsibleEmployeeNotFoundError,
     IspdnService,
 )
-from app.services.task_event import TaskEventService
+from app.services.task_automation import TaskAutomationService
 
 router = APIRouter(prefix="/ispdns", tags=["ispdns"])
 
@@ -19,11 +22,17 @@ router = APIRouter(prefix="/ispdns", tags=["ispdns"])
 def get_ispdn_service(db: Session = Depends(get_db)) -> IspdnService:
     ispdn_repository = IspdnRepository(db)
     employee_repository = EmployeeRepository(db)
-    task_event_service = TaskEventService(TaskEventRepository(db), ispdn_repository, employee_repository)
+    task_automation_service = TaskAutomationService(
+        TaskEventRepository(db),
+        ispdn_repository,
+        ProcessingProcessRepository(db),
+        SecurityLevelRepository(db),
+        SecurityMeasureRepository(db),
+    )
     return IspdnService(
         ispdn_repository,
         employee_repository,
-        task_event_service,
+        task_automation_service,
     )
 
 

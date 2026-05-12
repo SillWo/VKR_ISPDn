@@ -67,9 +67,14 @@ function downloadBlob(blob: Blob, filename: string) {
 type GenerateActIspdnDocumentFormProps = {
   ispdnId: number;
   disabled?: boolean;
+  onGenerated?: () => void;
 };
 
-export function GenerateActIspdnDocumentForm({ ispdnId, disabled = false }: GenerateActIspdnDocumentFormProps) {
+export function GenerateActIspdnDocumentForm({
+  ispdnId,
+  disabled = false,
+  onGenerated,
+}: GenerateActIspdnDocumentFormProps) {
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const {
     register,
@@ -96,6 +101,7 @@ export function GenerateActIspdnDocumentForm({ ispdnId, disabled = false }: Gene
       setDownloadError(null);
       try {
         downloadBlob(blob, filename);
+        onGenerated?.();
       } catch {
         setDownloadError("Файл сформирован, но браузер не смог начать скачивание.");
       }

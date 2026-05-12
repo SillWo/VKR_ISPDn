@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKey, String, Text, func
+from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKey, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -29,6 +29,7 @@ class TaskEvent(Base):
     source_module: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    automation_key: Mapped[str | None] = mapped_column(String(255), nullable=True, unique=True, index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=False),
         nullable=False,
@@ -60,6 +61,7 @@ class Task(Base):
             name="ck_tasks_importance",
         ),
         CheckConstraint("status IN ('pending', 'in_progress', 'done')", name="ck_tasks_status"),
+        UniqueConstraint("task_event_id", "automation_key", name="uq_tasks_event_automation_key"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
@@ -77,6 +79,7 @@ class Task(Base):
         nullable=True,
         index=True,
     )
+    automation_key: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending", server_default="pending", index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=False),

@@ -5,8 +5,10 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.repositories.ispdn import IspdnRepository
+from app.repositories.processing_process import ProcessingProcessRepository
 from app.repositories.security_level import SecurityLevelRepository
 from app.repositories.security_measure import SecurityMeasureRepository
+from app.repositories.task_event import TaskEventRepository
 from app.schemas.security_measure import (
     IspdnSecurityToolsRead,
     IspdnSecurityToolsUpsert,
@@ -23,12 +25,27 @@ from app.services.security_measure import (
     SecurityMeasureService,
     SecurityMeasureValidationError,
 )
+from app.services.task_automation import TaskAutomationService
 
 router = APIRouter(prefix="/ispdns/{ispdn_id}", tags=["security-measures"])
 
 
 def get_security_measure_service(db: Session = Depends(get_db)) -> SecurityMeasureService:
-    return SecurityMeasureService(SecurityMeasureRepository(db), IspdnRepository(db), SecurityLevelRepository(db))
+    ispdn_repository = IspdnRepository(db)
+    security_level_repository = SecurityLevelRepository(db)
+    security_measure_repository = SecurityMeasureRepository(db)
+    return SecurityMeasureService(
+        security_measure_repository,
+        ispdn_repository,
+        security_level_repository,
+        TaskAutomationService(
+            TaskEventRepository(db),
+            ispdn_repository,
+            ProcessingProcessRepository(db),
+            security_level_repository,
+            security_measure_repository,
+        ),
+    )
 
 
 @router.get("/security-tools", response_model=IspdnSecurityToolsRead)

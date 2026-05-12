@@ -7,7 +7,7 @@ from app.repositories.ispdn import IspdnRepository
 from app.schemas.ispdn import IspdnCreate, IspdnStatus, IspdnUpdate
 
 if TYPE_CHECKING:
-    from app.services.task_event import TaskEventService
+    from app.services.task_automation import TaskAutomationService
 
 
 SECURITY_LEVEL_JUSTIFICATION_STORAGE_DIR = (
@@ -28,11 +28,11 @@ class IspdnService:
         self,
         repository: IspdnRepository,
         employee_repository: EmployeeRepository,
-        task_event_service: "TaskEventService | None" = None,
+        task_automation_service: "TaskAutomationService | None" = None,
     ) -> None:
         self.repository = repository
         self.employee_repository = employee_repository
-        self.task_event_service = task_event_service
+        self.task_automation_service = task_automation_service
 
     def list_cards(self, status: IspdnStatus | None = None) -> list[IspdnCard]:
         return self.repository.list(status)
@@ -48,8 +48,8 @@ class IspdnService:
         if employee is None:
             raise IspdnResponsibleEmployeeNotFoundError
         card = self.repository.create(payload, responsible_person=employee.full_name)
-        if self.task_event_service is not None:
-            self.task_event_service.create_ispdn_created_event(card.id, card.name)
+        if self.task_automation_service is not None:
+            self.task_automation_service.create_ispdn_created_event(card.id)
         return card
 
     def update_card(self, ispdn_id: int, payload: IspdnUpdate) -> IspdnCard:

@@ -66,6 +66,7 @@ class TaskEventService:
         title: str,
         description: str | None = None,
         tasks: list[TaskCreate] | None = None,
+        automation_key: str | None = None,
     ) -> TaskEvent:
         self._ensure_ispdn_exists(ispdn_id)
         event_title = self._strip_required(title)
@@ -77,6 +78,7 @@ class TaskEventService:
             source_module=source_module,
             title=event_title,
             description=self._normalize_optional_text(description),
+            automation_key=automation_key,
         )
         for task_payload in tasks or []:
             self._ensure_task_payload_is_valid(task_payload)
@@ -108,19 +110,27 @@ class TaskEventService:
         return [self._to_actual_task_read(task) for task in self.repository.list_actual_tasks_for_ispdn(ispdn_id)]
 
     def create_ispdn_created_event(self, ispdn_id: int, ispdn_name: str) -> TaskEvent:
-        return self.create_system_event(
+        self._ensure_ispdn_exists(ispdn_id)
+        task_event = self.repository.create_event_once(
             ispdn_id=ispdn_id,
             event_type="ispdn_created",
             source_module="ispdn_registry",
-            title=f'Создана ИСПДн "{ispdn_name}"',
-            tasks=[
-                TaskCreate(title="Проверить полноту сведений карточки ИСПДн"),
-                TaskCreate(title="Заполнить процессы обработки ПДн"),
-                TaskCreate(title="Рассчитать уровень защищённости ИСПДн"),
-                TaskCreate(title="Проверить технические меры защиты"),
-                TaskCreate(title="Подготовить документы к печати"),
-            ],
+            title="Создание новой ИСПДн",
+            description="Создана новая ИСПДн, для которой необходимо завершить первичное заполнение контрольных данных.",
+            automation_key=f"ispdn_created:{ispdn_id}",
         )
+        self.repository.create_task_once(
+            task_event_id=task_event.id,
+            title='Заполнение модуля "Технические меры защиты"',
+            description=(
+                "Вам необходимо указать фактический статус всех мер технической защиты для ИСПДн и заполнить "
+                "комментарий, если фактический статус не совпадает с статусом по приказу ФСТЭК №21"
+            ),
+            importance="high",
+            status="pending",
+            automation_key="fill_technical_security_measures",
+        )
+        return self.get_event(task_event.id)
 
     def _ensure_task_payload_is_valid(self, payload: TaskCreate | TaskUpdate) -> None:
         self._strip_required(payload.title)
@@ -157,6 +167,7 @@ class TaskEventService:
             task_event_title=task.task_event.title,
             ispdn_id=task.task_event.ispdn_id,
             ispdn_name=task.task_event.ispdn.name,
+            automation_key=task.automation_key,
             title=task.title,
             description=task.description,
             importance=task.importance,

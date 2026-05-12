@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import and_, case, select
+from sqlalchemy import and_, case, delete, select
 from sqlalchemy.orm import Session, joinedload, selectinload, with_loader_criteria
 
 from app.models.task_event import Task, TaskEvent
@@ -59,6 +59,7 @@ class TaskEventRepository:
         source_module: str,
         title: str,
         description: str | None,
+        automation_key: str | None = None,
     ) -> TaskEvent:
         task_event = TaskEvent(
             ispdn_id=ispdn_id,
@@ -66,11 +67,45 @@ class TaskEventRepository:
             source_module=source_module,
             title=title,
             description=description,
+            automation_key=automation_key,
         )
         self.db.add(task_event)
         self.db.commit()
         self.db.refresh(task_event)
         return self.get_event_by_id(task_event.id) or task_event
+
+    def get_event_by_automation_key(self, automation_key: str) -> TaskEvent | None:
+        statement = (
+            select(TaskEvent)
+            .options(
+                selectinload(TaskEvent.ispdn),
+                selectinload(TaskEvent.tasks).selectinload(Task.responsible_employee),
+            )
+            .where(TaskEvent.automation_key == automation_key)
+        )
+        return self.db.scalars(statement).unique().first()
+
+    def create_event_once(
+        self,
+        *,
+        ispdn_id: int,
+        event_type: str,
+        source_module: str,
+        title: str,
+        description: str | None,
+        automation_key: str,
+    ) -> TaskEvent:
+        existing_event = self.get_event_by_automation_key(automation_key)
+        if existing_event is not None:
+            return existing_event
+        return self.create_event(
+            ispdn_id=ispdn_id,
+            event_type=event_type,
+            source_module=source_module,
+            title=title,
+            description=description,
+            automation_key=automation_key,
+        )
 
     def create_task(self, task_event: TaskEvent, payload: TaskCreate) -> Task:
         task = Task(task_event_id=task_event.id, **payload.model_dump())
@@ -78,6 +113,43 @@ class TaskEventRepository:
         self.db.commit()
         self.db.refresh(task)
         return self.get_task_in_event(task_event.id, task.id) or task
+
+    def get_task_by_automation_key(self, task_event_id: int, automation_key: str) -> Task | None:
+        statement = (
+            select(Task)
+            .options(
+                joinedload(Task.task_event).joinedload(TaskEvent.ispdn),
+                joinedload(Task.responsible_employee),
+            )
+            .where(Task.task_event_id == task_event_id, Task.automation_key == automation_key)
+        )
+        return self.db.scalars(statement).first()
+
+    def create_task_once(
+        self,
+        *,
+        task_event_id: int,
+        title: str,
+        description: str | None,
+        importance: str | None,
+        status: str,
+        automation_key: str,
+    ) -> Task:
+        existing_task = self.get_task_by_automation_key(task_event_id, automation_key)
+        if existing_task is not None:
+            return existing_task
+        task = Task(
+            task_event_id=task_event_id,
+            title=title,
+            description=description,
+            importance=importance,
+            status=status,
+            automation_key=automation_key,
+        )
+        self.db.add(task)
+        self.db.commit()
+        self.db.refresh(task)
+        return self.get_task_by_automation_key(task_event_id, automation_key) or task
 
     def get_task_in_event(self, task_event_id: int, task_id: int) -> Task | None:
         statement = (
@@ -99,6 +171,17 @@ class TaskEventRepository:
 
     def delete_task(self, task: Task) -> None:
         self.db.delete(task)
+        self.db.commit()
+
+    def mark_task_done(self, task: Task) -> Task:
+        task.status = "done"
+        self.db.commit()
+        self.db.refresh(task)
+        return self.get_task_in_event(task.task_event_id, task.id) or task
+
+    def delete_all_events_and_tasks(self) -> None:
+        self.db.execute(delete(Task))
+        self.db.execute(delete(TaskEvent))
         self.db.commit()
 
     def list_actual_tasks_for_ispdn(self, ispdn_id: int) -> list[Task]:

@@ -8,7 +8,10 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.domain.security_level_algorithm import SecurityLevelCalculationError
 from app.repositories.ispdn import IspdnRepository
+from app.repositories.processing_process import ProcessingProcessRepository
 from app.repositories.security_level import SecurityLevelRepository
+from app.repositories.security_measure import SecurityMeasureRepository
+from app.repositories.task_event import TaskEventRepository
 from app.schemas.security_level import (
     SecurityLevelBase,
     SecurityLevelCalculationResult,
@@ -23,12 +26,25 @@ from app.services.security_level import (
     SecurityLevelService,
     SecurityLevelValidationError,
 )
+from app.services.task_automation import TaskAutomationService
 
 router = APIRouter(prefix="/ispdns/{ispdn_id}/security-level", tags=["security-level"])
 
 
 def get_security_level_service(db: Session = Depends(get_db)) -> SecurityLevelService:
-    return SecurityLevelService(SecurityLevelRepository(db), IspdnRepository(db))
+    ispdn_repository = IspdnRepository(db)
+    security_level_repository = SecurityLevelRepository(db)
+    return SecurityLevelService(
+        security_level_repository,
+        ispdn_repository,
+        TaskAutomationService(
+            TaskEventRepository(db),
+            ispdn_repository,
+            ProcessingProcessRepository(db),
+            security_level_repository,
+            SecurityMeasureRepository(db),
+        ),
+    )
 
 
 @router.get("", response_model=SecurityLevelRead)

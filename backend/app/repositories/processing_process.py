@@ -96,6 +96,38 @@ class ProcessingProcessRepository:
         )
         return list(self.db.scalars(statement).all())
 
+    def list_by_purpose_and_period_excluding(
+        self,
+        process_id: int,
+        purpose_name: str,
+        processing_period: str,
+    ) -> list[ProcessingProcess]:
+        statement = (
+            select(ProcessingProcess)
+            .where(
+                ProcessingProcess.id != process_id,
+                func.lower(func.trim(ProcessingProcess.purpose_name)) == purpose_name.strip().casefold(),
+                func.lower(func.trim(ProcessingProcess.processing_period)) == processing_period.strip().casefold(),
+            )
+            .order_by(ProcessingProcess.id.asc())
+        )
+        return list(self.db.scalars(statement).all())
+
+    def list_active_ispdns_for_process(self, process_id: int) -> list[IspdnCard]:
+        statement = (
+            select(IspdnCard)
+            .join(
+                ispdn_processing_processes,
+                ispdn_processing_processes.c.ispdn_id == IspdnCard.id,
+            )
+            .where(
+                ispdn_processing_processes.c.processing_process_id == process_id,
+                IspdnCard.status == "active",
+            )
+            .order_by(IspdnCard.id.asc())
+        )
+        return list(self.db.scalars(statement).all())
+
     def is_linked_to_ispdn(self, ispdn_id: int, process_id: int) -> bool:
         statement = select(ispdn_processing_processes.c.ispdn_id).where(
             ispdn_processing_processes.c.ispdn_id == ispdn_id,

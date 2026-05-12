@@ -62,6 +62,7 @@ class TaskRead(BaseModel):
 
     id: int
     task_event_id: int
+    automation_key: str | None
     title: str
     description: str | None
     importance: TaskImportance | None
@@ -81,6 +82,7 @@ class TaskEventRead(BaseModel):
     ispdn: IspdnTaskShortRead
     event_type: str
     source_module: str
+    automation_key: str | None
     title: str
     description: str | None
     tasks: list[TaskRead]
@@ -98,6 +100,7 @@ class ActualTaskRead(BaseModel):
     task_event_title: str
     ispdn_id: int
     ispdn_name: str
+    automation_key: str | None
     title: str
     description: str | None
     importance: TaskImportance | None

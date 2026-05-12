@@ -1,4 +1,4 @@
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from app.domain.processing_catalogs import (
     DATA_CATEGORY_CATALOG,
@@ -30,6 +30,9 @@ from app.schemas.processing_process import (
 )
 from app.services.ispdn import IspdnNotFoundError
 
+if TYPE_CHECKING:
+    from app.services.task_automation import TaskAutomationService
+
 
 class ProcessingProcessNotFoundError(Exception):
     pass
@@ -52,9 +55,11 @@ class ProcessingProcessService:
         self,
         repository: ProcessingProcessRepository,
         ispdn_repository: IspdnRepository,
+        task_automation_service: "TaskAutomationService | None" = None,
     ) -> None:
         self.repository = repository
         self.ispdn_repository = ispdn_repository
+        self.task_automation_service = task_automation_service
 
     def list_registry(self) -> list[ProcessingProcessRegistryItem]:
         return [self._to_registry_item(process) for process in self.repository.list_registry()]
@@ -102,8 +107,10 @@ class ProcessingProcessService:
         payload: ProcessingProcessCreate,
     ) -> ProcessingProcessRead:
         self._ensure_ispdn_exists(ispdn_id)
-        process = self._find_or_create_process(payload)
+        process, was_created = self._find_or_create_process_with_created_flag(payload)
         self.repository.link_to_ispdn(ispdn_id, process.id)
+        if was_created and self.task_automation_service is not None:
+            self.task_automation_service.create_processing_process_created_events(process.id)
         return self._to_read(self.repository.get_by_id(process.id) or process)
 
     def link_existing_process_to_ispdn(
@@ -113,7 +120,10 @@ class ProcessingProcessService:
     ) -> ProcessingProcessRead:
         self._ensure_ispdn_exists(ispdn_id)
         process = self._get_process(payload.processing_process_id)
+        had_active_links = bool(self.repository.list_active_ispdns_for_process(process.id))
         self.repository.link_to_ispdn(ispdn_id, process.id)
+        if not had_active_links and self.task_automation_service is not None:
+            self.task_automation_service.create_processing_process_created_events(process.id)
         return self._to_read(self.repository.get_by_id(process.id) or process)
 
     def update_process_for_ispdn(
@@ -126,10 +136,14 @@ class ProcessingProcessService:
         values = self._payload_values(payload)
         process_signature = build_processing_process_signature(values)
         new_process = self.repository.get_by_signature(process_signature)
+        was_created = False
         if new_process is None:
             new_process = self.repository.create(values, process_signature)
+            was_created = True
 
         self.repository.replace_link_for_ispdn(ispdn_id, process_id, new_process.id)
+        if was_created and self.task_automation_service is not None:
+            self.task_automation_service.create_processing_process_created_events(new_process.id)
         return self._to_read(self.repository.get_by_id(new_process.id) or new_process)
 
     def unlink_process_from_ispdn(self, ispdn_id: int, process_id: int) -> None:
@@ -152,12 +166,19 @@ class ProcessingProcessService:
         )
 
     def _find_or_create_process(self, payload: ProcessingProcessCreate) -> ProcessingProcess:
+        process, _was_created = self._find_or_create_process_with_created_flag(payload)
+        return process
+
+    def _find_or_create_process_with_created_flag(
+        self,
+        payload: ProcessingProcessCreate,
+    ) -> tuple[ProcessingProcess, bool]:
         values = self._payload_values(payload)
         process_signature = build_processing_process_signature(values)
         existing = self.repository.get_by_signature(process_signature)
         if existing is not None:
-            return existing
-        return self.repository.create(values, process_signature)
+            return existing, False
+        return self.repository.create(values, process_signature), True
 
     @staticmethod
     def _payload_values(payload: ProcessingProcessCreate | ProcessingProcessUpdate) -> dict[str, Any]:
