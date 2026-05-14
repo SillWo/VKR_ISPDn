@@ -52,6 +52,11 @@ class DataCenter(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    organization_id: Mapped[int] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     location_country: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     location_address: Mapped[str] = mapped_column(String(1000), nullable=False)

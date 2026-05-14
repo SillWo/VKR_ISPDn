@@ -3,7 +3,9 @@ from fastapi.responses import FileResponse
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
+from app.core.auth import get_current_user
 from app.core.database import get_db
+from app.models.user import User
 from app.repositories.ispdn import IspdnRepository
 from app.repositories.processing_process import ProcessingProcessRepository
 from app.repositories.security_level import SecurityLevelRepository
@@ -52,9 +54,10 @@ def get_security_measure_service(db: Session = Depends(get_db)) -> SecurityMeasu
 def get_security_tools(
     ispdn_id: int,
     service: SecurityMeasureService = Depends(get_security_measure_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        return service.get_security_tools(ispdn_id)
+        return service.get_security_tools(ispdn_id, current_user.organization_id)
     except SecurityMeasuresIspdnNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc
 
@@ -64,9 +67,10 @@ def upsert_security_tools(
     ispdn_id: int,
     payload: IspdnSecurityToolsUpsert,
     service: SecurityMeasureService = Depends(get_security_measure_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        return service.upsert_security_tools(ispdn_id, payload)
+        return service.upsert_security_tools(ispdn_id, payload, current_user.organization_id)
     except SecurityMeasuresIspdnNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc
 
@@ -75,9 +79,10 @@ def upsert_security_tools(
 def get_security_measures(
     ispdn_id: int,
     service: SecurityMeasureService = Depends(get_security_measure_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        return service.get_table(ispdn_id)
+        return service.get_table(ispdn_id, current_user.organization_id)
     except SecurityMeasuresIspdnNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc
     except SecurityMeasuresSecurityLevelRequiredError as exc:
@@ -93,9 +98,10 @@ def update_security_measure(
     measure_code: str,
     payload: TechnicalSecurityMeasureUpdate,
     service: SecurityMeasureService = Depends(get_security_measure_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        return service.update_measure(ispdn_id, measure_code, payload)
+        return service.update_measure(ispdn_id, measure_code, payload, current_user.organization_id)
     except SecurityMeasuresIspdnNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc
     except SecurityMeasureNotFoundError as exc:
@@ -113,9 +119,10 @@ def update_security_measure(
 def get_security_measures_document_context(
     ispdn_id: int,
     service: SecurityMeasureService = Depends(get_security_measure_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        return service.get_document_context(ispdn_id)
+        return service.get_document_context(ispdn_id, current_user.organization_id)
     except SecurityMeasuresIspdnNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc
 
@@ -124,9 +131,10 @@ def get_security_measures_document_context(
 def get_security_measure_documents(
     ispdn_id: int,
     service: SecurityMeasureService = Depends(get_security_measure_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        return service.list_documents(ispdn_id)
+        return service.list_documents(ispdn_id, current_user.organization_id)
     except SecurityMeasuresIspdnNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc
 
@@ -140,9 +148,10 @@ def upload_security_measure_document(
     ispdn_id: int,
     document_file: UploadFile = File(...),
     service: SecurityMeasureService = Depends(get_security_measure_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        return service.upload_document(ispdn_id, document_file)
+        return service.upload_document(ispdn_id, document_file, current_user.organization_id)
     except SecurityMeasuresIspdnNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc
     except (SecurityMeasureValidationError, ValidationError) as exc:
@@ -154,9 +163,10 @@ def get_security_measure_document_file(
     ispdn_id: int,
     document_id: int,
     service: SecurityMeasureService = Depends(get_security_measure_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        file_path, file_name, media_type = service.get_document_file(ispdn_id, document_id)
+        file_path, file_name, media_type = service.get_document_file(ispdn_id, document_id, current_user.organization_id)
         return FileResponse(path=file_path, filename=file_name, media_type=media_type)
     except (SecurityMeasuresIspdnNotFoundError, SecurityMeasureDocumentNotFoundError) as exc:
         raise HTTPException(
@@ -170,9 +180,10 @@ def delete_security_measure_document(
     ispdn_id: int,
     document_id: int,
     service: SecurityMeasureService = Depends(get_security_measure_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        service.delete_document(ispdn_id, document_id)
+        service.delete_document(ispdn_id, document_id, current_user.organization_id)
     except (SecurityMeasuresIspdnNotFoundError, SecurityMeasureDocumentNotFoundError) as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

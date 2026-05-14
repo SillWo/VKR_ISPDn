@@ -34,27 +34,27 @@ class IspdnService:
         self.employee_repository = employee_repository
         self.task_automation_service = task_automation_service
 
-    def list_cards(self, status: IspdnStatus | None = None) -> list[IspdnCard]:
-        return self.repository.list(status)
+    def list_cards(self, organization_id: int, status: IspdnStatus | None = None) -> list[IspdnCard]:
+        return self.repository.list(organization_id, status)
 
-    def get_card(self, ispdn_id: int) -> IspdnCard:
-        card = self.repository.get_by_id(ispdn_id)
+    def get_card(self, ispdn_id: int, organization_id: int) -> IspdnCard:
+        card = self.repository.get_by_id(ispdn_id, organization_id)
         if card is None:
             raise IspdnNotFoundError
         return card
 
-    def create_card(self, payload: IspdnCreate) -> IspdnCard:
-        employee = self.employee_repository.get_by_id(payload.responsible_employee_id)
+    def create_card(self, payload: IspdnCreate, organization_id: int) -> IspdnCard:
+        employee = self.employee_repository.get_by_id(payload.responsible_employee_id, organization_id)
         if employee is None:
             raise IspdnResponsibleEmployeeNotFoundError
-        card = self.repository.create(payload, responsible_person=employee.full_name)
+        card = self.repository.create(payload, responsible_person=employee.full_name, organization_id=organization_id)
         if self.task_automation_service is not None:
-            self.task_automation_service.create_ispdn_created_event(card.id)
+            self.task_automation_service.create_ispdn_created_event(card.id, organization_id)
         return card
 
-    def update_card(self, ispdn_id: int, payload: IspdnUpdate) -> IspdnCard:
-        card = self.get_card(ispdn_id)
-        employee = self.employee_repository.get_by_id(payload.responsible_employee_id)
+    def update_card(self, ispdn_id: int, payload: IspdnUpdate, organization_id: int) -> IspdnCard:
+        card = self.get_card(ispdn_id, organization_id)
+        employee = self.employee_repository.get_by_id(payload.responsible_employee_id, organization_id)
         if employee is None:
             raise IspdnResponsibleEmployeeNotFoundError
         return self.repository.update(
@@ -63,8 +63,8 @@ class IspdnService:
             responsible_person=employee.full_name,
         )
 
-    def delete_card(self, ispdn_id: int) -> None:
-        card = self.get_card(ispdn_id)
+    def delete_card(self, ispdn_id: int, organization_id: int) -> None:
+        card = self.get_card(ispdn_id, organization_id)
         self._delete_security_level_justification_file(card)
         self.repository.delete(card)
 

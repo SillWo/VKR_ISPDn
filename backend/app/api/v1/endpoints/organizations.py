@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.auth import get_current_user
 from app.core.database import get_db
+from app.models.user import User
 from app.repositories.ispdn import IspdnRepository
 from app.repositories.organization import OrganizationRepository
 from app.repositories.processing_process import ProcessingProcessRepository
@@ -34,9 +36,12 @@ def get_organization_service(db: Session = Depends(get_db)) -> OrganizationServi
 
 
 @router.get("", response_model=OrganizationRead)
-def get_organization(service: OrganizationService = Depends(get_organization_service)):
+def get_organization(
+    service: OrganizationService = Depends(get_organization_service),
+    current_user: User = Depends(get_current_user),
+):
     try:
-        return service.get_card()
+        return service.get_card(current_user.organization_id)
     except OrganizationNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -48,8 +53,9 @@ def get_organization(service: OrganizationService = Depends(get_organization_ser
 def upsert_organization(
     payload: OrganizationUpsert,
     service: OrganizationService = Depends(get_organization_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        return service.upsert_card(payload)
+        return service.upsert_card(payload, current_user.organization_id)
     except OrganizationEmployeeNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Employee not found") from exc

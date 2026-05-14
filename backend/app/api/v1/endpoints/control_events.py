@@ -3,7 +3,9 @@ from fastapi.responses import FileResponse
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
+from app.core.auth import get_current_user
 from app.core.database import get_db
+from app.models.user import User
 from app.repositories.control_event import ControlEventRepository
 from app.schemas.control_event import (
     ControlEventCreate,
@@ -28,33 +30,41 @@ def get_control_event_service(db: Session = Depends(get_db)) -> ControlEventServ
 
 
 @router.get("", response_model=list[ControlEventRead])
-def list_control_events(service: ControlEventService = Depends(get_control_event_service)):
-    return service.list_control_events()
+def list_control_events(
+    service: ControlEventService = Depends(get_control_event_service),
+    current_user: User = Depends(get_current_user),
+):
+    return service.list_control_events(current_user.organization_id)
 
 
 @router.post("", response_model=ControlEventRead, status_code=status.HTTP_201_CREATED)
 def create_control_event(
     payload: ControlEventCreate,
     service: ControlEventService = Depends(get_control_event_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        return service.create_control_event(payload)
+        return service.create_control_event(payload, current_user.organization_id)
     except ControlEventNameConflictError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Control event name already exists") from exc
 
 
 @router.get("/options", response_model=list[ControlEventOption])
-def list_control_event_options(service: ControlEventService = Depends(get_control_event_service)):
-    return service.list_options()
+def list_control_event_options(
+    service: ControlEventService = Depends(get_control_event_service),
+    current_user: User = Depends(get_current_user),
+):
+    return service.list_options(current_user.organization_id)
 
 
 @router.get("/{control_event_id}", response_model=ControlEventRead)
 def get_control_event(
     control_event_id: int,
     service: ControlEventService = Depends(get_control_event_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        return service.get_control_event(control_event_id)
+        return service.get_control_event(control_event_id, current_user.organization_id)
     except ControlEventNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Control event not found") from exc
 
@@ -64,9 +74,10 @@ def update_control_event(
     control_event_id: int,
     payload: ControlEventUpdate,
     service: ControlEventService = Depends(get_control_event_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        return service.update_control_event(control_event_id, payload)
+        return service.update_control_event(control_event_id, payload, current_user.organization_id)
     except ControlEventNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Control event not found") from exc
     except ControlEventNameConflictError as exc:
@@ -77,9 +88,10 @@ def update_control_event(
 def delete_control_event(
     control_event_id: int,
     service: ControlEventService = Depends(get_control_event_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        service.delete_control_event(control_event_id)
+        service.delete_control_event(control_event_id, current_user.organization_id)
     except ControlEventNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Control event not found") from exc
 
@@ -88,9 +100,10 @@ def delete_control_event(
 def list_control_event_files(
     control_event_id: int,
     service: ControlEventService = Depends(get_control_event_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        return service.get_control_event(control_event_id).files
+        return service.get_control_event(control_event_id, current_user.organization_id).files
     except ControlEventNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Control event not found") from exc
 
@@ -100,9 +113,10 @@ def upload_control_event_file(
     control_event_id: int,
     control_event_file: UploadFile = File(...),
     service: ControlEventService = Depends(get_control_event_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        return service.upload_file(control_event_id, control_event_file)
+        return service.upload_file(control_event_id, control_event_file, current_user.organization_id)
     except ControlEventNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Control event not found") from exc
     except (ControlEventFileValidationError, ValidationError) as exc:
@@ -117,9 +131,10 @@ def download_control_event_file(
     control_event_id: int,
     file_id: int,
     service: ControlEventService = Depends(get_control_event_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        file_path, file_name, media_type = service.get_file(control_event_id, file_id)
+        file_path, file_name, media_type = service.get_file(control_event_id, file_id, current_user.organization_id)
         return FileResponse(path=file_path, filename=file_name, media_type=media_type)
     except (ControlEventNotFoundError, ControlEventFileNotFoundError) as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Control event file not found") from exc
@@ -130,8 +145,9 @@ def delete_control_event_file(
     control_event_id: int,
     file_id: int,
     service: ControlEventService = Depends(get_control_event_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        service.delete_file(control_event_id, file_id)
+        service.delete_file(control_event_id, file_id, current_user.organization_id)
     except (ControlEventNotFoundError, ControlEventFileNotFoundError) as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Control event file not found") from exc

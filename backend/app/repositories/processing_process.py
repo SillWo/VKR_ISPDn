@@ -12,19 +12,24 @@ class ProcessingProcessRepository:
     def __init__(self, db: Session) -> None:
         self.db = db
 
-    def list_registry(self) -> list[ProcessingProcess]:
+    def list_registry(self, organization_id: int) -> list[ProcessingProcess]:
         statement = (
             select(ProcessingProcess)
             .options(selectinload(ProcessingProcess.ispdn_cards))
+            .where(ProcessingProcess.organization_id == organization_id)
             .order_by(ProcessingProcess.purpose_name.asc(), ProcessingProcess.id.asc())
         )
         return list(self.db.scalars(statement).all())
 
-    def list_options(self) -> list[ProcessingProcess]:
-        statement = select(ProcessingProcess).order_by(ProcessingProcess.purpose_name.asc(), ProcessingProcess.id.asc())
+    def list_options(self, organization_id: int) -> list[ProcessingProcess]:
+        statement = (
+            select(ProcessingProcess)
+            .where(ProcessingProcess.organization_id == organization_id)
+            .order_by(ProcessingProcess.purpose_name.asc(), ProcessingProcess.id.asc())
+        )
         return list(self.db.scalars(statement).all())
 
-    def list_unique_for_active_ispdns(self) -> list[ProcessingProcess]:
+    def list_unique_for_active_ispdns(self, organization_id: int) -> list[ProcessingProcess]:
         statement = (
             select(ProcessingProcess)
             .join(
@@ -32,34 +37,37 @@ class ProcessingProcessRepository:
                 ispdn_processing_processes.c.processing_process_id == ProcessingProcess.id,
             )
             .join(IspdnCard, IspdnCard.id == ispdn_processing_processes.c.ispdn_id)
-            .where(IspdnCard.status == "active")
+            .where(IspdnCard.status == "active", IspdnCard.organization_id == organization_id)
             .distinct()
             .order_by(ProcessingProcess.purpose_name.asc(), ProcessingProcess.id.asc())
         )
         return list(self.db.scalars(statement).all())
 
-    def get_by_id(self, process_id: int) -> ProcessingProcess | None:
+    def get_by_id(self, process_id: int, organization_id: int) -> ProcessingProcess | None:
         statement = (
             select(ProcessingProcess)
             .options(selectinload(ProcessingProcess.ispdn_cards))
-            .where(ProcessingProcess.id == process_id)
+            .where(ProcessingProcess.id == process_id, ProcessingProcess.organization_id == organization_id)
         )
         return self.db.scalars(statement).first()
 
-    def get_by_signature(self, process_signature: str) -> ProcessingProcess | None:
+    def get_by_signature(self, process_signature: str, organization_id: int) -> ProcessingProcess | None:
         statement = (
             select(ProcessingProcess)
             .options(selectinload(ProcessingProcess.ispdn_cards))
-            .where(ProcessingProcess.process_signature == process_signature)
+            .where(
+                ProcessingProcess.process_signature == process_signature,
+                ProcessingProcess.organization_id == organization_id,
+            )
         )
         return self.db.scalars(statement).first()
 
-    def create(self, values: dict[str, Any], process_signature: str) -> ProcessingProcess:
-        process = ProcessingProcess(**values, process_signature=process_signature)
+    def create(self, values: dict[str, Any], process_signature: str, organization_id: int) -> ProcessingProcess:
+        process = ProcessingProcess(**values, process_signature=process_signature, organization_id=organization_id)
         self.db.add(process)
         self.db.commit()
         self.db.refresh(process)
-        return self.get_by_id(process.id) or process
+        return self.get_by_id(process.id, organization_id) or process
 
     def update(
         self,
@@ -72,7 +80,7 @@ class ProcessingProcessRepository:
         process.process_signature = process_signature
         self.db.commit()
         self.db.refresh(process)
-        return self.get_by_id(process.id) or process
+        return self.get_by_id(process.id, process.organization_id) or process
 
     def delete(self, process: ProcessingProcess) -> None:
         self.db.delete(process)
@@ -101,11 +109,13 @@ class ProcessingProcessRepository:
         process_id: int,
         purpose_name: str,
         processing_period: str,
+        organization_id: int,
     ) -> list[ProcessingProcess]:
         statement = (
             select(ProcessingProcess)
             .where(
                 ProcessingProcess.id != process_id,
+                ProcessingProcess.organization_id == organization_id,
                 func.lower(func.trim(ProcessingProcess.purpose_name)) == purpose_name.strip().casefold(),
                 func.lower(func.trim(ProcessingProcess.processing_period)) == processing_period.strip().casefold(),
             )
@@ -113,7 +123,7 @@ class ProcessingProcessRepository:
         )
         return list(self.db.scalars(statement).all())
 
-    def list_active_ispdns_for_process(self, process_id: int) -> list[IspdnCard]:
+    def list_active_ispdns_for_process(self, process_id: int, organization_id: int) -> list[IspdnCard]:
         statement = (
             select(IspdnCard)
             .join(
@@ -123,6 +133,7 @@ class ProcessingProcessRepository:
             .where(
                 ispdn_processing_processes.c.processing_process_id == process_id,
                 IspdnCard.status == "active",
+                IspdnCard.organization_id == organization_id,
             )
             .order_by(IspdnCard.id.asc())
         )

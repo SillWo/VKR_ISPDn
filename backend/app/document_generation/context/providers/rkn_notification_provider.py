@@ -107,8 +107,9 @@ def _join(values: list[str], *, empty: str = "") -> str:
 
 
 class RknNotificationContextProvider:
-    def __init__(self, db: Session) -> None:
+    def __init__(self, db: Session, organization_id: int) -> None:
         self.db = db
+        self.organization_id = organization_id
         self.organization_service = OrganizationService(OrganizationRepository(db))
         self.processing_repository = ProcessingProcessRepository(db)
         self.data_center_repository = DataCenterRepository(db)
@@ -116,7 +117,7 @@ class RknNotificationContextProvider:
 
     def get_context(self, manual_data: dict) -> dict:
         try:
-            organization = self.organization_service.get_card()
+            organization = self.organization_service.get_card(self.organization_id)
         except OrganizationNotFoundError as exc:
             raise DocumentPrerequisiteMissingError("Карточка организации не заполнена.") from exc
 
@@ -135,8 +136,8 @@ class RknNotificationContextProvider:
             )
 
         termination_text = self._build_termination_text(organization)
-        processes = filter_subsumed_processing_processes(self.processing_repository.list_unique_for_active_ispdns())
-        data_centers = self.data_center_repository.list_unique_for_active_ispdns()
+        processes = filter_subsumed_processing_processes(self.processing_repository.list_unique_for_active_ispdns(self.organization_id))
+        data_centers = self.data_center_repository.list_unique_for_active_ispdns(self.organization_id)
 
         return {
             "RKN_adress": organization.rkn_office_address.strip(),
@@ -172,7 +173,7 @@ class RknNotificationContextProvider:
                 selectinload(IspdnCard.crypto_tools),
                 selectinload(IspdnCard.data_centers),
             )
-            .where(IspdnCard.status == "active")
+            .where(IspdnCard.status == "active", IspdnCard.organization_id == self.organization_id)
             .order_by(IspdnCard.name.asc(), IspdnCard.id.asc())
         )
         return list(self.db.scalars(statement).unique().all())

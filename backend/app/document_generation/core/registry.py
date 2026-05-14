@@ -6,6 +6,8 @@ from app.document_generation.documents.act_ispdn_commissioning.generator import 
 from app.document_generation.documents.act_safety_level_of_ISPDn.generator import (
     ActSafetyLevelOfIspdnGenerator,
 )
+from app.document_generation.documents.PDn_document.generator import PdnDocumentGenerator
+from app.document_generation.documents.PDn_security.generator import PdnSecurityGenerator
 from app.document_generation.documents.RKN_notification.change_generator import RknNotificationChangesGenerator
 from app.document_generation.documents.RKN_notification.generator import RknNotificationGenerator
 
@@ -31,5 +33,7 @@ def get_document_registry() -> DocumentRegistry:
             ActSafetyLevelOfIspdnGenerator(),
             RknNotificationGenerator(),
             RknNotificationChangesGenerator(),
+            PdnSecurityGenerator(),
+            PdnDocumentGenerator(),
         ],
     )

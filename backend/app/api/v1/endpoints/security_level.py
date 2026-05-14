@@ -5,7 +5,9 @@ from fastapi.responses import FileResponse
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
+from app.core.auth import get_current_user
 from app.core.database import get_db
+from app.models.user import User
 from app.domain.security_level_algorithm import SecurityLevelCalculationError
 from app.repositories.ispdn import IspdnRepository
 from app.repositories.processing_process import ProcessingProcessRepository
@@ -51,9 +53,10 @@ def get_security_level_service(db: Session = Depends(get_db)) -> SecurityLevelSe
 def get_security_level(
     ispdn_id: int,
     service: SecurityLevelService = Depends(get_security_level_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        return service.get_record(ispdn_id)
+        return service.get_record(ispdn_id, current_user.organization_id)
     except IspdnNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc
     except SecurityLevelNotFoundError as exc:
@@ -74,6 +77,7 @@ def upsert_security_level(
     deviation_justification_text: str | None = Form(None),
     deviation_justification_file: UploadFile | None = File(None),
     service: SecurityLevelService = Depends(get_security_level_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
         payload = _parse_multipart_payload(
@@ -84,7 +88,7 @@ def upsert_security_level(
             actual_level=actual_level,
             deviation_justification_text=deviation_justification_text,
         )
-        return service.upsert_record(ispdn_id, payload, deviation_justification_file)
+        return service.upsert_record(ispdn_id, payload, current_user.organization_id, deviation_justification_file)
     except IspdnNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc
     except (SecurityLevelValidationError, ValueError, ValidationError) as exc:
@@ -98,9 +102,10 @@ def calculate_security_level(
     ispdn_id: int,
     payload: SecurityLevelBase,
     service: SecurityLevelService = Depends(get_security_level_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        return service.calculate(ispdn_id, payload)
+        return service.calculate(ispdn_id, payload, current_user.organization_id)
     except IspdnNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc
     except ValueError as exc:
@@ -113,9 +118,10 @@ def calculate_security_level(
 def get_security_level_document_context(
     ispdn_id: int,
     service: SecurityLevelService = Depends(get_security_level_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        return service.get_document_context(ispdn_id)
+        return service.get_document_context(ispdn_id, current_user.organization_id)
     except IspdnNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc
     except SecurityLevelNotFoundError as exc:
@@ -129,9 +135,10 @@ def get_security_level_document_context(
 def get_security_level_justification_file(
     ispdn_id: int,
     service: SecurityLevelService = Depends(get_security_level_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        file_path, file_name, media_type = service.get_justification_file(ispdn_id)
+        file_path, file_name, media_type = service.get_justification_file(ispdn_id, current_user.organization_id)
         return FileResponse(path=file_path, filename=file_name, media_type=media_type)
     except IspdnNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc

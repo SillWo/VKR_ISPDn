@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint, DateTime, String, UniqueConstraint, func
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, String, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -33,10 +33,15 @@ class ProcessingProcess(Base):
             "internet_transfer IN ('no_internet_transfer', 'with_internet_transfer')",
             name="ck_processing_processes_internet_transfer",
         ),
-        UniqueConstraint("process_signature", name="uq_processing_processes_process_signature"),
+        UniqueConstraint("organization_id", "process_signature", name="uq_processing_processes_org_signature"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    organization_id: Mapped[int] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     purpose_name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     processing_period: Mapped[str] = mapped_column(String(1000), nullable=False)
@@ -48,7 +53,7 @@ class ProcessingProcess(Base):
     internal_network_transfer: Mapped[str] = mapped_column(String(64), nullable=False)
     internet_transfer: Mapped[str] = mapped_column(String(64), nullable=False)
     cross_border_transfer: Mapped[bool] = mapped_column(nullable=False)
-    process_signature: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
+    process_signature: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=False), nullable=False, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=False),

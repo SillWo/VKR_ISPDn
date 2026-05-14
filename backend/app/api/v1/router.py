@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from app.api.v1.endpoints.auth import router as auth_router
 from app.api.v1.endpoints.control_events import router as control_events_router
 from app.api.v1.endpoints.crypto_tools import router as crypto_tools_router
 from app.api.v1.endpoints.data_centers import router as data_centers_router
@@ -16,6 +17,7 @@ from app.api.v1.endpoints.task_events import router as task_events_router
 
 api_router = APIRouter()
 api_router.include_router(health_router)
+api_router.include_router(auth_router)
 api_router.include_router(ispdn_router)
 api_router.include_router(organizations_router)
 api_router.include_router(departments_router)

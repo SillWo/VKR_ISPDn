@@ -59,15 +59,15 @@ class SecurityLevelService:
         self.ispdn_repository = ispdn_repository
         self.task_automation_service = task_automation_service
 
-    def get_record(self, ispdn_id: int) -> SecurityLevelRecord:
-        self._ensure_ispdn_exists(ispdn_id)
+    def get_record(self, ispdn_id: int, organization_id: int) -> SecurityLevelRecord:
+        self._ensure_ispdn_exists(ispdn_id, organization_id)
         record = self.repository.get_by_ispdn(ispdn_id)
         if record is None:
             raise SecurityLevelNotFoundError
         return record
 
-    def calculate(self, ispdn_id: int, payload: SecurityLevelBase) -> SecurityLevelCalculationResult:
-        self._ensure_ispdn_exists(ispdn_id)
+    def calculate(self, ispdn_id: int, payload: SecurityLevelBase, organization_id: int) -> SecurityLevelCalculationResult:
+        self._ensure_ispdn_exists(ispdn_id, organization_id)
         result = calculate_security_level(
             payload.data_categories.model_dump(),
             payload.subject_count_range,
@@ -80,10 +80,11 @@ class SecurityLevelService:
         self,
         ispdn_id: int,
         payload: SecurityLevelUpsert,
+        organization_id: int,
         deviation_justification_file: UploadFile | None = None,
     ) -> SecurityLevelRecord:
-        self._ensure_ispdn_exists(ispdn_id)
-        calculation = self.calculate(ispdn_id, payload)
+        self._ensure_ispdn_exists(ispdn_id, organization_id)
+        calculation = self.calculate(ispdn_id, payload, organization_id)
         actual_level_matches_recommended = payload.actual_level == calculation.recommended_level
         existing_record = self.repository.get_by_ispdn(ispdn_id)
         had_existing_record = existing_record is not None
@@ -124,6 +125,7 @@ class SecurityLevelService:
             if self.task_automation_service is not None:
                 self.task_automation_service.sync_after_security_level_saved(
                     ispdn_id,
+                    organization_id,
                     previous_actual_level=previous_actual_level,
                     current_actual_level=created_record.actual_level,
                     had_existing_record=had_existing_record,
@@ -137,14 +139,15 @@ class SecurityLevelService:
         if self.task_automation_service is not None:
             self.task_automation_service.sync_after_security_level_saved(
                 ispdn_id,
+                organization_id,
                 previous_actual_level=previous_actual_level,
                 current_actual_level=updated_record.actual_level,
                 had_existing_record=had_existing_record,
             )
         return updated_record
 
-    def get_document_context(self, ispdn_id: int) -> SecurityLevelDocumentContext:
-        record = self.get_record(ispdn_id)
+    def get_document_context(self, ispdn_id: int, organization_id: int) -> SecurityLevelDocumentContext:
+        record = self.get_record(ispdn_id, organization_id)
         return SecurityLevelDocumentContext(
             ispdn_id=record.ispdn_id,
             data_categories=selected_data_category_labels(record.data_categories),
@@ -160,8 +163,8 @@ class SecurityLevelService:
             deviation_justification_file_name=record.deviation_justification_file_name,
         )
 
-    def get_justification_file(self, ispdn_id: int) -> tuple[Path, str, str]:
-        record = self.get_record(ispdn_id)
+    def get_justification_file(self, ispdn_id: int, organization_id: int) -> tuple[Path, str, str]:
+        record = self.get_record(ispdn_id, organization_id)
         if not record.deviation_justification_file_path:
             raise SecurityLevelFileNotFoundError
         file_path = Path(record.deviation_justification_file_path)
@@ -173,8 +176,8 @@ class SecurityLevelService:
             record.deviation_justification_file_content_type or "application/octet-stream",
         )
 
-    def _ensure_ispdn_exists(self, ispdn_id: int) -> None:
-        if self.ispdn_repository.get_by_id(ispdn_id) is None:
+    def _ensure_ispdn_exists(self, ispdn_id: int, organization_id: int) -> None:
+        if self.ispdn_repository.get_by_id(ispdn_id, organization_id) is None:
             raise IspdnNotFoundError
 
     def _save_justification_file(self, upload: UploadFile) -> dict[str, str]:

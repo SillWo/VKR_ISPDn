@@ -33,37 +33,37 @@ class CryptoToolService:
         self.repository = repository
         self.task_automation_service = task_automation_service
 
-    def list_crypto_tools(self) -> list[CryptoTool]:
-        return self.repository.list()
+    def list_crypto_tools(self, organization_id: int) -> list[CryptoTool]:
+        return self.repository.list(organization_id)
 
-    def list_options(self) -> list[CryptoTool]:
-        return self.repository.list_options()
+    def list_options(self, organization_id: int) -> list[CryptoTool]:
+        return self.repository.list_options(organization_id)
 
-    def get_crypto_tool(self, crypto_tool_id: int) -> CryptoTool:
-        crypto_tool = self.repository.get_by_id(crypto_tool_id)
+    def get_crypto_tool(self, crypto_tool_id: int, organization_id: int) -> CryptoTool:
+        crypto_tool = self.repository.get_by_id(crypto_tool_id, organization_id)
         if crypto_tool is None:
             raise CryptoToolNotFoundError
         return crypto_tool
 
-    def create_crypto_tool(self, payload: CryptoToolCreate) -> CryptoTool:
-        return self.repository.create(payload)
+    def create_crypto_tool(self, payload: CryptoToolCreate, organization_id: int) -> CryptoTool:
+        return self.repository.create(payload, organization_id)
 
-    def update_crypto_tool(self, crypto_tool_id: int, payload: CryptoToolUpdate) -> CryptoTool:
-        crypto_tool = self.get_crypto_tool(crypto_tool_id)
+    def update_crypto_tool(self, crypto_tool_id: int, payload: CryptoToolUpdate, organization_id: int) -> CryptoTool:
+        crypto_tool = self.get_crypto_tool(crypto_tool_id, organization_id)
         return self.repository.update(crypto_tool, payload)
 
-    def delete_crypto_tool(self, crypto_tool_id: int) -> None:
-        crypto_tool = self.get_crypto_tool(crypto_tool_id)
-        if self.repository.is_linked_to_ispdn(crypto_tool_id):
+    def delete_crypto_tool(self, crypto_tool_id: int, organization_id: int) -> None:
+        crypto_tool = self.get_crypto_tool(crypto_tool_id, organization_id)
+        if self.repository.is_linked_to_ispdn(crypto_tool_id, organization_id):
             raise CryptoToolInUseError
         self.repository.delete(crypto_tool)
 
-    def get_ispdn_cryptography(self, ispdn_id: int) -> IspdnCryptographySettings:
-        ispdn = self.repository.get_ispdn_by_id(ispdn_id)
+    def get_ispdn_cryptography(self, ispdn_id: int, organization_id: int) -> IspdnCryptographySettings:
+        ispdn = self.repository.get_ispdn_by_id(ispdn_id, organization_id)
         if ispdn is None:
             raise CryptoToolIspdnNotFoundError
 
-        settings = self.repository.get_ispdn_cryptography(ispdn_id)
+        settings = self.repository.get_ispdn_cryptography(ispdn_id, organization_id)
         if settings is not None:
             return settings
 
@@ -76,12 +76,13 @@ class CryptoToolService:
         self,
         ispdn_id: int,
         payload: IspdnCryptographyUpdate,
+        organization_id: int,
     ) -> IspdnCryptographySettings:
-        ispdn = self.repository.get_ispdn_by_id(ispdn_id)
+        ispdn = self.repository.get_ispdn_by_id(ispdn_id, organization_id)
         if ispdn is None:
             raise CryptoToolIspdnNotFoundError
 
-        if payload.uses_cryptography and self.repository.count_existing_ids(payload.crypto_tool_ids) != len(
+        if payload.uses_cryptography and self.repository.count_existing_ids(payload.crypto_tool_ids, organization_id) != len(
             payload.crypto_tool_ids,
         ):
             raise CryptoToolLinkedItemNotFoundError
@@ -94,6 +95,6 @@ class CryptoToolService:
             new_crypto_tool_ids = set(payload.crypto_tool_ids)
             added_crypto_tool_ids = sorted(new_crypto_tool_ids - old_crypto_tool_ids)
             if added_crypto_tool_ids:
-                self.task_automation_service.create_crypto_tool_added_events(ispdn_id, added_crypto_tool_ids)
+                self.task_automation_service.create_crypto_tool_added_events(ispdn_id, added_crypto_tool_ids, organization_id)
 
         return settings

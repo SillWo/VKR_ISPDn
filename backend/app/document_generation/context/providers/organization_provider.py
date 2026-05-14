@@ -86,12 +86,13 @@ def _empty_context() -> dict:
 
 
 class OrganizationContextProvider:
-    def __init__(self, db: Session) -> None:
+    def __init__(self, db: Session, organization_id: int) -> None:
+        self.organization_id = organization_id
         self.service = OrganizationService(OrganizationRepository(db))
 
     def get_context(self) -> dict:
         try:
-            card = self.service.get_card()
+            card = self.service.get_card(self.organization_id)
         except OrganizationNotFoundError:
             return _empty_context()
 

@@ -6,11 +6,12 @@ from app.services.ispdn import IspdnService
 
 
 class IspdnContextProvider:
-    def __init__(self, db: Session) -> None:
+    def __init__(self, db: Session, organization_id: int) -> None:
+        self.organization_id = organization_id
         self.service = IspdnService(IspdnRepository(db), EmployeeRepository(db))
 
     def get_context(self, ispdn_id: int) -> dict:
-        card = self.service.get_card(ispdn_id)
+        card = self.service.get_card(ispdn_id, self.organization_id)
         return {
             "ISPDn_name": card.name,
             "start_date": card.commissioning_date.strftime("%d.%m.%Y"),

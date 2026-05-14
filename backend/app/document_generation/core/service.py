@@ -30,13 +30,20 @@ class DocumentGenerationService:
         self.registry = registry or get_document_registry()
         self.renderer = renderer or DocxTemplateRenderer()
 
-    def generate(self, *, document_type: str, ispdn_id: int | None, manual_data: dict) -> GeneratedDocument:
+    def generate(
+        self,
+        *,
+        document_type: str,
+        ispdn_id: int | None,
+        manual_data: dict,
+        organization_id: int,
+    ) -> GeneratedDocument:
         generator = self.registry.get_generator(document_type)
         if generator.requires_ispdn and ispdn_id is None:
             raise DocumentRequiresIspdnError("Document requires ispdn_id")
 
         validated_manual_data = generator.validate_manual_data(manual_data)
-        context_builder = DocumentContextBuilder(self.db)
+        context_builder = DocumentContextBuilder(self.db, organization_id)
         context = generator.build_context(
             ispdn_id=ispdn_id,
             manual_data=validated_manual_data.model_dump(),

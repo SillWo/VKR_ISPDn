@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.core.auth import get_current_user
 from app.core.database import get_db
+from app.models.user import User
 from app.repositories.employee import EmployeeRepository
 from app.repositories.ispdn import IspdnRepository
 from app.repositories.task_event import TaskEventRepository
@@ -42,6 +44,7 @@ def list_task_events(
     responsible_employee_id: int | None = None,
     actual_only: bool = Query(default=False),
     service: TaskEventService = Depends(get_task_event_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
         return service.list_events(
@@ -50,6 +53,7 @@ def list_task_events(
             importance=importance,
             responsible_employee_id=responsible_employee_id,
             actual_only=actual_only,
+            organization_id=current_user.organization_id,
         )
     except TaskEventIspdnNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc
@@ -58,9 +62,13 @@ def list_task_events(
 
 
 @router.post("/task-events", response_model=TaskEventRead, status_code=status.HTTP_201_CREATED)
-def create_task_event(payload: TaskEventCreate, service: TaskEventService = Depends(get_task_event_service)):
+def create_task_event(
+    payload: TaskEventCreate,
+    service: TaskEventService = Depends(get_task_event_service),
+    current_user: User = Depends(get_current_user),
+):
     try:
-        return service.create_manual_event(payload)
+        return service.create_manual_event(payload, current_user.organization_id)
     except TaskEventIspdnNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc
     except TaskEventIspdnArchivedError as exc:
@@ -71,9 +79,13 @@ def create_task_event(payload: TaskEventCreate, service: TaskEventService = Depe
 
 
 @router.get("/task-events/{task_event_id}", response_model=TaskEventRead)
-def get_task_event(task_event_id: int, service: TaskEventService = Depends(get_task_event_service)):
+def get_task_event(
+    task_event_id: int,
+    service: TaskEventService = Depends(get_task_event_service),
+    current_user: User = Depends(get_current_user),
+):
     try:
-        return service.get_event(task_event_id)
+        return service.get_event(task_event_id, current_user.organization_id)
     except TaskEventNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task event not found") from exc
 
@@ -83,9 +95,10 @@ def create_task(
     task_event_id: int,
     payload: TaskCreate,
     service: TaskEventService = Depends(get_task_event_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        return service.create_task(task_event_id, payload)
+        return service.create_task(task_event_id, payload, current_user.organization_id)
     except TaskEventNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task event not found") from exc
     except TaskResponsibleEmployeeNotFoundError as exc:
@@ -98,9 +111,10 @@ def update_task(
     task_id: int,
     payload: TaskUpdate,
     service: TaskEventService = Depends(get_task_event_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        return service.update_task(task_event_id, task_id, payload)
+        return service.update_task(task_event_id, task_id, payload, current_user.organization_id)
     except TaskEventNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task event not found") from exc
     except TaskNotFoundError as exc:
@@ -115,9 +129,10 @@ def update_task_status(
     task_id: int,
     payload: TaskStatusPatch,
     service: TaskEventService = Depends(get_task_event_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        return service.update_task_status(task_event_id, task_id, payload.status)
+        return service.update_task_status(task_event_id, task_id, payload.status, current_user.organization_id)
     except TaskEventNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task event not found") from exc
     except TaskNotFoundError as exc:
@@ -130,9 +145,10 @@ def update_task_importance(
     task_id: int,
     payload: TaskImportancePatch,
     service: TaskEventService = Depends(get_task_event_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        return service.update_task_importance(task_event_id, task_id, payload.importance)
+        return service.update_task_importance(task_event_id, task_id, payload.importance, current_user.organization_id)
     except TaskEventNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task event not found") from exc
     except TaskNotFoundError as exc:
@@ -144,9 +160,10 @@ def delete_task(
     task_event_id: int,
     task_id: int,
     service: TaskEventService = Depends(get_task_event_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        service.delete_task(task_event_id, task_id)
+        service.delete_task(task_event_id, task_id, current_user.organization_id)
     except TaskEventNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task event not found") from exc
     except TaskNotFoundError as exc:
@@ -157,8 +174,9 @@ def delete_task(
 def list_actual_tasks_for_ispdn(
     ispdn_id: int,
     service: TaskEventService = Depends(get_task_event_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        return service.list_actual_tasks_for_ispdn(ispdn_id)
+        return service.list_actual_tasks_for_ispdn(ispdn_id, current_user.organization_id)
     except TaskEventIspdnNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc

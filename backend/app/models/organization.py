@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, CheckConstraint, Date, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, CheckConstraint, Date, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -10,10 +10,27 @@ if TYPE_CHECKING:
     from app.models.employee import Employee
 
 
+class Organization(Base):
+    __tablename__ = "organizations"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=False),
+        nullable=False,
+        server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=False),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+
 class OrganizationCard(Base):
     __tablename__ = "organization_card"
     __table_args__ = (
-        CheckConstraint("id = 1", name="ck_organization_card_singleton_id"),
         CheckConstraint(
             (
                 "personal_data_processing_termination_type IN ('end_date', 'end_condition') "
@@ -21,9 +38,15 @@ class OrganizationCard(Base):
             ),
             name="ck_organization_card_processing_termination_type",
         ),
+        UniqueConstraint("organization_id", name="uq_organization_card_organization_id"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    organization_id: Mapped[int] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     short_legal_name: Mapped[str] = mapped_column(String(255), nullable=False)
     full_legal_name: Mapped[str] = mapped_column(Text, nullable=False)
     inn: Mapped[str] = mapped_column(String(10), nullable=False)

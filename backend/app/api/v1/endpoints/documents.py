@@ -6,7 +6,9 @@ from fastapi.responses import StreamingResponse
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
+from app.core.auth import get_current_user
 from app.core.database import get_db
+from app.models.user import User
 from app.document_generation.core.errors import (
     DocumentControlEventNotFoundError,
     DocumentEmployeeNotFoundError,
@@ -25,7 +27,7 @@ router = APIRouter(tags=["documents"])
 
 
 @router.get("/document-types", response_model=list[DocumentTypeRead])
-def list_document_types() -> list[DocumentTypeRead]:
+def list_document_types(_current_user: User = Depends(get_current_user)) -> list[DocumentTypeRead]:
     registry = get_document_registry()
     return [
         DocumentTypeRead(
@@ -44,6 +46,7 @@ def generate_ispdn_document(
     ispdn_id: int,
     payload: DocumentGenerateRequest,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> StreamingResponse:
     service = DocumentGenerationService(db)
     try:
@@ -51,6 +54,7 @@ def generate_ispdn_document(
             document_type=payload.document_type,
             ispdn_id=ispdn_id,
             manual_data=payload.manual_data,
+            organization_id=current_user.organization_id,
         )
     except DocumentTypeNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document type not found") from exc
@@ -87,6 +91,7 @@ def generate_ispdn_document(
 def generate_global_document(
     payload: DocumentGenerateRequest,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> StreamingResponse:
     service = DocumentGenerationService(db)
     try:
@@ -94,6 +99,7 @@ def generate_global_document(
             document_type=payload.document_type,
             ispdn_id=None,
             manual_data=payload.manual_data,
+            organization_id=current_user.organization_id,
         )
     except DocumentTypeNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document type not found") from exc

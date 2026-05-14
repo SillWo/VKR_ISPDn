@@ -42,6 +42,11 @@ class CryptoTool(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    organization_id: Mapped[int] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     crypto_class: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
     manufacturer: Mapped[str] = mapped_column(String(255), nullable=False, index=True)

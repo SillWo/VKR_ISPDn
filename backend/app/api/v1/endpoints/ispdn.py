@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.auth import get_current_user
 from app.core.database import get_db
+from app.models.user import User
 from app.repositories.employee import EmployeeRepository
 from app.repositories.ispdn import IspdnRepository
 from app.repositories.processing_process import ProcessingProcessRepository
@@ -37,30 +39,47 @@ def get_ispdn_service(db: Session = Depends(get_db)) -> IspdnService:
 
 
 @router.get("", response_model=list[IspdnListItem])
-def list_ispdns(status: IspdnStatus | None = None, service: IspdnService = Depends(get_ispdn_service)):
-    return service.list_cards(status)
+def list_ispdns(
+    status: IspdnStatus | None = None,
+    service: IspdnService = Depends(get_ispdn_service),
+    current_user: User = Depends(get_current_user),
+):
+    return service.list_cards(current_user.organization_id, status)
 
 
 @router.post("", response_model=IspdnRead, status_code=status.HTTP_201_CREATED)
-def create_ispdn(payload: IspdnCreate, service: IspdnService = Depends(get_ispdn_service)):
+def create_ispdn(
+    payload: IspdnCreate,
+    service: IspdnService = Depends(get_ispdn_service),
+    current_user: User = Depends(get_current_user),
+):
     try:
-        return service.create_card(payload)
+        return service.create_card(payload, current_user.organization_id)
     except IspdnResponsibleEmployeeNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Responsible employee not found") from exc
 
 
 @router.get("/{ispdn_id}", response_model=IspdnRead)
-def get_ispdn(ispdn_id: int, service: IspdnService = Depends(get_ispdn_service)):
+def get_ispdn(
+    ispdn_id: int,
+    service: IspdnService = Depends(get_ispdn_service),
+    current_user: User = Depends(get_current_user),
+):
     try:
-        return service.get_card(ispdn_id)
+        return service.get_card(ispdn_id, current_user.organization_id)
     except IspdnNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc
 
 
 @router.put("/{ispdn_id}", response_model=IspdnRead)
-def update_ispdn(ispdn_id: int, payload: IspdnUpdate, service: IspdnService = Depends(get_ispdn_service)):
+def update_ispdn(
+    ispdn_id: int,
+    payload: IspdnUpdate,
+    service: IspdnService = Depends(get_ispdn_service),
+    current_user: User = Depends(get_current_user),
+):
     try:
-        return service.update_card(ispdn_id, payload)
+        return service.update_card(ispdn_id, payload, current_user.organization_id)
     except IspdnNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc
     except IspdnResponsibleEmployeeNotFoundError as exc:
@@ -68,8 +87,12 @@ def update_ispdn(ispdn_id: int, payload: IspdnUpdate, service: IspdnService = De
 
 
 @router.delete("/{ispdn_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_ispdn(ispdn_id: int, service: IspdnService = Depends(get_ispdn_service)):
+def delete_ispdn(
+    ispdn_id: int,
+    service: IspdnService = Depends(get_ispdn_service),
+    current_user: User = Depends(get_current_user),
+):
     try:
-        service.delete_card(ispdn_id)
+        service.delete_card(ispdn_id, current_user.organization_id)
     except IspdnNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc

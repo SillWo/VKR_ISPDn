@@ -61,97 +61,100 @@ class ProcessingProcessService:
         self.ispdn_repository = ispdn_repository
         self.task_automation_service = task_automation_service
 
-    def list_registry(self) -> list[ProcessingProcessRegistryItem]:
-        return [self._to_registry_item(process) for process in self.repository.list_registry()]
+    def list_registry(self, organization_id: int) -> list[ProcessingProcessRegistryItem]:
+        return [self._to_registry_item(process) for process in self.repository.list_registry(organization_id)]
 
-    def list_options(self) -> list[ProcessingProcessOption]:
-        return [self._to_option(process) for process in self.repository.list_options()]
+    def list_options(self, organization_id: int) -> list[ProcessingProcessOption]:
+        return [self._to_option(process) for process in self.repository.list_options(organization_id)]
 
-    def list_unique_for_active_ispdns(self) -> list[ProcessingProcessListItem]:
-        processes = self.repository.list_unique_for_active_ispdns()
+    def list_unique_for_active_ispdns(self, organization_id: int) -> list[ProcessingProcessListItem]:
+        processes = self.repository.list_unique_for_active_ispdns(organization_id)
         return [self._to_read(process) for process in filter_subsumed_processing_processes(processes)]
 
-    def get_registry_process(self, process_id: int) -> ProcessingProcessRead:
-        return self._to_read(self._get_process(process_id))
+    def get_registry_process(self, process_id: int, organization_id: int) -> ProcessingProcessRead:
+        return self._to_read(self._get_process(process_id, organization_id))
 
-    def create_registry_process(self, payload: ProcessingProcessCreate) -> ProcessingProcessRead:
-        process = self._find_or_create_process(payload)
+    def create_registry_process(self, payload: ProcessingProcessCreate, organization_id: int) -> ProcessingProcessRead:
+        process = self._find_or_create_process(payload, organization_id)
         return self._to_read(process)
 
-    def update_registry_process(self, process_id: int, payload: ProcessingProcessUpdate) -> ProcessingProcessRead:
-        process = self._get_process(process_id)
+    def update_registry_process(self, process_id: int, payload: ProcessingProcessUpdate, organization_id: int) -> ProcessingProcessRead:
+        process = self._get_process(process_id, organization_id)
         if self.repository.count_linked_ispdns(process_id) > 0:
             raise ProcessingProcessInUseError
 
         values = self._payload_values(payload)
         process_signature = build_processing_process_signature(values)
-        existing = self.repository.get_by_signature(process_signature)
+        existing = self.repository.get_by_signature(process_signature, organization_id)
         if existing is not None and existing.id != process_id:
             return self._to_read(existing)
 
         return self._to_read(self.repository.update(process, values, process_signature))
 
-    def delete_registry_process(self, process_id: int) -> None:
-        process = self._get_process(process_id)
+    def delete_registry_process(self, process_id: int, organization_id: int) -> None:
+        process = self._get_process(process_id, organization_id)
         if self.repository.count_linked_ispdns(process_id) > 0:
             raise ProcessingProcessInUseError
         self.repository.delete(process)
 
-    def list_processes_for_ispdn(self, ispdn_id: int) -> list[ProcessingProcessListItem]:
-        self._ensure_ispdn_exists(ispdn_id)
+    def list_processes_for_ispdn(self, ispdn_id: int, organization_id: int) -> list[ProcessingProcessListItem]:
+        self._ensure_ispdn_exists(ispdn_id, organization_id)
         return [self._to_read(process) for process in self.repository.list_by_ispdn(ispdn_id)]
 
     def create_and_link_process_to_ispdn(
         self,
         ispdn_id: int,
         payload: ProcessingProcessCreate,
+        organization_id: int,
     ) -> ProcessingProcessRead:
-        self._ensure_ispdn_exists(ispdn_id)
-        process, was_created = self._find_or_create_process_with_created_flag(payload)
+        self._ensure_ispdn_exists(ispdn_id, organization_id)
+        process, was_created = self._find_or_create_process_with_created_flag(payload, organization_id)
         self.repository.link_to_ispdn(ispdn_id, process.id)
         if was_created and self.task_automation_service is not None:
-            self.task_automation_service.create_processing_process_created_events(process.id)
-        return self._to_read(self.repository.get_by_id(process.id) or process)
+            self.task_automation_service.create_processing_process_created_events(process.id, organization_id)
+        return self._to_read(self.repository.get_by_id(process.id, organization_id) or process)
 
     def link_existing_process_to_ispdn(
         self,
         ispdn_id: int,
         payload: IspdnProcessingProcessLinkCreate,
+        organization_id: int,
     ) -> ProcessingProcessRead:
-        self._ensure_ispdn_exists(ispdn_id)
-        process = self._get_process(payload.processing_process_id)
-        had_active_links = bool(self.repository.list_active_ispdns_for_process(process.id))
+        self._ensure_ispdn_exists(ispdn_id, organization_id)
+        process = self._get_process(payload.processing_process_id, organization_id)
+        had_active_links = bool(self.repository.list_active_ispdns_for_process(process.id, organization_id))
         self.repository.link_to_ispdn(ispdn_id, process.id)
         if not had_active_links and self.task_automation_service is not None:
-            self.task_automation_service.create_processing_process_created_events(process.id)
-        return self._to_read(self.repository.get_by_id(process.id) or process)
+            self.task_automation_service.create_processing_process_created_events(process.id, organization_id)
+        return self._to_read(self.repository.get_by_id(process.id, organization_id) or process)
 
     def update_process_for_ispdn(
         self,
         ispdn_id: int,
         process_id: int,
         payload: ProcessingProcessUpdate,
+        organization_id: int,
     ) -> ProcessingProcessRead:
-        self._ensure_link_exists(ispdn_id, process_id)
+        self._ensure_link_exists(ispdn_id, process_id, organization_id)
         values = self._payload_values(payload)
         process_signature = build_processing_process_signature(values)
-        new_process = self.repository.get_by_signature(process_signature)
+        new_process = self.repository.get_by_signature(process_signature, organization_id)
         was_created = False
         if new_process is None:
-            new_process = self.repository.create(values, process_signature)
+            new_process = self.repository.create(values, process_signature, organization_id)
             was_created = True
 
         self.repository.replace_link_for_ispdn(ispdn_id, process_id, new_process.id)
         if was_created and self.task_automation_service is not None:
-            self.task_automation_service.create_processing_process_created_events(new_process.id)
-        return self._to_read(self.repository.get_by_id(new_process.id) or new_process)
+            self.task_automation_service.create_processing_process_created_events(new_process.id, organization_id)
+        return self._to_read(self.repository.get_by_id(new_process.id, organization_id) or new_process)
 
-    def unlink_process_from_ispdn(self, ispdn_id: int, process_id: int) -> None:
-        self._ensure_link_exists(ispdn_id, process_id)
+    def unlink_process_from_ispdn(self, ispdn_id: int, process_id: int, organization_id: int) -> None:
+        self._ensure_link_exists(ispdn_id, process_id, organization_id)
         self.repository.unlink_from_ispdn(ispdn_id, process_id)
 
-    def get_document_context(self, ispdn_id: int) -> ProcessingProcessDocumentContext:
-        processes = self.list_processes_for_ispdn(ispdn_id)
+    def get_document_context(self, ispdn_id: int, organization_id: int) -> ProcessingProcessDocumentContext:
+        processes = self.list_processes_for_ispdn(ispdn_id, organization_id)
         document_items = [self._to_document_item(process) for process in processes]
         return ProcessingProcessDocumentContext(
             ispdn_id=ispdn_id,
@@ -165,20 +168,21 @@ class ProcessingProcessService:
             ],
         )
 
-    def _find_or_create_process(self, payload: ProcessingProcessCreate) -> ProcessingProcess:
-        process, _was_created = self._find_or_create_process_with_created_flag(payload)
+    def _find_or_create_process(self, payload: ProcessingProcessCreate, organization_id: int) -> ProcessingProcess:
+        process, _was_created = self._find_or_create_process_with_created_flag(payload, organization_id)
         return process
 
     def _find_or_create_process_with_created_flag(
         self,
         payload: ProcessingProcessCreate,
+        organization_id: int,
     ) -> tuple[ProcessingProcess, bool]:
         values = self._payload_values(payload)
         process_signature = build_processing_process_signature(values)
-        existing = self.repository.get_by_signature(process_signature)
+        existing = self.repository.get_by_signature(process_signature, organization_id)
         if existing is not None:
             return existing, False
-        return self.repository.create(values, process_signature), True
+        return self.repository.create(values, process_signature, organization_id), True
 
     @staticmethod
     def _payload_values(payload: ProcessingProcessCreate | ProcessingProcessUpdate) -> dict[str, Any]:
@@ -186,19 +190,19 @@ class ProcessingProcessService:
         values["name"] = values["purpose_name"]
         return values
 
-    def _get_process(self, process_id: int) -> ProcessingProcess:
-        process = self.repository.get_by_id(process_id)
+    def _get_process(self, process_id: int, organization_id: int) -> ProcessingProcess:
+        process = self.repository.get_by_id(process_id, organization_id)
         if process is None:
             raise ProcessingProcessNotFoundError
         return process
 
-    def _ensure_ispdn_exists(self, ispdn_id: int) -> None:
-        if self.ispdn_repository.get_by_id(ispdn_id) is None:
+    def _ensure_ispdn_exists(self, ispdn_id: int, organization_id: int) -> None:
+        if self.ispdn_repository.get_by_id(ispdn_id, organization_id) is None:
             raise IspdnNotFoundError
 
-    def _ensure_link_exists(self, ispdn_id: int, process_id: int) -> None:
-        self._ensure_ispdn_exists(ispdn_id)
-        if self.repository.get_by_id(process_id) is None:
+    def _ensure_link_exists(self, ispdn_id: int, process_id: int, organization_id: int) -> None:
+        self._ensure_ispdn_exists(ispdn_id, organization_id)
+        if self.repository.get_by_id(process_id, organization_id) is None:
             raise ProcessingProcessNotFoundError
         if not self.repository.is_linked_to_ispdn(ispdn_id, process_id):
             raise ProcessingProcessLinkedItemNotFoundError

@@ -6,14 +6,11 @@ from app.models.organization import OrganizationBranch, OrganizationCard, Organi
 from app.schemas.organization import OrganizationUpsert
 
 
-ORGANIZATION_SINGLETON_ID = 1
-
-
 class OrganizationRepository:
     def __init__(self, db: Session) -> None:
         self.db = db
 
-    def get(self) -> OrganizationCard | None:
+    def get(self, organization_id: int) -> OrganizationCard | None:
         statement = (
             select(OrganizationCard)
             .options(
@@ -24,18 +21,18 @@ class OrganizationRepository:
                 joinedload(OrganizationCard.information_security_responsible_employee).joinedload(Employee.department),
                 joinedload(OrganizationCard.personal_data_processing_responsible_employee).joinedload(Employee.department),
             )
-            .where(OrganizationCard.id == ORGANIZATION_SINGLETON_ID)
+            .where(OrganizationCard.organization_id == organization_id)
         )
         return self.db.scalars(statement).first()
 
-    def create(self, payload: OrganizationUpsert) -> OrganizationCard:
+    def create(self, payload: OrganizationUpsert, organization_id: int) -> OrganizationCard:
         data = self._simple_fields(payload)
-        card = OrganizationCard(id=ORGANIZATION_SINGLETON_ID, **data)
+        card = OrganizationCard(organization_id=organization_id, **data)
         self._replace_okveds(card, payload)
         self._replace_branches(card, payload)
         self.db.add(card)
         self.db.commit()
-        return self.get() or card
+        return self.get(organization_id) or card
 
     def update(self, card: OrganizationCard, payload: OrganizationUpsert) -> OrganizationCard:
         for field, value in self._simple_fields(payload).items():
@@ -43,16 +40,20 @@ class OrganizationRepository:
         self._replace_okveds(card, payload)
         self._replace_branches(card, payload)
         self.db.commit()
-        return self.get() or card
+        return self.get(card.organization_id) or card
 
-    def upsert(self, payload: OrganizationUpsert) -> OrganizationCard:
-        card = self.get()
+    def upsert(self, payload: OrganizationUpsert, organization_id: int) -> OrganizationCard:
+        card = self.get(organization_id)
         if card is None:
-            return self.create(payload)
+            return self.create(payload, organization_id)
         return self.update(card, payload)
 
-    def employee_exists(self, employee_id: int) -> bool:
-        return self.db.scalars(select(Employee.id).where(Employee.id == employee_id).limit(1)).first() is not None
+    def employee_exists(self, employee_id: int, organization_id: int) -> bool:
+        return self.db.scalars(
+            select(Employee.id)
+            .where(Employee.id == employee_id, Employee.organization_id == organization_id)
+            .limit(1),
+        ).first() is not None
 
     def _simple_fields(self, payload: OrganizationUpsert) -> dict:
         return payload.model_dump(mode="json", exclude={"okveds", "branches"})

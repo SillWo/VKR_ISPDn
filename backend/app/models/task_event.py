@@ -20,6 +20,11 @@ class TaskEvent(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    organization_id: Mapped[int] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     ispdn_id: Mapped[int] = mapped_column(
         ForeignKey("ispdn_cards.id", ondelete="CASCADE"),
         nullable=False,

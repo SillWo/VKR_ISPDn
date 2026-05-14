@@ -67,23 +67,23 @@ class SecurityMeasureService:
         self.security_level_repository = security_level_repository
         self.task_automation_service = task_automation_service
 
-    def get_security_tools(self, ispdn_id: int) -> IspdnSecurityToolsRead:
-        self._ensure_ispdn_exists(ispdn_id)
+    def get_security_tools(self, ispdn_id: int, organization_id: int) -> IspdnSecurityToolsRead:
+        self._ensure_ispdn_exists(ispdn_id, organization_id)
         record = self.repository.get_security_tools(ispdn_id)
         if record is None:
             return IspdnSecurityToolsRead()
         return IspdnSecurityToolsRead.model_validate(record)
 
-    def upsert_security_tools(self, ispdn_id: int, payload: IspdnSecurityToolsUpsert) -> IspdnSecurityTools:
-        self._ensure_ispdn_exists(ispdn_id)
+    def upsert_security_tools(self, ispdn_id: int, payload: IspdnSecurityToolsUpsert, organization_id: int) -> IspdnSecurityTools:
+        self._ensure_ispdn_exists(ispdn_id, organization_id)
         values = {"ispdn_id": ispdn_id, **payload.model_dump()}
         existing_record = self.repository.get_security_tools(ispdn_id)
         if existing_record is None:
             return self.repository.create_security_tools(values)
         return self.repository.update_security_tools(existing_record, values)
 
-    def get_table(self, ispdn_id: int) -> TechnicalSecurityMeasuresTableRead:
-        self._ensure_ispdn_exists(ispdn_id)
+    def get_table(self, ispdn_id: int, organization_id: int) -> TechnicalSecurityMeasuresTableRead:
+        self._ensure_ispdn_exists(ispdn_id, organization_id)
         security_level = self.security_level_repository.get_by_ispdn(ispdn_id)
         if security_level is None:
             raise SecurityMeasuresSecurityLevelRequiredError
@@ -108,8 +108,9 @@ class SecurityMeasureService:
         ispdn_id: int,
         measure_code: str,
         payload: TechnicalSecurityMeasureUpdate,
+        organization_id: int,
     ) -> TechnicalSecurityMeasureRead:
-        self._ensure_ispdn_exists(ispdn_id)
+        self._ensure_ispdn_exists(ispdn_id, organization_id)
         measure = get_measure_by_code(measure_code)
         if measure is None:
             raise SecurityMeasureNotFoundError
@@ -135,22 +136,22 @@ class SecurityMeasureService:
         else:
             record = self.repository.update_measure_record(existing_record, values)
         if self.task_automation_service is not None:
-            self.task_automation_service.sync_fill_technical_security_measures_task(ispdn_id)
+            self.task_automation_service.sync_fill_technical_security_measures_task(ispdn_id, organization_id)
 
         return self._build_measure_read(measure, record, security_level.actual_level)
 
-    def list_documents(self, ispdn_id: int) -> list[TechnicalSecurityMeasureDocumentRead]:
-        self._ensure_ispdn_exists(ispdn_id)
+    def list_documents(self, ispdn_id: int, organization_id: int) -> list[TechnicalSecurityMeasureDocumentRead]:
+        self._ensure_ispdn_exists(ispdn_id, organization_id)
         return [TechnicalSecurityMeasureDocumentRead.model_validate(document) for document in self.repository.get_documents(ispdn_id)]
 
-    def upload_document(self, ispdn_id: int, upload: UploadFile) -> TechnicalSecurityMeasureDocumentRead:
-        self._ensure_ispdn_exists(ispdn_id)
+    def upload_document(self, ispdn_id: int, upload: UploadFile, organization_id: int) -> TechnicalSecurityMeasureDocumentRead:
+        self._ensure_ispdn_exists(ispdn_id, organization_id)
         file_metadata = self._save_document_file(upload)
         document = self.repository.create_document({"ispdn_id": ispdn_id, **file_metadata})
         return TechnicalSecurityMeasureDocumentRead.model_validate(document)
 
-    def get_document_file(self, ispdn_id: int, document_id: int) -> tuple[Path, str, str]:
-        self._ensure_ispdn_exists(ispdn_id)
+    def get_document_file(self, ispdn_id: int, document_id: int, organization_id: int) -> tuple[Path, str, str]:
+        self._ensure_ispdn_exists(ispdn_id, organization_id)
         document = self.repository.get_document(ispdn_id, document_id)
         if document is None:
             raise SecurityMeasureDocumentNotFoundError
@@ -160,8 +161,8 @@ class SecurityMeasureService:
             raise SecurityMeasureDocumentNotFoundError
         return file_path, document.file_name, document.file_content_type
 
-    def delete_document(self, ispdn_id: int, document_id: int) -> None:
-        self._ensure_ispdn_exists(ispdn_id)
+    def delete_document(self, ispdn_id: int, document_id: int, organization_id: int) -> None:
+        self._ensure_ispdn_exists(ispdn_id, organization_id)
         document = self.repository.get_document(ispdn_id, document_id)
         if document is None:
             raise SecurityMeasureDocumentNotFoundError
@@ -170,10 +171,10 @@ class SecurityMeasureService:
         self.repository.delete_document(document)
         self._delete_document_file(file_path)
 
-    def get_document_context(self, ispdn_id: int) -> dict:
-        tools = self.get_security_tools(ispdn_id).model_dump()
+    def get_document_context(self, ispdn_id: int, organization_id: int) -> dict:
+        tools = self.get_security_tools(ispdn_id, organization_id).model_dump()
         try:
-            table = self.get_table(ispdn_id)
+            table = self.get_table(ispdn_id, organization_id)
         except SecurityMeasuresSecurityLevelRequiredError:
             return {
                 "security_tools": tools,
@@ -229,8 +230,8 @@ class SecurityMeasureService:
             "technical_security_measure_documents": documents,
         }
 
-    def _ensure_ispdn_exists(self, ispdn_id: int) -> None:
-        if self.ispdn_repository.get_by_id(ispdn_id) is None:
+    def _ensure_ispdn_exists(self, ispdn_id: int, organization_id: int) -> None:
+        if self.ispdn_repository.get_by_id(ispdn_id, organization_id) is None:
             raise SecurityMeasuresIspdnNotFoundError
 
     def _build_measure_read(

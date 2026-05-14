@@ -9,11 +9,12 @@ EmployeeNameMode = Literal["full_name", "document_initials"]
 
 
 class EmployeeContextProvider:
-    def __init__(self, db: Session) -> None:
+    def __init__(self, db: Session, organization_id: int) -> None:
+        self.organization_id = organization_id
         self.repository = EmployeeRepository(db)
 
     def get_employee_name(self, employee_id: int, mode: EmployeeNameMode) -> str:
-        employee = self.repository.get_by_id(employee_id)
+        employee = self.repository.get_by_id(employee_id, self.organization_id)
         if employee is None:
             raise DocumentEmployeeNotFoundError(f"Employee not found: {employee_id}")
         if mode == "full_name":
@@ -21,7 +22,7 @@ class EmployeeContextProvider:
         return employee.document_initials
 
     def get_employee_document_context(self, employee_id: int) -> dict:
-        employee = self.repository.get_by_id(employee_id)
+        employee = self.repository.get_by_id(employee_id, self.organization_id)
         if employee is None:
             raise DocumentEmployeeNotFoundError(f"Employee not found: {employee_id}")
         return {
@@ -32,7 +33,7 @@ class EmployeeContextProvider:
         }
 
     def get_employee_document_info(self, employee_id: int) -> dict:
-        employee = self.repository.get_by_id(employee_id)
+        employee = self.repository.get_by_id(employee_id, self.organization_id)
         if employee is None:
             raise DocumentEmployeeNotFoundError(f"Employee not found: {employee_id}")
         return {

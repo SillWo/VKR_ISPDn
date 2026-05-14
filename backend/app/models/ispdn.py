@@ -36,6 +36,11 @@ class IspdnCard(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    organization_id: Mapped[int] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     short_description: Mapped[str] = mapped_column(Text, nullable=False)
     commissioning_date: Mapped[date] = mapped_column(Date, nullable=False)

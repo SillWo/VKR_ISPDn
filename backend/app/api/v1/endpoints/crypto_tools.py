@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.auth import get_current_user
 from app.core.database import get_db
+from app.models.user import User
 from app.repositories.crypto_tool import CryptoToolRepository
 from app.repositories.ispdn import IspdnRepository
 from app.repositories.processing_process import ProcessingProcessRepository
@@ -44,30 +46,38 @@ def get_crypto_tool_service(db: Session = Depends(get_db)) -> CryptoToolService:
 
 
 @router.get("/crypto-tools", response_model=list[CryptoToolListItem])
-def list_crypto_tools(service: CryptoToolService = Depends(get_crypto_tool_service)):
-    return service.list_crypto_tools()
+def list_crypto_tools(
+    service: CryptoToolService = Depends(get_crypto_tool_service),
+    current_user: User = Depends(get_current_user),
+):
+    return service.list_crypto_tools(current_user.organization_id)
 
 
 @router.post("/crypto-tools", response_model=CryptoToolRead, status_code=status.HTTP_201_CREATED)
 def create_crypto_tool(
     payload: CryptoToolCreate,
     service: CryptoToolService = Depends(get_crypto_tool_service),
+    current_user: User = Depends(get_current_user),
 ):
-    return service.create_crypto_tool(payload)
+    return service.create_crypto_tool(payload, current_user.organization_id)
 
 
 @router.get("/crypto-tools/options", response_model=list[CryptoToolOption])
-def list_crypto_tool_options(service: CryptoToolService = Depends(get_crypto_tool_service)):
-    return service.list_options()
+def list_crypto_tool_options(
+    service: CryptoToolService = Depends(get_crypto_tool_service),
+    current_user: User = Depends(get_current_user),
+):
+    return service.list_options(current_user.organization_id)
 
 
 @router.get("/crypto-tools/{crypto_tool_id}", response_model=CryptoToolRead)
 def get_crypto_tool(
     crypto_tool_id: int,
     service: CryptoToolService = Depends(get_crypto_tool_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        return service.get_crypto_tool(crypto_tool_id)
+        return service.get_crypto_tool(crypto_tool_id, current_user.organization_id)
     except CryptoToolNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Crypto tool not found") from exc
 
@@ -77,9 +87,10 @@ def update_crypto_tool(
     crypto_tool_id: int,
     payload: CryptoToolUpdate,
     service: CryptoToolService = Depends(get_crypto_tool_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        return service.update_crypto_tool(crypto_tool_id, payload)
+        return service.update_crypto_tool(crypto_tool_id, payload, current_user.organization_id)
     except CryptoToolNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Crypto tool not found") from exc
 
@@ -88,9 +99,10 @@ def update_crypto_tool(
 def delete_crypto_tool(
     crypto_tool_id: int,
     service: CryptoToolService = Depends(get_crypto_tool_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        service.delete_crypto_tool(crypto_tool_id)
+        service.delete_crypto_tool(crypto_tool_id, current_user.organization_id)
     except CryptoToolNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Crypto tool not found") from exc
     except CryptoToolInUseError as exc:
@@ -104,9 +116,10 @@ def delete_crypto_tool(
 def get_ispdn_cryptography(
     ispdn_id: int,
     service: CryptoToolService = Depends(get_crypto_tool_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        return service.get_ispdn_cryptography(ispdn_id)
+        return service.get_ispdn_cryptography(ispdn_id, current_user.organization_id)
     except CryptoToolIspdnNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc
 
@@ -116,9 +129,10 @@ def update_ispdn_cryptography(
     ispdn_id: int,
     payload: IspdnCryptographyUpdate,
     service: CryptoToolService = Depends(get_crypto_tool_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        return service.set_ispdn_cryptography(ispdn_id, payload)
+        return service.set_ispdn_cryptography(ispdn_id, payload, current_user.organization_id)
     except CryptoToolIspdnNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc
     except CryptoToolLinkedItemNotFoundError as exc:

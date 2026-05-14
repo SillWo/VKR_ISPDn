@@ -36,41 +36,41 @@ class ControlEventService:
     def __init__(self, repository: ControlEventRepository) -> None:
         self.repository = repository
 
-    def list_control_events(self) -> list[ControlEvent]:
-        return self.repository.list()
+    def list_control_events(self, organization_id: int) -> list[ControlEvent]:
+        return self.repository.list(organization_id)
 
-    def list_options(self) -> list[ControlEvent]:
-        return self.repository.list_options()
+    def list_options(self, organization_id: int) -> list[ControlEvent]:
+        return self.repository.list_options(organization_id)
 
-    def get_control_event(self, control_event_id: int) -> ControlEvent:
-        control_event = self.repository.get_by_id(control_event_id)
+    def get_control_event(self, control_event_id: int, organization_id: int) -> ControlEvent:
+        control_event = self.repository.get_by_id(control_event_id, organization_id)
         if control_event is None:
             raise ControlEventNotFoundError
         return control_event
 
-    def create_control_event(self, payload: ControlEventCreate) -> ControlEvent:
-        self._ensure_unique_name(payload.name)
-        return self.repository.create(payload)
+    def create_control_event(self, payload: ControlEventCreate, organization_id: int) -> ControlEvent:
+        self._ensure_unique_name(payload.name, organization_id)
+        return self.repository.create(payload, organization_id)
 
-    def update_control_event(self, control_event_id: int, payload: ControlEventUpdate) -> ControlEvent:
-        control_event = self.get_control_event(control_event_id)
-        self._ensure_unique_name(payload.name, exclude_id=control_event_id)
+    def update_control_event(self, control_event_id: int, payload: ControlEventUpdate, organization_id: int) -> ControlEvent:
+        control_event = self.get_control_event(control_event_id, organization_id)
+        self._ensure_unique_name(payload.name, organization_id, exclude_id=control_event_id)
         return self.repository.update(control_event, payload)
 
-    def delete_control_event(self, control_event_id: int) -> None:
-        control_event = self.get_control_event(control_event_id)
+    def delete_control_event(self, control_event_id: int, organization_id: int) -> None:
+        control_event = self.get_control_event(control_event_id, organization_id)
         file_paths = [Path(control_event_file.file_path) for control_event_file in control_event.files]
         self.repository.delete(control_event)
         for file_path in file_paths:
             self._delete_file_from_storage(file_path)
 
-    def upload_file(self, control_event_id: int, upload: UploadFile) -> ControlEventFile:
-        self.get_control_event(control_event_id)
+    def upload_file(self, control_event_id: int, upload: UploadFile, organization_id: int) -> ControlEventFile:
+        self.get_control_event(control_event_id, organization_id)
         file_metadata = self._save_upload(upload)
         return self.repository.add_file({"control_event_id": control_event_id, **file_metadata})
 
-    def get_file(self, control_event_id: int, file_id: int) -> tuple[Path, str, str]:
-        self.get_control_event(control_event_id)
+    def get_file(self, control_event_id: int, file_id: int, organization_id: int) -> tuple[Path, str, str]:
+        self.get_control_event(control_event_id, organization_id)
         control_event_file = self.repository.get_file(control_event_id, file_id)
         if control_event_file is None:
             raise ControlEventFileNotFoundError
@@ -80,8 +80,8 @@ class ControlEventService:
             raise ControlEventFileNotFoundError
         return file_path, control_event_file.file_name, control_event_file.file_content_type
 
-    def delete_file(self, control_event_id: int, file_id: int) -> None:
-        self.get_control_event(control_event_id)
+    def delete_file(self, control_event_id: int, file_id: int, organization_id: int) -> None:
+        self.get_control_event(control_event_id, organization_id)
         control_event_file = self.repository.get_file(control_event_id, file_id)
         if control_event_file is None:
             raise ControlEventFileNotFoundError
@@ -90,8 +90,8 @@ class ControlEventService:
         self.repository.delete_file(control_event_file)
         self._delete_file_from_storage(file_path)
 
-    def _ensure_unique_name(self, name: str, exclude_id: int | None = None) -> None:
-        control_event = self.repository.get_by_name(name)
+    def _ensure_unique_name(self, name: str, organization_id: int, exclude_id: int | None = None) -> None:
+        control_event = self.repository.get_by_name(name, organization_id)
         if control_event is not None and control_event.id != exclude_id:
             raise ControlEventNameConflictError
 

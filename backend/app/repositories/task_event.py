@@ -22,6 +22,7 @@ class TaskEventRepository:
         importance: str | None = None,
         responsible_employee_id: int | None = None,
         actual_only: bool = False,
+        organization_id: int | None = None,
     ) -> list[TaskEvent]:
         task_filters = self._build_task_filters(task_status, importance, responsible_employee_id, actual_only)
         statement = (
@@ -33,6 +34,9 @@ class TaskEventRepository:
             .order_by(TaskEvent.created_at.desc(), TaskEvent.id.desc())
         )
 
+        if organization_id is not None:
+            statement = statement.where(TaskEvent.organization_id == organization_id)
+
         if ispdn_id is not None:
             statement = statement.where(TaskEvent.ispdn_id == ispdn_id)
 
@@ -43,7 +47,7 @@ class TaskEventRepository:
 
         return list(self.db.scalars(statement).unique().all())
 
-    def get_event_by_id(self, task_event_id: int) -> TaskEvent | None:
+    def get_event_by_id(self, task_event_id: int, organization_id: int | None = None) -> TaskEvent | None:
         statement = (
             select(TaskEvent)
             .options(
@@ -52,6 +56,8 @@ class TaskEventRepository:
             )
             .where(TaskEvent.id == task_event_id)
         )
+        if organization_id is not None:
+            statement = statement.where(TaskEvent.organization_id == organization_id)
         return self.db.scalars(statement).unique().first()
 
     def create_event(
@@ -61,10 +67,12 @@ class TaskEventRepository:
         source_module: str,
         title: str,
         description: str | None,
+        organization_id: int,
         automation_key: str | None = None,
     ) -> TaskEvent:
         task_event = TaskEvent(
             ispdn_id=ispdn_id,
+            organization_id=organization_id,
             event_type=event_type,
             source_module=source_module,
             title=title,
@@ -74,9 +82,9 @@ class TaskEventRepository:
         self.db.add(task_event)
         self.db.commit()
         self.db.refresh(task_event)
-        return self.get_event_by_id(task_event.id) or task_event
+        return self.get_event_by_id(task_event.id, organization_id) or task_event
 
-    def get_event_by_automation_key(self, automation_key: str) -> TaskEvent | None:
+    def get_event_by_automation_key(self, automation_key: str, organization_id: int | None = None) -> TaskEvent | None:
         statement = (
             select(TaskEvent)
             .options(
@@ -85,6 +93,8 @@ class TaskEventRepository:
             )
             .where(TaskEvent.automation_key == automation_key)
         )
+        if organization_id is not None:
+            statement = statement.where(TaskEvent.organization_id == organization_id)
         return self.db.scalars(statement).unique().first()
 
     def create_event_once(
@@ -96,8 +106,9 @@ class TaskEventRepository:
         title: str,
         description: str | None,
         automation_key: str,
+        organization_id: int,
     ) -> TaskEvent:
-        existing_event = self.get_event_by_automation_key(automation_key)
+        existing_event = self.get_event_by_automation_key(automation_key, organization_id)
         if existing_event is not None:
             return existing_event
         return self.create_event(
@@ -106,6 +117,7 @@ class TaskEventRepository:
             source_module=source_module,
             title=title,
             description=description,
+            organization_id=organization_id,
             automation_key=automation_key,
         )
 
@@ -202,7 +214,7 @@ class TaskEventRepository:
         self.db.execute(delete(TaskEvent))
         self.db.commit()
 
-    def list_actual_tasks_for_ispdn(self, ispdn_id: int) -> list[Task]:
+    def list_actual_tasks_for_ispdn(self, ispdn_id: int, organization_id: int) -> list[Task]:
         importance_order = case(
             (Task.importance == "critical", 1),
             (Task.importance == "high", 2),
@@ -218,7 +230,11 @@ class TaskEventRepository:
                 joinedload(Task.task_event).joinedload(TaskEvent.ispdn),
                 joinedload(Task.responsible_employee),
             )
-            .where(TaskEvent.ispdn_id == ispdn_id, Task.status.in_(ACTUAL_TASK_STATUSES))
+            .where(
+                TaskEvent.ispdn_id == ispdn_id,
+                TaskEvent.organization_id == organization_id,
+                Task.status.in_(ACTUAL_TASK_STATUSES),
+            )
             .order_by(deadline_null_order.asc(), Task.deadline.asc(), importance_order.asc(), Task.created_at.desc())
         )
         return list(self.db.scalars(statement).unique().all())

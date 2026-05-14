@@ -6,12 +6,13 @@ from app.services.control_event import ControlEventNotFoundError, ControlEventSe
 
 
 class ControlEventsContextProvider:
-    def __init__(self, db: Session) -> None:
+    def __init__(self, db: Session, organization_id: int) -> None:
+        self.organization_id = organization_id
         self.service = ControlEventService(ControlEventRepository(db))
 
     def get_control_event_name(self, control_event_id: int) -> str:
         try:
-            return self.service.get_control_event(control_event_id).name
+            return self.service.get_control_event(control_event_id, self.organization_id).name
         except ControlEventNotFoundError as exc:
             raise DocumentControlEventNotFoundError(f"Control event not found: {control_event_id}") from exc
 
@@ -34,7 +35,7 @@ class ControlEventsContextProvider:
                 "created_at": control_event.created_at,
                 "updated_at": control_event.updated_at,
             }
-            for control_event in self.service.list_control_events()
+            for control_event in self.service.list_control_events(self.organization_id)
         ]
         return {
             "control_events": control_events,

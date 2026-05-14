@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.auth import get_current_user
 from app.core.database import get_db
+from app.models.user import User
 from app.repositories.data_center import DataCenterRepository
 from app.repositories.ispdn import IspdnRepository
 from app.repositories.processing_process import ProcessingProcessRepository
@@ -43,30 +45,38 @@ def get_data_center_service(db: Session = Depends(get_db)) -> DataCenterService:
 
 
 @router.get("/data-centers", response_model=list[DataCenterListItem])
-def list_data_centers(service: DataCenterService = Depends(get_data_center_service)):
-    return service.list_data_centers()
+def list_data_centers(
+    service: DataCenterService = Depends(get_data_center_service),
+    current_user: User = Depends(get_current_user),
+):
+    return service.list_data_centers(current_user.organization_id)
 
 
 @router.post("/data-centers", response_model=DataCenterRead, status_code=status.HTTP_201_CREATED)
 def create_data_center(
     payload: DataCenterCreate,
     service: DataCenterService = Depends(get_data_center_service),
+    current_user: User = Depends(get_current_user),
 ):
-    return service.create_data_center(payload)
+    return service.create_data_center(payload, current_user.organization_id)
 
 
 @router.get("/data-centers/options", response_model=list[DataCenterOption])
-def list_data_center_options(service: DataCenterService = Depends(get_data_center_service)):
-    return service.list_options()
+def list_data_center_options(
+    service: DataCenterService = Depends(get_data_center_service),
+    current_user: User = Depends(get_current_user),
+):
+    return service.list_options(current_user.organization_id)
 
 
 @router.get("/data-centers/{data_center_id}", response_model=DataCenterRead)
 def get_data_center(
     data_center_id: int,
     service: DataCenterService = Depends(get_data_center_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        return service.get_data_center(data_center_id)
+        return service.get_data_center(data_center_id, current_user.organization_id)
     except DataCenterNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Data center not found") from exc
 
@@ -76,9 +86,10 @@ def update_data_center(
     data_center_id: int,
     payload: DataCenterUpdate,
     service: DataCenterService = Depends(get_data_center_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        return service.update_data_center(data_center_id, payload)
+        return service.update_data_center(data_center_id, payload, current_user.organization_id)
     except DataCenterNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Data center not found") from exc
 
@@ -87,9 +98,10 @@ def update_data_center(
 def delete_data_center(
     data_center_id: int,
     service: DataCenterService = Depends(get_data_center_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        service.delete_data_center(data_center_id)
+        service.delete_data_center(data_center_id, current_user.organization_id)
     except DataCenterNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Data center not found") from exc
     except DataCenterInUseError as exc:
@@ -103,9 +115,10 @@ def delete_data_center(
 def list_ispdn_data_centers(
     ispdn_id: int,
     service: DataCenterService = Depends(get_data_center_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        return service.list_for_ispdn(ispdn_id)
+        return service.list_for_ispdn(ispdn_id, current_user.organization_id)
     except DataCenterIspdnNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc
 
@@ -115,9 +128,10 @@ def update_ispdn_data_centers(
     ispdn_id: int,
     payload: IspdnDataCentersUpdate,
     service: DataCenterService = Depends(get_data_center_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        return service.set_for_ispdn(ispdn_id, payload)
+        return service.set_for_ispdn(ispdn_id, payload, current_user.organization_id)
     except DataCenterIspdnNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ispdn card not found") from exc
     except DataCenterLinkedItemNotFoundError as exc:

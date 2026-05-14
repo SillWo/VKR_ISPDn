@@ -26,28 +26,28 @@ class OrganizationService:
         self.repository = repository
         self.task_automation_service = task_automation_service
 
-    def get_card(self) -> OrganizationCard:
-        card = self.repository.get()
+    def get_card(self, organization_id: int) -> OrganizationCard:
+        card = self.repository.get(organization_id)
         if card is None:
             raise OrganizationNotFoundError
         return card
 
-    def upsert_card(self, payload: OrganizationUpsert) -> OrganizationCard:
-        self._validate_employee_ids(payload)
+    def upsert_card(self, payload: OrganizationUpsert, organization_id: int) -> OrganizationCard:
+        self._validate_employee_ids(payload, organization_id)
         if payload.postal_address_matches_registration:
             payload.postal_address = None
-        existing_card = self.repository.get()
+        existing_card = self.repository.get(organization_id)
         before_snapshot = self._snapshot(existing_card) if existing_card is not None else None
-        card = self.repository.upsert(payload)
+        card = self.repository.upsert(payload, organization_id)
         if (
             before_snapshot is not None
             and before_snapshot != self._payload_snapshot(payload)
             and self.task_automation_service is not None
         ):
-            self.task_automation_service.create_organization_data_changed_events()
+            self.task_automation_service.create_organization_data_changed_events(organization_id)
         return card
 
-    def _validate_employee_ids(self, payload: OrganizationUpsert) -> None:
+    def _validate_employee_ids(self, payload: OrganizationUpsert, organization_id: int) -> None:
         employee_ids = {
             payload.head_employee_id,
             payload.document_approver_employee_id,
@@ -55,7 +55,7 @@ class OrganizationService:
             payload.personal_data_processing_responsible_employee_id,
         }
         for employee_id in employee_ids:
-            if employee_id is not None and not self.repository.employee_exists(employee_id):
+            if employee_id is not None and not self.repository.employee_exists(employee_id, organization_id):
                 raise OrganizationEmployeeNotFoundError
 
     def _snapshot(self, card: OrganizationCard) -> dict[str, Any]:
