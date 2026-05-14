@@ -15,8 +15,13 @@ import { useQuery } from "@tanstack/react-query";
 import { getDocumentTypes } from "../../entities/document/api/documentApi";
 import { globalDocumentFormRegistry } from "../../features/document-generation/model/globalDocumentFormRegistry";
 
-const rknCardDescription =
-  "Документ собирает данные организации, действующих ИСПДн, процессов обработки, ЦОД, СКЗИ и ответственных лиц.";
+const globalDocumentDescriptions: Record<string, string> = {
+  RKN_notification:
+    "Документ используется для первичного уведомления Роскомнадзора о намерении осуществлять обработку персональных данных.",
+  RKN_notification_changes: "Документ используется для уведомления Роскомнадзора об изменении ранее поданных сведений.",
+  PDn_security:
+    "Документ формируется по карточке организации и номеру приказа. Он фиксирует порядок организации и обеспечения защиты персональных данных.",
+};
 
 export function DocumentsPage() {
   const documentTypesQuery = useQuery({
@@ -82,9 +87,7 @@ export function DocumentsPage() {
                             {documentType.title}
                           </Typography>
                           <Typography color="text.secondary" sx={{ mt: 0.5 }}>
-                            {documentType.code === "RKN_notification"
-                              ? rknCardDescription
-                              : documentType.description}
+                            {globalDocumentDescriptions[documentType.code] ?? documentType.description}
                           </Typography>
                         </Box>
                       </Stack>

@@ -1,6 +1,11 @@
+from typing import TYPE_CHECKING
+
 from app.models.data_center import DataCenter
 from app.repositories.data_center import DataCenterRepository
 from app.schemas.data_center import DataCenterCreate, DataCenterUpdate, IspdnDataCentersUpdate
+
+if TYPE_CHECKING:
+    from app.services.task_automation import TaskAutomationService
 
 
 class DataCenterNotFoundError(Exception):
@@ -20,8 +25,13 @@ class DataCenterLinkedItemNotFoundError(Exception):
 
 
 class DataCenterService:
-    def __init__(self, repository: DataCenterRepository) -> None:
+    def __init__(
+        self,
+        repository: DataCenterRepository,
+        task_automation_service: "TaskAutomationService | None" = None,
+    ) -> None:
         self.repository = repository
+        self.task_automation_service = task_automation_service
 
     def list_data_centers(self) -> list[DataCenter]:
         return self.repository.list()
@@ -55,7 +65,17 @@ class DataCenterService:
     def set_for_ispdn(self, ispdn_id: int, payload: IspdnDataCentersUpdate) -> list[DataCenter]:
         ispdn = self._get_ispdn(ispdn_id)
         self._ensure_data_centers_exist(payload.data_center_ids)
-        return self.repository.set_for_ispdn(ispdn, payload.data_center_ids)
+        old_data_center_ids = {data_center.id for data_center in self.repository.list_for_ispdn(ispdn_id)}
+        is_active = ispdn.status == "active"
+        data_centers = self.repository.set_for_ispdn(ispdn, payload.data_center_ids)
+
+        if is_active and self.task_automation_service is not None:
+            new_data_center_ids = set(payload.data_center_ids)
+            added_data_center_ids = sorted(new_data_center_ids - old_data_center_ids)
+            if added_data_center_ids:
+                self.task_automation_service.create_data_center_added_events(ispdn_id, added_data_center_ids)
+
+        return data_centers
 
     def _get_ispdn(self, ispdn_id: int):
         ispdn = self.repository.get_ispdn_by_id(ispdn_id)

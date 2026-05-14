@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date
+
 from sqlalchemy import and_, case, delete, select
 from sqlalchemy.orm import Session, joinedload, selectinload, with_loader_criteria
 
@@ -135,6 +137,7 @@ class TaskEventRepository:
         status: str,
         automation_key: str,
         responsible_employee_id: int | None = None,
+        deadline: date | None = None,
     ) -> Task:
         existing_task = self.get_task_by_automation_key(task_event_id, automation_key)
         if existing_task is not None:
@@ -147,6 +150,7 @@ class TaskEventRepository:
             status=status,
             automation_key=automation_key,
             responsible_employee_id=responsible_employee_id,
+            deadline=deadline,
         )
         self.db.add(task)
         self.db.commit()

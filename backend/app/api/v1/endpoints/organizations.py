@@ -2,19 +2,35 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.repositories.ispdn import IspdnRepository
 from app.repositories.organization import OrganizationRepository
+from app.repositories.processing_process import ProcessingProcessRepository
+from app.repositories.security_level import SecurityLevelRepository
+from app.repositories.security_measure import SecurityMeasureRepository
+from app.repositories.task_event import TaskEventRepository
 from app.schemas.organization import OrganizationRead, OrganizationUpsert
 from app.services.organization import (
     OrganizationEmployeeNotFoundError,
     OrganizationNotFoundError,
     OrganizationService,
 )
+from app.services.task_automation import TaskAutomationService
 
 router = APIRouter(prefix="/organization", tags=["organization"])
 
 
 def get_organization_service(db: Session = Depends(get_db)) -> OrganizationService:
-    return OrganizationService(OrganizationRepository(db))
+    ispdn_repository = IspdnRepository(db)
+    return OrganizationService(
+        OrganizationRepository(db),
+        TaskAutomationService(
+            TaskEventRepository(db),
+            ispdn_repository,
+            ProcessingProcessRepository(db),
+            SecurityLevelRepository(db),
+            SecurityMeasureRepository(db),
+        ),
+    )
 
 
 @router.get("", response_model=OrganizationRead)

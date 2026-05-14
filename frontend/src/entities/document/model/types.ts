@@ -70,6 +70,12 @@ export type RknNotificationFormValues = {
   rknAccessPersons: RknAccessPersonFormValues[];
 };
 
+export type RknNotificationChangesFormValues = {
+  changeDate: string;
+  mainOfficeReg: string;
+  rknAccessPersons: RknAccessPersonFormValues[];
+};
+
 export type RknNotificationDocumentPayload = {
   documentType: "RKN_notification";
   manualData: {
@@ -83,9 +89,24 @@ export type RknNotificationDocumentPayload = {
   };
 };
 
+export type RknNotificationChangesDocumentPayload = {
+  documentType: "RKN_notification_changes";
+  manualData: {
+    change_date: string;
+    main_office_reg: string;
+    rkn_access_persons: Array<{
+      person_type: RknAccessPersonType;
+      name: string;
+      address: string;
+      email: string | null;
+      phone: string | null;
+    }>;
+  };
+};
+
 export type GenerateIspdnDocumentPayload = ActIspdnCommissioningDocumentPayload | ActSafetyLevelDocumentPayload;
 
-export type GenerateGlobalDocumentPayload = RknNotificationDocumentPayload;
+export type GenerateGlobalDocumentPayload = RknNotificationDocumentPayload | RknNotificationChangesDocumentPayload;
 
 export type GeneratedDocumentFile = {
   blob: Blob;

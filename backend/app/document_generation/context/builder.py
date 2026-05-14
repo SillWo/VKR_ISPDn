@@ -68,3 +68,6 @@ class DocumentContextBuilder:
 
     def rkn_notification(self, manual_data: dict) -> dict:
         return self.rkn_notification_provider.get_context(manual_data)
+
+    def rkn_notification_changes(self, manual_data: dict) -> dict:
+        return self.rkn_notification_provider.get_changes_context(manual_data)

@@ -157,6 +157,12 @@ class RknNotificationContextProvider:
             **self._performer_context(organization),
         }
 
+    def get_changes_context(self, manual_data: dict) -> dict:
+        context = self.get_context(manual_data)
+        context["change_date"] = _date(manual_data.get("change_date"))
+        context["main_office_reg"] = _text(manual_data.get("main_office_reg")).strip()
+        return context
+
     def _list_active_ispdns(self) -> list[IspdnCard]:
         statement = (
             select(IspdnCard)

@@ -3,6 +3,11 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.repositories.crypto_tool import CryptoToolRepository
+from app.repositories.ispdn import IspdnRepository
+from app.repositories.processing_process import ProcessingProcessRepository
+from app.repositories.security_level import SecurityLevelRepository
+from app.repositories.security_measure import SecurityMeasureRepository
+from app.repositories.task_event import TaskEventRepository
 from app.schemas.crypto_tool import (
     CryptoToolCreate,
     CryptoToolListItem,
@@ -19,12 +24,23 @@ from app.services.crypto_tool import (
     CryptoToolNotFoundError,
     CryptoToolService,
 )
+from app.services.task_automation import TaskAutomationService
 
 router = APIRouter(tags=["crypto-tools"])
 
 
 def get_crypto_tool_service(db: Session = Depends(get_db)) -> CryptoToolService:
-    return CryptoToolService(CryptoToolRepository(db))
+    ispdn_repository = IspdnRepository(db)
+    return CryptoToolService(
+        CryptoToolRepository(db),
+        TaskAutomationService(
+            TaskEventRepository(db),
+            ispdn_repository,
+            ProcessingProcessRepository(db),
+            SecurityLevelRepository(db),
+            SecurityMeasureRepository(db),
+        ),
+    )
 
 
 @router.get("/crypto-tools", response_model=list[CryptoToolListItem])

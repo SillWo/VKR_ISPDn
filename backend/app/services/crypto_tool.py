@@ -1,6 +1,11 @@
+from typing import TYPE_CHECKING
+
 from app.models.crypto_tool import CryptoTool, IspdnCryptographySettings
 from app.repositories.crypto_tool import CryptoToolRepository
 from app.schemas.crypto_tool import CryptoToolCreate, CryptoToolUpdate, IspdnCryptographyUpdate
+
+if TYPE_CHECKING:
+    from app.services.task_automation import TaskAutomationService
 
 
 class CryptoToolNotFoundError(Exception):
@@ -20,8 +25,13 @@ class CryptoToolLinkedItemNotFoundError(Exception):
 
 
 class CryptoToolService:
-    def __init__(self, repository: CryptoToolRepository) -> None:
+    def __init__(
+        self,
+        repository: CryptoToolRepository,
+        task_automation_service: "TaskAutomationService | None" = None,
+    ) -> None:
         self.repository = repository
+        self.task_automation_service = task_automation_service
 
     def list_crypto_tools(self) -> list[CryptoTool]:
         return self.repository.list()
@@ -76,4 +86,14 @@ class CryptoToolService:
         ):
             raise CryptoToolLinkedItemNotFoundError
 
-        return self.repository.set_ispdn_cryptography(ispdn, payload)
+        old_crypto_tool_ids = {crypto_tool.id for crypto_tool in ispdn.crypto_tools}
+        is_active = ispdn.status == "active"
+        settings = self.repository.set_ispdn_cryptography(ispdn, payload)
+
+        if is_active and payload.uses_cryptography and self.task_automation_service is not None:
+            new_crypto_tool_ids = set(payload.crypto_tool_ids)
+            added_crypto_tool_ids = sorted(new_crypto_tool_ids - old_crypto_tool_ids)
+            if added_crypto_tool_ids:
+                self.task_automation_service.create_crypto_tool_added_events(ispdn_id, added_crypto_tool_ids)
+
+        return settings

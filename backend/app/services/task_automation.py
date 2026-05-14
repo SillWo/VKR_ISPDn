@@ -1,3 +1,5 @@
+from datetime import date, timedelta
+
 from app.domain.fstek21_measures import FSTEK21_MEASURES, get_measure_regulatory_status
 from app.domain.processing_process_subsumption import is_new_processing_process_for_task_automation
 from app.models.processing_process import ProcessingProcess
@@ -201,13 +203,12 @@ class TaskAutomationService:
                 ),
                 automation_key=f"processing_process_created:{ispdn.id}:{process.id}",
             )
-            self.task_event_repository.create_task_once(
+            self._create_rkn_change_notification_task(
                 task_event_id=task_event.id,
-                title="Отправка нового уведомления в РКН",
-                description="Вами был создан новый процесс обработки, о котором надо уведомить Роскомнадзор",
-                importance="high",
-                status="pending",
-                automation_key="send_rkn_notification",
+                description=(
+                    "Вами был создан новый процесс обработки, о котором необходимо уведомить Роскомнадзор через "
+                    "уведомление об изменении сведений."
+                ),
                 responsible_employee_id=responsible_employee_id,
             )
             self.task_event_repository.create_task_once(
@@ -225,9 +226,108 @@ class TaskAutomationService:
             created_events.append(self.task_event_repository.get_event_by_id(task_event.id) or task_event)
         return created_events
 
+    def create_crypto_tool_added_events(self, ispdn_id: int, added_crypto_tool_ids: list[int]) -> list[TaskEvent]:
+        ispdn = self.ispdn_repository.get_by_id(ispdn_id)
+        if ispdn is None or ispdn.status != "active":
+            return []
+
+        created_events: list[TaskEvent] = []
+        for crypto_tool_id in added_crypto_tool_ids:
+            task_event = self.task_event_repository.create_event_once(
+                ispdn_id=ispdn.id,
+                event_type="crypto_tool_added_to_active_ispdn",
+                source_module="cryptography",
+                title="Появление нового СКЗИ у действующей ИСПДн",
+                description=(
+                    "Вы указали использование нового СКЗИ в одной из действующих ИСПДн. Необходимо подать "
+                    "уведомление в РКН об использовании нового СКЗИ при обработке ПДн."
+                ),
+                automation_key=f"crypto_tool_added_to_active_ispdn:{ispdn.id}:{crypto_tool_id}",
+            )
+            self._create_rkn_change_notification_task(
+                task_event_id=task_event.id,
+                description=(
+                    "В ИСПДн было добавлено новое СКЗИ. Необходимо подать уведомление в РКН об изменении сведений."
+                ),
+                responsible_employee_id=ispdn.responsible_employee_id,
+            )
+            created_events.append(self.task_event_repository.get_event_by_id(task_event.id) or task_event)
+        return created_events
+
+    def create_data_center_added_events(self, ispdn_id: int, added_data_center_ids: list[int]) -> list[TaskEvent]:
+        ispdn = self.ispdn_repository.get_by_id(ispdn_id)
+        if ispdn is None or ispdn.status != "active":
+            return []
+
+        created_events: list[TaskEvent] = []
+        for data_center_id in added_data_center_ids:
+            task_event = self.task_event_repository.create_event_once(
+                ispdn_id=ispdn.id,
+                event_type="data_center_added_to_active_ispdn",
+                source_module="data_centers",
+                title="Появление нового ЦОД у действующей ИСПДн",
+                description=(
+                    "Вы указали использование нового ЦОД в одной из действующих ИСПДн. Необходимо подать уведомление "
+                    "в РКН об использовании нового ЦОД при обработке ПДн."
+                ),
+                automation_key=f"data_center_added_to_active_ispdn:{ispdn.id}:{data_center_id}",
+            )
+            self._create_rkn_change_notification_task(
+                task_event_id=task_event.id,
+                description=(
+                    "В ИСПДн был добавлен новый ЦОД. Необходимо подать уведомление в РКН об изменении сведений."
+                ),
+                responsible_employee_id=ispdn.responsible_employee_id,
+            )
+            created_events.append(self.task_event_repository.get_event_by_id(task_event.id) or task_event)
+        return created_events
+
+    def create_organization_data_changed_events(self) -> list[TaskEvent]:
+        active_ispdns = self.ispdn_repository.list(status="active")
+        created_events: list[TaskEvent] = []
+        for ispdn in active_ispdns:
+            task_event = self.task_event_repository.create_event(
+                ispdn_id=ispdn.id,
+                event_type="organization_data_changed",
+                source_module="organization",
+                title="Изменились данные организации",
+                description="Вы изменили данные вашей организации. Необходимо подать уведомление в РКН об изменениях.",
+            )
+            self._create_rkn_change_notification_task(
+                task_event_id=task_event.id,
+                description=(
+                    "Были изменены данные организации. Необходимо подать уведомление в РКН об изменении сведений."
+                ),
+                responsible_employee_id=ispdn.responsible_employee_id,
+            )
+            created_events.append(self.task_event_repository.get_event_by_id(task_event.id) or task_event)
+        return created_events
+
     def _get_ispdn_responsible_employee_id(self, ispdn_id: int) -> int | None:
         ispdn = self.ispdn_repository.get_by_id(ispdn_id)
         return ispdn.responsible_employee_id if ispdn is not None else None
+
+    def _create_rkn_change_notification_task(
+        self,
+        *,
+        task_event_id: int,
+        description: str,
+        responsible_employee_id: int | None,
+    ) -> None:
+        self.task_event_repository.create_task_once(
+            task_event_id=task_event_id,
+            title="Отправка уведомления об изменениях в РКН",
+            description=description,
+            importance="high",
+            status="pending",
+            automation_key="send_rkn_change_notification",
+            responsible_employee_id=responsible_employee_id,
+            deadline=self._rkn_change_deadline(),
+        )
+
+    @staticmethod
+    def _rkn_change_deadline() -> date:
+        return date.today() + timedelta(days=15)
 
     @staticmethod
     def _ispdn_created_key(ispdn_id: int) -> str:

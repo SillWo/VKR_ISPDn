@@ -3,6 +3,11 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.repositories.data_center import DataCenterRepository
+from app.repositories.ispdn import IspdnRepository
+from app.repositories.processing_process import ProcessingProcessRepository
+from app.repositories.security_level import SecurityLevelRepository
+from app.repositories.security_measure import SecurityMeasureRepository
+from app.repositories.task_event import TaskEventRepository
 from app.schemas.data_center import (
     DataCenterCreate,
     DataCenterListItem,
@@ -18,12 +23,23 @@ from app.services.data_center import (
     DataCenterNotFoundError,
     DataCenterService,
 )
+from app.services.task_automation import TaskAutomationService
 
 router = APIRouter(tags=["data-centers"])
 
 
 def get_data_center_service(db: Session = Depends(get_db)) -> DataCenterService:
-    return DataCenterService(DataCenterRepository(db))
+    ispdn_repository = IspdnRepository(db)
+    return DataCenterService(
+        DataCenterRepository(db),
+        TaskAutomationService(
+            TaskEventRepository(db),
+            ispdn_repository,
+            ProcessingProcessRepository(db),
+            SecurityLevelRepository(db),
+            SecurityMeasureRepository(db),
+        ),
+    )
 
 
 @router.get("/data-centers", response_model=list[DataCenterListItem])

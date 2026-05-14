@@ -9,8 +9,11 @@ from app.document_generation.documents.RKN_notification.schemas import RknNotifi
 
 class RknNotificationGenerator(DocumentGenerator):
     code = "RKN_notification"
-    title = "Уведомление в Роскомнадзор об обработке персональных данных"
-    description = "Документ уровня организации для подготовки уведомления об обработке персональных данных оператором"
+    title = "Уведомление в Роскомнадзор о намерении осуществлять обработку персональных данных"
+    description = (
+        "Документ уровня организации для первичного уведомления Роскомнадзора о намерении осуществлять обработку "
+        "персональных данных"
+    )
     requires_ispdn = False
     template_path = Path(__file__).with_name("template.docx")
 
@@ -44,7 +47,7 @@ class RknNotificationGenerator(DocumentGenerator):
         return context_builder.rkn_notification(manual_data)
 
     def build_output_filename(self, context: dict) -> str:
-        return "Уведомление в РКН об обработке персональных данных.docx"
+        return "Уведомление в РКН о намерении осуществлять обработку персональных данных.docx"
 
     def get_template_context_schema(self) -> dict:
         return {
