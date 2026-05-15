@@ -9,6 +9,7 @@ export type OrganizationOperatorType =
   | "foreign_citizen";
 
 export type OrganizationTerminationType = "end_date" | "end_condition";
+export type IdentityDocumentType = "passport_rf" | "other_rf_document";
 
 export type OrganizationOkved = {
   id: number;
@@ -36,6 +37,11 @@ export type OrganizationBranchFormValue = {
 
 export type OrganizationEmployeeRef = EmployeeOption;
 
+export type OrganizationReadiness = {
+  isReadyForIspdnCreation: boolean;
+  message: string | null;
+};
+
 export type OrganizationCard = {
   id: number;
   shortLegalName: string;
@@ -48,6 +54,12 @@ export type OrganizationCard = {
   registrationAddress: string;
   registrationCity: string;
   operatorType: OrganizationOperatorType | "";
+  identityDocumentType: IdentityDocumentType | "";
+  identityDocumentName: string;
+  identityDocumentSeries: string;
+  identityDocumentNumber: string;
+  identityDocumentIssuedBy: string;
+  identityDocumentIssuedDate: string;
   headOfficeRegion: string;
   activityRegions: string;
   rknOfficeAddress: string;
@@ -85,6 +97,12 @@ export type OrganizationFormValues = {
   registrationAddress: string;
   registrationCity: string;
   operatorType: OrganizationOperatorType | "";
+  identityDocumentType: IdentityDocumentType | "";
+  identityDocumentName: string;
+  identityDocumentSeries: string;
+  identityDocumentNumber: string;
+  identityDocumentIssuedBy: string;
+  identityDocumentIssuedDate: string;
   headOfficeRegion: string;
   activityRegions: string;
   rknOfficeAddress: string;

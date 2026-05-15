@@ -1,4 +1,4 @@
-import { buildApiUrl, httpClient } from "../../../shared/api/httpClient";
+import { authHeaders, buildApiUrl, httpClient } from "../../../shared/api/httpClient";
 import type {
   IspdnSecurityTools,
   TechnicalSecurityMeasure,
@@ -200,7 +200,9 @@ export function uploadTechnicalSecurityMeasureDocument(ispdnId: number, file: Fi
 }
 
 export async function downloadTechnicalSecurityMeasureDocument(ispdnId: number, documentId: number) {
-  const response = await fetch(buildApiUrl(`/api/v1/ispdns/${ispdnId}/security-measures/documents/${documentId}/file`));
+  const response = await fetch(buildApiUrl(`/api/v1/ispdns/${ispdnId}/security-measures/documents/${documentId}/file`), {
+    headers: authHeaders(),
+  });
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
   }

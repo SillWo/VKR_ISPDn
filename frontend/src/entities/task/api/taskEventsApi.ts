@@ -39,11 +39,11 @@ type TaskDto = {
 
 type TaskEventDto = {
   id: number;
-  ispdn_id: number;
+  ispdn_id: number | null;
   ispdn: {
     id: number;
     name: string;
-  };
+  } | null;
   event_type: string;
   source_module: string;
   automation_key: string | null;
@@ -70,7 +70,7 @@ type TaskPayloadDto = {
 };
 
 type TaskEventCreatePayloadDto = {
-  ispdn_id: number;
+  ispdn_id: number | null;
   title: string;
   description: string | null;
 };
@@ -146,7 +146,7 @@ function mapPayload(values: TaskFormValues): TaskPayloadDto {
 
 function mapTaskEventCreatePayload(values: TaskEventCreateFormValues): TaskEventCreatePayloadDto {
   return {
-    ispdn_id: values.ispdnId ?? 0,
+    ispdn_id: values.ispdnId,
     title: values.title.trim(),
     description: values.description?.trim() || null,
   };

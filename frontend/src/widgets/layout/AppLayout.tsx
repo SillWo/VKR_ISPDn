@@ -1,9 +1,11 @@
 import MenuIcon from "@mui/icons-material/Menu";
-import { AppBar, Box, Chip, Drawer, IconButton, Toolbar, Typography } from "@mui/material";
+import LogoutIcon from "@mui/icons-material/Logout";
+import { AppBar, Box, Button, Chip, Drawer, IconButton, Stack, Toolbar, Typography } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Link as RouterLink, Outlet } from "react-router-dom";
+import { Link as RouterLink, Outlet, useNavigate } from "react-router-dom";
 
+import { useAuth } from "../../features/auth/AuthProvider";
 import { getApiHealth } from "../../shared/api/health";
 import { MainNavigation } from "../navigation/MainNavigation";
 
@@ -11,6 +13,8 @@ const drawerWidth = 280;
 
 export function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const navigate = useNavigate();
+  const auth = useAuth();
   const { data, isError } = useQuery({
     queryKey: ["api-health"],
     queryFn: getApiHealth,
@@ -18,6 +22,11 @@ export function AppLayout() {
   });
 
   const apiStatus = data?.status === "ok" ? "API: ok" : isError ? "API: недоступен" : "API: проверка";
+
+  const handleLogout = async () => {
+    await auth.logout();
+    navigate("/login", { replace: true });
+  };
 
   return (
     <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "background.default" }}>
@@ -74,7 +83,21 @@ export function AppLayout() {
             </Typography>
           </Box>
 
-          <Chip label={apiStatus} color={data?.status === "ok" ? "success" : "default"} size="small" />
+          <Stack direction="row" spacing={1.5} sx={{ ml: 2, alignItems: "center" }}>
+            <Chip label={apiStatus} color={data?.status === "ok" ? "success" : "default"} size="small" />
+            <Typography variant="body2" sx={{ display: { xs: "none", sm: "block" }, whiteSpace: "nowrap" }}>
+              {auth.user?.username}
+            </Typography>
+            <Button
+              color="inherit"
+              size="small"
+              startIcon={<LogoutIcon />}
+              onClick={handleLogout}
+              sx={{ whiteSpace: "nowrap" }}
+            >
+              Выйти
+            </Button>
+          </Stack>
         </Toolbar>
       </AppBar>
 

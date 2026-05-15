@@ -1,3 +1,5 @@
+import { clearStoredToken, getStoredToken } from "../../features/auth/authStorage";
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
 export class HttpError extends Error {
@@ -11,10 +13,15 @@ export class HttpError extends Error {
 
 export async function httpClient<TResponse>(path: string, init?: RequestInit): Promise<TResponse> {
   const isFormData = init?.body instanceof FormData;
+  const token = getStoredToken();
   const headers = isFormData
-    ? init?.headers
+    ? {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...init?.headers,
+      }
     : {
         "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...init?.headers,
       };
 
@@ -22,6 +29,14 @@ export async function httpClient<TResponse>(path: string, init?: RequestInit): P
     ...init,
     headers,
   });
+
+  if (response.status === 401) {
+    clearStoredToken();
+    if (!window.location.pathname.startsWith("/login") && !window.location.pathname.startsWith("/register")) {
+      window.location.assign("/login");
+    }
+    throw new HttpError(response.status, response.statusText);
+  }
 
   if (!response.ok) {
     throw new HttpError(response.status, response.statusText);
@@ -36,4 +51,9 @@ export async function httpClient<TResponse>(path: string, init?: RequestInit): P
 
 export function buildApiUrl(path: string) {
   return `${API_BASE_URL}${path}`;
+}
+
+export function authHeaders(): HeadersInit {
+  const token = getStoredToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }

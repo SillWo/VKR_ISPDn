@@ -1,4 +1,4 @@
-import { buildApiUrl, httpClient } from "../../../shared/api/httpClient";
+import { authHeaders, buildApiUrl, httpClient } from "../../../shared/api/httpClient";
 import type {
   SecurityLevelCalculationPayload,
   SecurityLevelCalculationResult,
@@ -169,7 +169,9 @@ export function getIspdnSecurityLevelDocumentContext(ispdnId: number) {
 }
 
 export async function downloadSecurityLevelJustificationFile(ispdnId: number) {
-  const response = await fetch(buildApiUrl(`/api/v1/ispdns/${ispdnId}/security-level/justification-file`));
+  const response = await fetch(buildApiUrl(`/api/v1/ispdns/${ispdnId}/security-level/justification-file`), {
+    headers: authHeaders(),
+  });
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
   }

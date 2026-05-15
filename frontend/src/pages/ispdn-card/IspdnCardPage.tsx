@@ -139,6 +139,7 @@ export function IspdnCardPage() {
             submitLabel="Сохранить изменения"
             isSubmitting={mutation.isPending}
             legacyResponsiblePerson={data.responsiblePerson}
+            showSecurityTools={false}
             onSubmit={(values) => mutation.mutate(values)}
             onCancel={() => navigate("/ispdns")}
           />

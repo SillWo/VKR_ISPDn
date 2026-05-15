@@ -3,14 +3,12 @@ import { z } from "zod";
 import type { OrganizationFormValues } from "../../../entities/organization/model/types";
 import { requiredText } from "../../../shared/lib/validation";
 
-const digits = (length: number, label: string) =>
+const optionalText = z.string().trim();
+const optionalDigits = (label: string) =>
   z
     .string()
     .trim()
-    .regex(/^\d+$/, `${label} должен состоять только из цифр`)
-    .length(length, `${label} должен содержать ${length} символов`);
-
-const optionalText = z.string().trim();
+    .refine((value) => !value || /^\d+$/.test(value), `${label} должен состоять только из цифр`);
 const terminationTypeSchema = z.enum(["end_date", "end_condition", ""]);
 const optionalStatisticalCode = z.string().trim().max(32, "Значение должно быть не длиннее 32 символов");
 const optionalPhone = z
@@ -22,11 +20,11 @@ const optionalPhone = z
 
 export const organizationCardFormSchema = z
   .object({
-    shortLegalName: requiredText("Укажите сокращённое название юр.лица"),
-    fullLegalName: requiredText("Укажите полное название юр.лица"),
-    inn: digits(10, "ИНН"),
-    ogrn: digits(13, "ОГРН"),
-    kpp: digits(9, "КПП"),
+    shortLegalName: optionalText,
+    fullLegalName: requiredText("Укажите полное название организации"),
+    inn: z.string().trim().regex(/^\d+$/, "ИНН должен состоять только из цифр"),
+    ogrn: z.string().trim().regex(/^\d+$/, "ОГРН/ОГРНИП должен состоять только из цифр"),
+    kpp: z.string().trim(),
     headEmployeeId: z.number().nullable(),
     registrationAddress: requiredText("Укажите адрес регистрации"),
     registrationCity: requiredText("Укажите город регистрации"),
@@ -40,6 +38,12 @@ export const organizationCardFormSchema = z
         "foreign_citizen",
         "",
       ]),
+    identityDocumentType: z.enum(["passport_rf", "other_rf_document", ""]),
+    identityDocumentName: optionalText,
+    identityDocumentSeries: optionalDigits("Серия"),
+    identityDocumentNumber: optionalDigits("Номер"),
+    identityDocumentIssuedBy: optionalText,
+    identityDocumentIssuedDate: z.string(),
     headOfficeRegion: z.string().trim().max(255, "Значение должно быть не длиннее 255 символов"),
     activityRegions: optionalText,
     rknOfficeAddress: requiredText("Укажите адрес офиса Роскомнадзора"),
@@ -88,6 +92,94 @@ export const organizationCardFormSchema = z
         message: "Выберите руководителя из реестра сотрудников",
       });
     }
+    if (["legal_entity", "state_body", "municipal_body"].includes(values.operatorType) && !values.shortLegalName.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["shortLegalName"],
+        message: "Укажите сокращённое название организации",
+      });
+    }
+    if (["legal_entity", "state_body", "municipal_body"].includes(values.operatorType)) {
+      if (values.inn.length !== 10) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["inn"],
+          message: "ИНН юр.лица должен содержать 10 цифр",
+        });
+      }
+      if (values.ogrn.length !== 13) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["ogrn"],
+          message: "ОГРН юр.лица должен содержать 13 цифр",
+        });
+      }
+      if (!/^\d{9}$/.test(values.kpp)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["kpp"],
+          message: "КПП юр.лица должен содержать 9 цифр",
+        });
+      }
+    }
+    if (values.operatorType === "individual_entrepreneur") {
+      if (values.inn.length !== 12) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["inn"],
+          message: "ИНН ИП должен содержать 12 цифр",
+        });
+      }
+      if (values.ogrn.length !== 15) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["ogrn"],
+          message: "ОГРНИП должен содержать 15 цифр",
+        });
+      }
+      if (!values.identityDocumentType) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["identityDocumentType"],
+          message: "Выберите документ, удостоверяющий личность",
+        });
+      }
+      if (values.identityDocumentType === "other_rf_document" && !values.identityDocumentName.trim()) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["identityDocumentName"],
+          message: "Укажите документ",
+        });
+      }
+      if (!values.identityDocumentSeries.trim()) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["identityDocumentSeries"],
+          message: "Укажите серию",
+        });
+      }
+      if (!values.identityDocumentNumber.trim()) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["identityDocumentNumber"],
+          message: "Укажите номер",
+        });
+      }
+      if (!values.identityDocumentIssuedBy.trim()) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["identityDocumentIssuedBy"],
+          message: "Укажите, кем выдан документ",
+        });
+      }
+      if (!values.identityDocumentIssuedDate) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["identityDocumentIssuedDate"],
+          message: "Укажите дату выдачи",
+        });
+      }
+    }
     if (!values.personalDataProcessingTerminationType) {
       ctx.addIssue({
         code: "custom",
@@ -124,6 +216,12 @@ export const defaultOrganizationFormValues: OrganizationFormValues = {
   registrationAddress: "",
   registrationCity: "",
   operatorType: "",
+  identityDocumentType: "",
+  identityDocumentName: "",
+  identityDocumentSeries: "",
+  identityDocumentNumber: "",
+  identityDocumentIssuedBy: "",
+  identityDocumentIssuedDate: "",
   headOfficeRegion: "",
   activityRegions: "",
   rknOfficeAddress: "",

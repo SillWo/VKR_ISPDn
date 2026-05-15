@@ -23,9 +23,7 @@ import { getIspdns } from "../../entities/ispdn/api/ispdnApi";
 import type { TaskEventCreateFormValues } from "../../entities/task/model/types";
 
 const taskEventFormSchema = z.object({
-  ispdnId: z.number().nullable().refine((value) => value !== null, {
-    message: "Выберите ИСПДн.",
-  }),
+  ispdnId: z.number().nullable(),
   title: z.string().trim().min(1, "Укажите название события.").max(255, "Не более 255 символов."),
   description: z.string().nullable(),
 });
@@ -101,14 +99,15 @@ export function TaskEventFormDialog({
             name="ispdnId"
             control={control}
             render={({ field }) => (
-              <FormControl fullWidth size="small" required error={Boolean(errors.ispdnId)}>
-                <InputLabel>ИСПДн</InputLabel>
+              <FormControl fullWidth size="small" error={Boolean(errors.ispdnId)}>
+                <InputLabel>Связанная ИСПДн</InputLabel>
                 <Select
-                  label="ИСПДн"
+                  label="Связанная ИСПДн"
                   value={field.value ?? ""}
                   onChange={(event) => field.onChange(event.target.value ? Number(event.target.value) : null)}
                   disabled={ispdnsQuery.isLoading || isSubmitting}
                 >
+                  <MenuItem value="">Без привязки к ИСПДн</MenuItem>
                   {(ispdnsQuery.data ?? []).map((ispdn) => (
                     <MenuItem key={ispdn.id} value={ispdn.id}>
                       {ispdn.name}

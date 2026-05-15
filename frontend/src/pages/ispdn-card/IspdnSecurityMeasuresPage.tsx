@@ -29,8 +29,11 @@ import {
 } from "@mui/material";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChangeEvent, Fragment, memo, useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
 import { Link as RouterLink, useParams } from "react-router-dom";
 
+import { getIspdnById, updateIspdn } from "../../entities/ispdn/api/ispdnApi";
+import type { IspdnCard, IspdnFormValues } from "../../entities/ispdn/model/types";
 import {
   deleteTechnicalSecurityMeasureDocument,
   downloadTechnicalSecurityMeasureDocument,
@@ -46,13 +49,37 @@ import type {
   TechnicalSecurityMeasureUpdatePayload,
   TechnicalSecurityMeasuresTable,
 } from "../../entities/security-measure/model/types";
+import { IspdnSecurityToolsSection } from "../../features/ispdn-card-form/ui/IspdnSecurityToolsSection";
 import { HttpError } from "../../shared/api/httpClient";
+
+function toIspdnFormValues(card: IspdnCard): IspdnFormValues {
+  return {
+    name: card.name,
+    shortDescription: card.shortDescription,
+    commissioningDate: card.commissioningDate,
+    decommissioningDate: card.decommissioningDate ?? "",
+    websiteUrl: card.websiteUrl ?? "",
+    responsibleEmployeeId: card.responsibleEmployeeId,
+    systemComposition: card.systemComposition,
+    securityTools: {
+      ...card.securityTools,
+      otherSecurityTools: card.securityTools.otherSecurityTools ?? "",
+    },
+    status: card.status,
+  };
+}
 
 export function IspdnSecurityMeasuresPage() {
   const { ispdnId } = useParams();
   const queryClient = useQueryClient();
   const numericId = Number(ispdnId);
   const isValidId = Number.isInteger(numericId) && numericId > 0;
+  const {
+    control: securityToolsControl,
+    handleSubmit: handleSecurityToolsSubmit,
+    reset: resetSecurityToolsForm,
+    formState: { errors: securityToolsErrors },
+  } = useForm<IspdnFormValues>();
 
   const measuresQuery = useQuery({
     queryKey: ["technicalSecurityMeasures", numericId],
@@ -64,6 +91,13 @@ export function IspdnSecurityMeasuresPage() {
   const documentsQuery = useQuery({
     queryKey: ["technicalSecurityMeasureDocuments", numericId],
     queryFn: () => getTechnicalSecurityMeasureDocuments(numericId),
+    enabled: isValidId,
+    retry: false,
+  });
+
+  const ispdnQuery = useQuery({
+    queryKey: ["ispdn", numericId],
+    queryFn: () => getIspdnById(numericId),
     enabled: isValidId,
     retry: false,
   });
@@ -90,6 +124,18 @@ export function IspdnSecurityMeasuresPage() {
     },
   });
 
+  const updateSecurityToolsMutation = useMutation({
+    mutationFn: (values: IspdnFormValues) => updateIspdn(numericId, values),
+    onSuccess: async (card) => {
+      queryClient.setQueryData(["ispdn", numericId], card);
+      resetSecurityToolsForm(toIspdnFormValues(card));
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["ispdn", numericId] }),
+        queryClient.invalidateQueries({ queryKey: ["ispdns"] }),
+      ]);
+    },
+  });
+
   const groupedItems = useMemo(() => {
     const groups = new Map<string, TechnicalSecurityMeasure[]>();
     for (const item of measuresQuery.data?.items ?? []) {
@@ -98,6 +144,12 @@ export function IspdnSecurityMeasuresPage() {
     }
     return Array.from(groups.entries());
   }, [measuresQuery.data?.items]);
+
+  useEffect(() => {
+    if (ispdnQuery.data) {
+      resetSecurityToolsForm(toIspdnFormValues(ispdnQuery.data));
+    }
+  }, [ispdnQuery.data, resetSecurityToolsForm]);
 
   if (!isValidId) {
     return <Alert severity="error">Некорректный идентификатор ИСПДн в маршруте.</Alert>;
@@ -161,6 +213,12 @@ export function IspdnSecurityMeasuresPage() {
         <Alert severity="error">Не удалось загрузить документ. Проверьте формат файла.</Alert>
       )}
 
+      {updateSecurityToolsMutation.isError && (
+        <Alert severity="error">Не удалось сохранить средства защиты. Проверьте данные карточки ИСПДн.</Alert>
+      )}
+
+      {updateSecurityToolsMutation.isSuccess && <Alert severity="success">Средства защиты сохранены.</Alert>}
+
       {measuresQuery.data && (
         <>
           <SecurityMeasuresDashboard table={measuresQuery.data} />
@@ -176,6 +234,28 @@ export function IspdnSecurityMeasuresPage() {
             }}
             onDelete={(documentId) => deleteDocumentMutation.mutate(documentId)}
           />
+          {ispdnQuery.data && (
+            <Stack
+              component="form"
+              spacing={2}
+              onSubmit={handleSecurityToolsSubmit((values) => updateSecurityToolsMutation.mutate(values))}
+              noValidate
+            >
+              <IspdnSecurityToolsSection
+                control={securityToolsControl}
+                errors={securityToolsErrors}
+                isSubmitting={updateSecurityToolsMutation.isPending || ispdnQuery.isLoading}
+              />
+              <Button
+                type="submit"
+                variant="contained"
+                disabled={updateSecurityToolsMutation.isPending || ispdnQuery.isLoading}
+                sx={{ alignSelf: "flex-end" }}
+              >
+                {updateSecurityToolsMutation.isPending ? "Сохранение..." : "Сохранить средства защиты"}
+              </Button>
+            </Stack>
+          )}
           <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
             <Table size="small">
               <TableHead>

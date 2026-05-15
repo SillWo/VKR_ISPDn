@@ -25,8 +25,8 @@ export type Task = {
 
 export type TaskEvent = {
   id: number;
-  ispdnId: number;
-  ispdn: TaskIspdnShort;
+  ispdnId: number | null;
+  ispdn: TaskIspdnShort | null;
   eventType: string;
   sourceModule: string;
   automationKey?: string | null;

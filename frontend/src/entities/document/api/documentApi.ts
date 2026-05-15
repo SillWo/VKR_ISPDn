@@ -1,4 +1,4 @@
-import { buildApiUrl, httpClient, HttpError } from "../../../shared/api/httpClient";
+import { authHeaders, buildApiUrl, httpClient, HttpError } from "../../../shared/api/httpClient";
 import type {
   DocumentType,
   GenerateGlobalDocumentPayload,
@@ -76,6 +76,7 @@ export async function generateIspdnDocument(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...authHeaders(),
     },
     body: JSON.stringify({
       document_type: payload.documentType,
@@ -101,6 +102,7 @@ export async function generateGlobalDocument(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...authHeaders(),
     },
     body: JSON.stringify({
       document_type: payload.documentType,

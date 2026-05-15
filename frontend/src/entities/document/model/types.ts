@@ -104,9 +104,35 @@ export type RknNotificationChangesDocumentPayload = {
   };
 };
 
+export type PdnDocumentFormValues = {
+  orderNumber: string;
+};
+
+export type PdnDocumentPayload = {
+  documentType: "PDn_document";
+  manualData: {
+    order_number: string;
+  };
+};
+
+export type PdnSecurityFormValues = {
+  orderNumber: string;
+};
+
+export type PdnSecurityDocumentPayload = {
+  documentType: "PDn_security";
+  manualData: {
+    order_number: string;
+  };
+};
+
 export type GenerateIspdnDocumentPayload = ActIspdnCommissioningDocumentPayload | ActSafetyLevelDocumentPayload;
 
-export type GenerateGlobalDocumentPayload = RknNotificationDocumentPayload | RknNotificationChangesDocumentPayload;
+export type GenerateGlobalDocumentPayload =
+  | RknNotificationDocumentPayload
+  | RknNotificationChangesDocumentPayload
+  | PdnDocumentPayload
+  | PdnSecurityDocumentPayload;
 
 export type GeneratedDocumentFile = {
   blob: Blob;

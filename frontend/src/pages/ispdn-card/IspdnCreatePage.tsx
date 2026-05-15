@@ -4,6 +4,7 @@ import {
   Alert,
   Box,
   Button,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -42,6 +43,7 @@ import {
   getProcessingProcessOptions,
   linkExistingProcessingProcessToIspdn,
 } from "../../entities/processing-process/api/processingProcessApi";
+import { getOrganizationReadiness } from "../../entities/organization/api/organizationApi";
 import type {
   ProcessingProcess,
   ProcessingProcessFormValues,
@@ -107,7 +109,13 @@ export function IspdnCreatePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const allowExitRef = useRef(false);
-  const blocker = useBlocker(() => !allowExitRef.current);
+  const readinessQuery = useQuery({
+    queryKey: ["organization", "readiness"],
+    queryFn: getOrganizationReadiness,
+    retry: false,
+  });
+  const canUseWizard = readinessQuery.data?.isReadyForIspdnCreation === true;
+  const blocker = useBlocker(() => canUseWizard && !allowExitRef.current);
   const [activeStep, setActiveStep] = useState(0);
   const [card, setCard] = useState<IspdnCard | null>(null);
   const [cardValues, setCardValues] = useState<IspdnFormValues>(defaultIspdnFormValues);
@@ -124,6 +132,10 @@ export function IspdnCreatePage() {
   const [safetyLevelActGenerated, setSafetyLevelActGenerated] = useState(false);
 
   useEffect(() => {
+    if (!canUseWizard) {
+      return;
+    }
+
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       if (allowExitRef.current) {
         return;
@@ -134,7 +146,7 @@ export function IspdnCreatePage() {
 
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, []);
+  }, [canUseWizard]);
 
   const linkedProcessesQuery = useQuery({
     queryKey: ["ispdnProcessingProcesses", card?.id],
@@ -353,6 +365,43 @@ export function IspdnCreatePage() {
         </Typography>
       </Box>
 
+      {readinessQuery.isLoading && (
+        <Paper variant="outlined" sx={{ p: 4, borderRadius: 2, textAlign: "center" }}>
+          <CircularProgress size={28} />
+          <Typography color="text.secondary" sx={{ mt: 2 }}>
+            Проверка карточки организации
+          </Typography>
+        </Paper>
+      )}
+
+      {readinessQuery.isError && (
+        <Alert severity="error">
+          Не удалось проверить готовность карточки организации. Создание ИСПДн будет доступно после успешной проверки.
+        </Alert>
+      )}
+
+      {readinessQuery.data?.isReadyForIspdnCreation === false && (
+        <Alert
+          severity="warning"
+          action={
+            <Button
+              color="inherit"
+              size="small"
+              onClick={() => {
+                allowExitRef.current = true;
+                navigate("/organization");
+              }}
+            >
+              Перейти в карточку организации
+            </Button>
+          }
+        >
+          {readinessQuery.data.message ?? "Вам нужно заполнить информацию о вашей организации."}
+        </Alert>
+      )}
+
+      {canUseWizard && (
+        <>
       <Paper variant="outlined" sx={{ p: 3, borderRadius: 2, bgcolor: "background.paper" }}>
         <Stepper activeStep={activeStep} alternativeLabel>
           {steps.map((label) => (
@@ -700,6 +749,8 @@ export function IspdnCreatePage() {
           </DialogActions>
         )}
       </Dialog>
+        </>
+      )}
     </Stack>
   );
 }

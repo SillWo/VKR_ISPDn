@@ -5,6 +5,9 @@ import { CryptoToolsRegistryPage } from "../pages/crypto-tools-registry/CryptoTo
 import { DataCentersRegistryPage } from "../pages/data-centers-registry/DataCentersRegistryPage";
 import { DocumentsPage } from "../pages/documents/DocumentsPage";
 import { EmployeesRegistryPage } from "../pages/employees-registry/EmployeesRegistryPage";
+import { LoginPage } from "../features/auth/LoginPage";
+import { ProtectedRoute } from "../features/auth/ProtectedRoute";
+import { RegisterPage } from "../features/auth/RegisterPage";
 import { IspdnCardPage } from "../pages/ispdn-card/IspdnCardPage";
 import { IspdnCreatePage } from "../pages/ispdn-card/IspdnCreatePage";
 import { IspdnCryptographyPage } from "../pages/ispdn-card/IspdnCryptographyPage";
@@ -24,8 +27,20 @@ import { AppLayout } from "../widgets/layout/AppLayout";
 
 export const router = createBrowserRouter([
   {
+    path: "/login",
+    element: <LoginPage />,
+  },
+  {
+    path: "/register",
+    element: <RegisterPage />,
+  },
+  {
     path: "/",
-    element: <AppLayout />,
+    element: (
+      <ProtectedRoute>
+        <AppLayout />
+      </ProtectedRoute>
+    ),
     children: [
       {
         index: true,

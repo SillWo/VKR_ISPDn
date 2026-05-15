@@ -1,4 +1,4 @@
-import { buildApiUrl, httpClient, HttpError } from "../../../shared/api/httpClient";
+import { authHeaders, buildApiUrl, httpClient, HttpError } from "../../../shared/api/httpClient";
 import type { Employee, EmployeeFormValues, EmployeeOption } from "../model/types";
 
 type EmployeeDepartmentDto = {
@@ -103,6 +103,7 @@ export function updateEmployee(id: number, payload: EmployeeFormValues) {
 export async function deleteEmployee(id: number) {
   const response = await fetch(buildApiUrl(`/api/v1/employees/${id}`), {
     method: "DELETE",
+    headers: authHeaders(),
   });
   if (!response.ok) {
     throw new HttpError(response.status, response.statusText);

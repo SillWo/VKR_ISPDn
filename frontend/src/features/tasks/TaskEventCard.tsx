@@ -38,19 +38,22 @@ export function TaskEventCard({
               {taskEvent.title}
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              {formatDateTime(taskEvent.createdAt)} · ИСПДн: {taskEvent.ispdn.name}
+              {formatDateTime(taskEvent.createdAt)} ·{" "}
+              {taskEvent.ispdn ? `ИСПДн: ${taskEvent.ispdn.name}` : "Без привязки к ИСПДн"}
             </Typography>
             {taskEvent.description && <Typography sx={{ mt: 1 }}>{taskEvent.description}</Typography>}
           </Box>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ alignItems: { sm: "flex-start" } }}>
-            <Button
-              component={RouterLink}
-              to={`/ispdns/${taskEvent.ispdnId}`}
-              variant="outlined"
-              endIcon={<ArrowForwardIcon />}
-            >
-              Перейти к ИСПДн
-            </Button>
+            {taskEvent.ispdn && (
+              <Button
+                component={RouterLink}
+                to={`/ispdns/${taskEvent.ispdn.id}`}
+                variant="outlined"
+                endIcon={<ArrowForwardIcon />}
+              >
+                Перейти к ИСПДн
+              </Button>
+            )}
             <Button
               variant="outlined"
               onClick={() => setTasksOpen((value) => !value)}

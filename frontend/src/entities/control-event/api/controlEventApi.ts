@@ -1,4 +1,4 @@
-import { buildApiUrl, httpClient } from "../../../shared/api/httpClient";
+import { authHeaders, buildApiUrl, httpClient } from "../../../shared/api/httpClient";
 import type {
   ControlEvent,
   ControlEventFile,
@@ -121,7 +121,9 @@ export function uploadControlEventFile(controlEventId: number, file: File) {
 }
 
 export async function downloadControlEventFile(controlEventId: number, fileId: number) {
-  const response = await fetch(buildApiUrl(`/api/v1/control-events/${controlEventId}/files/${fileId}`));
+  const response = await fetch(buildApiUrl(`/api/v1/control-events/${controlEventId}/files/${fileId}`), {
+    headers: authHeaders(),
+  });
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
   }

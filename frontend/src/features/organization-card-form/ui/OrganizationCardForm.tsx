@@ -32,8 +32,11 @@ const operatorTypeOptions = [
   { value: "individual_entrepreneur", label: "Индивидуальный предприниматель" },
   { value: "state_body", label: "Государственный орган" },
   { value: "municipal_body", label: "Муниципальный орган" },
-  { value: "branch", label: "Филиал" },
-  { value: "foreign_citizen", label: "Иностранный гражданин" },
+] as const;
+
+const identityDocumentTypeOptions = [
+  { value: "passport_rf", label: "Паспорт гражданина РФ" },
+  { value: "other_rf_document", label: "Другой документ гражданина РФ" },
 ] as const;
 
 const terminationTypeOptions = [
@@ -112,6 +115,15 @@ export function OrganizationCardForm({
     control,
     name: "personalDataProcessingTerminationType",
   });
+  const operatorType = useWatch({
+    control,
+    name: "operatorType",
+  });
+  const identityDocumentType = useWatch({
+    control,
+    name: "identityDocumentType",
+  });
+  const isIndividualEntrepreneur = operatorType === "individual_entrepreneur";
 
   const { data: employeeOptions = [] } = useQuery({
     queryKey: ["employees", "options"],
@@ -141,16 +153,18 @@ export function OrganizationCardForm({
             </TextField>
           )}
         />
+        {!isIndividualEntrepreneur && (
+          <TextField
+            label="Сокращённое название организации"
+            fullWidth
+            required
+            {...register("shortLegalName")}
+            error={Boolean(errors.shortLegalName)}
+            helperText={errors.shortLegalName?.message ?? "Например: ООО «Ромашка»."}
+          />
+        )}
         <TextField
-          label="Сокращённое название юр.лица"
-          fullWidth
-          required
-          {...register("shortLegalName")}
-          error={Boolean(errors.shortLegalName)}
-          helperText={errors.shortLegalName?.message ?? "Например: ООО «Ромашка»."}
-        />
-        <TextField
-          label="Полное название юр.лица"
+          label="Полное название организации"
           fullWidth
           required
           multiline
@@ -212,6 +226,83 @@ export function OrganizationCardForm({
           />
         </Stack>
       </FormSection>
+
+      {isIndividualEntrepreneur && (
+        <FormSection title="Документ, удостоверяющий личность">
+          <Controller
+            control={control}
+            name="identityDocumentType"
+            render={({ field }) => (
+              <TextField
+                select
+                label="Документ, удостоверяющий личность"
+                fullWidth
+                required
+                {...field}
+                error={Boolean(errors.identityDocumentType)}
+                helperText={errors.identityDocumentType?.message}
+              >
+                <MenuItem value="">Не выбран</MenuItem>
+                {identityDocumentTypeOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+            )}
+          />
+          {identityDocumentType === "other_rf_document" && (
+            <TextField
+              label="Документ"
+              fullWidth
+              required
+              {...register("identityDocumentName")}
+              error={Boolean(errors.identityDocumentName)}
+              helperText={errors.identityDocumentName?.message}
+            />
+          )}
+          <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+            <TextField
+              label="Серия"
+              fullWidth
+              required
+              slotProps={{ htmlInput: { inputMode: "numeric" } }}
+              {...register("identityDocumentSeries")}
+              error={Boolean(errors.identityDocumentSeries)}
+              helperText={errors.identityDocumentSeries?.message}
+            />
+            <TextField
+              label="Номер"
+              fullWidth
+              required
+              slotProps={{ htmlInput: { inputMode: "numeric" } }}
+              {...register("identityDocumentNumber")}
+              error={Boolean(errors.identityDocumentNumber)}
+              helperText={errors.identityDocumentNumber?.message}
+            />
+            <TextField
+              label="Дата выдачи"
+              type="date"
+              fullWidth
+              required
+              slotProps={{ inputLabel: { shrink: true } }}
+              {...register("identityDocumentIssuedDate")}
+              error={Boolean(errors.identityDocumentIssuedDate)}
+              helperText={errors.identityDocumentIssuedDate?.message}
+            />
+          </Stack>
+          <TextField
+            label="Кем выдан"
+            fullWidth
+            required
+            multiline
+            minRows={2}
+            {...register("identityDocumentIssuedBy")}
+            error={Boolean(errors.identityDocumentIssuedBy)}
+            helperText={errors.identityDocumentIssuedBy?.message}
+          />
+        </FormSection>
+      )}
 
       <FormSection title="Контактные данные">
         <TextField

@@ -3,6 +3,8 @@ import type {
   OrganizationCard,
   OrganizationEmployeeRef,
   OrganizationFormValues,
+  OrganizationReadiness,
+  IdentityDocumentType,
   OrganizationOperatorType,
   OrganizationTerminationType,
 } from "../model/types";
@@ -34,16 +36,22 @@ type OrganizationBranchDto = {
 
 type OrganizationCardDto = {
   id: number;
-  short_legal_name: string;
+  short_legal_name: string | null;
   full_legal_name: string;
   inn: string;
   ogrn: string;
-  kpp: string;
+  kpp: string | null;
   head_employee_id: number | null;
   head_employee: OrganizationEmployeeDto | null;
   registration_address: string;
   registration_city: string;
   operator_type: OrganizationOperatorType | null;
+  identity_document_type: IdentityDocumentType | null;
+  identity_document_name: string | null;
+  identity_document_series: string | null;
+  identity_document_number: string | null;
+  identity_document_issued_by: string | null;
+  identity_document_issued_date: string | null;
   head_office_region: string | null;
   activity_regions: string | null;
   rkn_office_address: string | null;
@@ -72,15 +80,21 @@ type OrganizationCardDto = {
 };
 
 type OrganizationPayloadDto = {
-  short_legal_name: string;
+  short_legal_name: string | null;
   full_legal_name: string;
   inn: string;
   ogrn: string;
-  kpp: string;
+  kpp: string | null;
   head_employee_id: number | null;
   registration_address: string;
   registration_city: string;
   operator_type: OrganizationOperatorType | null;
+  identity_document_type: IdentityDocumentType | null;
+  identity_document_name: string | null;
+  identity_document_series: string | null;
+  identity_document_number: string | null;
+  identity_document_issued_by: string | null;
+  identity_document_issued_date: string | null;
   head_office_region: string | null;
   activity_regions: string | null;
   rkn_office_address: string | null;
@@ -101,6 +115,11 @@ type OrganizationPayloadDto = {
   personal_data_processing_termination_condition: string | null;
   okveds: Array<{ code: string; name: string }>;
   branches: Array<{ name: string; postal_address: string }>;
+};
+
+type OrganizationReadinessDto = {
+  is_ready_for_ispdn_creation: boolean;
+  message: string | null;
 };
 
 function mapOptionalText(value: string): string | null {
@@ -127,16 +146,22 @@ function mapEmployee(dto: OrganizationEmployeeDto | null): OrganizationEmployeeR
 function mapCard(dto: OrganizationCardDto): OrganizationCard {
   return {
     id: dto.id,
-    shortLegalName: dto.short_legal_name,
+    shortLegalName: dto.short_legal_name ?? "",
     fullLegalName: dto.full_legal_name,
     inn: dto.inn,
     ogrn: dto.ogrn,
-    kpp: dto.kpp,
+    kpp: dto.kpp ?? "",
     headEmployeeId: dto.head_employee_id,
     headEmployee: mapEmployee(dto.head_employee),
     registrationAddress: dto.registration_address,
     registrationCity: dto.registration_city,
     operatorType: dto.operator_type ?? "",
+    identityDocumentType: dto.identity_document_type ?? "",
+    identityDocumentName: dto.identity_document_name ?? "",
+    identityDocumentSeries: dto.identity_document_series ?? "",
+    identityDocumentNumber: dto.identity_document_number ?? "",
+    identityDocumentIssuedBy: dto.identity_document_issued_by ?? "",
+    identityDocumentIssuedDate: dto.identity_document_issued_date ?? "",
     headOfficeRegion: dto.head_office_region ?? "",
     activityRegions: dto.activity_regions ?? "",
     rknOfficeAddress: dto.rkn_office_address ?? "",
@@ -177,15 +202,29 @@ function mapCard(dto: OrganizationCardDto): OrganizationCard {
 
 function mapPayload(values: OrganizationFormValues): OrganizationPayloadDto {
   return {
-    short_legal_name: values.shortLegalName.trim(),
+    short_legal_name: values.operatorType === "individual_entrepreneur" ? null : values.shortLegalName.trim(),
     full_legal_name: values.fullLegalName.trim(),
     inn: values.inn.trim(),
     ogrn: values.ogrn.trim(),
-    kpp: values.kpp.trim(),
+    kpp: values.operatorType === "individual_entrepreneur" ? null : values.kpp.trim(),
     head_employee_id: values.headEmployeeId,
     registration_address: values.registrationAddress.trim(),
     registration_city: values.registrationCity.trim(),
     operator_type: values.operatorType || null,
+    identity_document_type:
+      values.operatorType === "individual_entrepreneur" ? values.identityDocumentType || null : null,
+    identity_document_name:
+      values.operatorType === "individual_entrepreneur" && values.identityDocumentType === "other_rf_document"
+        ? mapOptionalText(values.identityDocumentName)
+        : null,
+    identity_document_series:
+      values.operatorType === "individual_entrepreneur" ? mapOptionalText(values.identityDocumentSeries) : null,
+    identity_document_number:
+      values.operatorType === "individual_entrepreneur" ? mapOptionalText(values.identityDocumentNumber) : null,
+    identity_document_issued_by:
+      values.operatorType === "individual_entrepreneur" ? mapOptionalText(values.identityDocumentIssuedBy) : null,
+    identity_document_issued_date:
+      values.operatorType === "individual_entrepreneur" ? values.identityDocumentIssuedDate || null : null,
     head_office_region: mapOptionalText(values.headOfficeRegion),
     activity_regions: mapOptionalText(values.activityRegions),
     rkn_office_address: values.rknOfficeAddress.trim(),
@@ -223,6 +262,13 @@ function mapPayload(values: OrganizationFormValues): OrganizationPayloadDto {
 
 export function getOrganization() {
   return httpClient<OrganizationCardDto>("/api/v1/organization").then(mapCard);
+}
+
+export function getOrganizationReadiness() {
+  return httpClient<OrganizationReadinessDto>("/api/v1/organizations/card/readiness").then((dto): OrganizationReadiness => ({
+    isReadyForIspdnCreation: dto.is_ready_for_ispdn_creation,
+    message: dto.message,
+  }));
 }
 
 export function saveOrganization(payload: OrganizationFormValues) {
