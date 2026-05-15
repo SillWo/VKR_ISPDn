@@ -25,9 +25,9 @@ class TaskEvent(Base):
         nullable=False,
         index=True,
     )
-    ispdn_id: Mapped[int] = mapped_column(
+    ispdn_id: Mapped[int | None] = mapped_column(
         ForeignKey("ispdn_cards.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
     event_type: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
@@ -48,7 +48,7 @@ class TaskEvent(Base):
         onupdate=func.now(),
     )
 
-    ispdn: Mapped["IspdnCard"] = relationship(back_populates="task_events")
+    ispdn: Mapped["IspdnCard | None"] = relationship(back_populates="task_events")
     tasks: Mapped[list["Task"]] = relationship(
         back_populates="task_event",
         cascade="all, delete-orphan",

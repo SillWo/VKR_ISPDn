@@ -62,13 +62,15 @@ class TaskEventRepository:
 
     def create_event(
         self,
-        ispdn_id: int,
+        ispdn_id: int | None,
         event_type: str,
         source_module: str,
         title: str,
         description: str | None,
         organization_id: int,
         automation_key: str | None = None,
+        *,
+        commit: bool = True,
     ) -> TaskEvent:
         task_event = TaskEvent(
             ispdn_id=ispdn_id,
@@ -80,7 +82,10 @@ class TaskEventRepository:
             automation_key=automation_key,
         )
         self.db.add(task_event)
-        self.db.commit()
+        if commit:
+            self.db.commit()
+        else:
+            self.db.flush()
         self.db.refresh(task_event)
         return self.get_event_by_id(task_event.id, organization_id) or task_event
 
@@ -100,13 +105,14 @@ class TaskEventRepository:
     def create_event_once(
         self,
         *,
-        ispdn_id: int,
+        ispdn_id: int | None,
         event_type: str,
         source_module: str,
         title: str,
         description: str | None,
         automation_key: str,
         organization_id: int,
+        commit: bool = True,
     ) -> TaskEvent:
         existing_event = self.get_event_by_automation_key(automation_key, organization_id)
         if existing_event is not None:
@@ -119,6 +125,7 @@ class TaskEventRepository:
             description=description,
             organization_id=organization_id,
             automation_key=automation_key,
+            commit=commit,
         )
 
     def create_task(self, task_event: TaskEvent, payload: TaskCreate) -> Task:
@@ -150,6 +157,7 @@ class TaskEventRepository:
         automation_key: str,
         responsible_employee_id: int | None = None,
         deadline: date | None = None,
+        commit: bool = True,
     ) -> Task:
         existing_task = self.get_task_by_automation_key(task_event_id, automation_key)
         if existing_task is not None:
@@ -165,7 +173,10 @@ class TaskEventRepository:
             deadline=deadline,
         )
         self.db.add(task)
-        self.db.commit()
+        if commit:
+            self.db.commit()
+        else:
+            self.db.flush()
         self.db.refresh(task)
         return self.get_task_by_automation_key(task_event_id, automation_key) or task
 
@@ -203,9 +214,12 @@ class TaskEventRepository:
         self.db.delete(task)
         self.db.commit()
 
-    def mark_task_done(self, task: Task) -> Task:
+    def mark_task_done(self, task: Task, *, commit: bool = True) -> Task:
         task.status = "done"
-        self.db.commit()
+        if commit:
+            self.db.commit()
+        else:
+            self.db.flush()
         self.db.refresh(task)
         return self.get_task_in_event(task.task_event_id, task.id) or task
 

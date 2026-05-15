@@ -56,6 +56,7 @@ class RknNotificationGenerator(DocumentGenerator):
                 "full_org_name",
                 "main_office_reg",
                 "operator_type",
+                "org_info",
                 "sokr_org_name",
                 "org_adress",
                 "mail_org_adress",

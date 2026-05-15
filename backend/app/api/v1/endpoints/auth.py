@@ -5,14 +5,29 @@ from app.core.auth import get_current_session, get_current_user
 from app.core.database import get_db
 from app.models.user import User, UserSession
 from app.repositories.auth import AuthRepository
+from app.repositories.ispdn import IspdnRepository
+from app.repositories.processing_process import ProcessingProcessRepository
+from app.repositories.security_level import SecurityLevelRepository
+from app.repositories.security_measure import SecurityMeasureRepository
+from app.repositories.task_event import TaskEventRepository
 from app.schemas.auth import AuthTokenResponse, AuthUserRead, LoginRequest, RegisterRequest
 from app.services.auth import AuthForbiddenError, AuthInvalidCredentialsError, AuthService, AuthUsernameConflictError
+from app.services.task_automation import TaskAutomationService
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 def get_auth_service(db: Session = Depends(get_db)) -> AuthService:
-    return AuthService(AuthRepository(db))
+    return AuthService(
+        AuthRepository(db),
+        TaskAutomationService(
+            TaskEventRepository(db),
+            IspdnRepository(db),
+            ProcessingProcessRepository(db),
+            SecurityLevelRepository(db),
+            SecurityMeasureRepository(db),
+        ),
+    )
 
 
 @router.post("/register", response_model=AuthTokenResponse, status_code=status.HTTP_201_CREATED)

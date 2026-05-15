@@ -6,6 +6,7 @@ from app.core.database import get_db
 from app.models.user import User
 from app.repositories.employee import EmployeeRepository
 from app.repositories.ispdn import IspdnRepository
+from app.repositories.organization import OrganizationRepository
 from app.repositories.processing_process import ProcessingProcessRepository
 from app.repositories.security_level import SecurityLevelRepository
 from app.repositories.security_measure import SecurityMeasureRepository
@@ -16,6 +17,7 @@ from app.services.ispdn import (
     IspdnResponsibleEmployeeNotFoundError,
     IspdnService,
 )
+from app.services.organization import ORGANIZATION_CARD_NOT_READY_MESSAGE, OrganizationCardNotReadyError, OrganizationService
 from app.services.task_automation import TaskAutomationService
 
 router = APIRouter(prefix="/ispdns", tags=["ispdns"])
@@ -34,6 +36,7 @@ def get_ispdn_service(db: Session = Depends(get_db)) -> IspdnService:
     return IspdnService(
         ispdn_repository,
         employee_repository,
+        OrganizationService(OrganizationRepository(db)),
         task_automation_service,
     )
 
@@ -55,6 +58,11 @@ def create_ispdn(
 ):
     try:
         return service.create_card(payload, current_user.organization_id)
+    except OrganizationCardNotReadyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=ORGANIZATION_CARD_NOT_READY_MESSAGE,
+        ) from exc
     except IspdnResponsibleEmployeeNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Responsible employee not found") from exc
 

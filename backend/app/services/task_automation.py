@@ -1,4 +1,4 @@
-﻿from datetime import date, timedelta
+from datetime import date, timedelta
 
 from app.domain.fstek21_measures import FSTEK21_MEASURES, get_measure_regulatory_status
 from app.domain.processing_process_subsumption import is_new_processing_process_for_task_automation
@@ -26,25 +26,72 @@ class TaskAutomationService:
         self.security_level_repository = security_level_repository
         self.security_measure_repository = security_measure_repository
 
+    def create_first_steps_event(self, organization_id: int, *, commit: bool = True) -> TaskEvent:
+        task_event = self.task_event_repository.create_event_once(
+            ispdn_id=None,
+            event_type="first_steps",
+            source_module="auth",
+            title="Первые шаги",
+            description="Вы только что зарегистрировали свой аккаунт, надо заполнить базовые сведения.",
+            automation_key=self._first_steps_key(organization_id),
+            organization_id=organization_id,
+            commit=commit,
+        )
+        self.task_event_repository.create_task_once(
+            task_event_id=task_event.id,
+            title="Заполнение карточки организации",
+            description="Вам необходимо заполнить информацию о вашей организации.",
+            importance="high",
+            status="pending",
+            automation_key="fill_organization_card",
+            responsible_employee_id=None,
+            deadline=None,
+            commit=commit,
+        )
+        self.task_event_repository.create_task_once(
+            task_event_id=task_event.id,
+            title="Создание первой ИСПДн",
+            description="Добавьте вашу первую ИСПДн в систему.",
+            importance=None,
+            status="pending",
+            automation_key="create_first_ispdn",
+            responsible_employee_id=None,
+            deadline=None,
+            commit=commit,
+        )
+        return self.task_event_repository.get_event_by_id(task_event.id, organization_id) or task_event
+
+    def sync_first_steps_tasks(self, organization_id: int) -> None:
+        self.sync_fill_organization_card_task(organization_id)
+        self.sync_create_first_ispdn_task(organization_id)
+
+    def sync_fill_organization_card_task(self, organization_id: int) -> None:
+        self._mark_first_steps_task_done(organization_id, "fill_organization_card")
+
+    def sync_create_first_ispdn_task(self, organization_id: int) -> None:
+        if not self.ispdn_repository.list(organization_id):
+            return
+        self._mark_first_steps_task_done(organization_id, "create_first_ispdn")
+
     def create_ispdn_created_event(self, ispdn_id: int, organization_id: int) -> TaskEvent:
         responsible_employee_id = self._get_ispdn_responsible_employee_id(ispdn_id, organization_id)
         task_event = self.task_event_repository.create_event_once(
             ispdn_id=ispdn_id,
             event_type="ispdn_created",
             source_module="ispdn_registry",
-            title="РЎРѕР·РґР°РЅРёРµ РЅРѕРІРѕР№ РРЎРџР”РЅ",
+            title="Создание новой ИСПДн",
             description=(
-                "РЎРѕР·РґР°РЅР° РЅРѕРІР°СЏ РРЎРџР”РЅ, РґР»СЏ РєРѕС‚РѕСЂРѕР№ РЅРµРѕР±С…РѕРґРёРјРѕ Р·Р°РІРµСЂС€РёС‚СЊ РїРµСЂРІРёС‡РЅРѕРµ Р·Р°РїРѕР»РЅРµРЅРёРµ РєРѕРЅС‚СЂРѕР»СЊРЅС‹С… РґР°РЅРЅС‹С…."
+                "Создана новая ИСПДн, для которой необходимо завершить первичное заполнение контрольных данных."
             ),
             automation_key=self._ispdn_created_key(ispdn_id),
             organization_id=organization_id,
         )
         self.task_event_repository.create_task_once(
             task_event_id=task_event.id,
-            title='Р—Р°РїРѕР»РЅРµРЅРёРµ РјРѕРґСѓР»СЏ "РўРµС…РЅРёС‡РµСЃРєРёРµ РјРµСЂС‹ Р·Р°С‰РёС‚С‹"',
+            title='Заполнение модуля "Технические меры защиты"',
             description=(
-                "Р’Р°Рј РЅРµРѕР±С…РѕРґРёРјРѕ СѓРєР°Р·Р°С‚СЊ С„Р°РєС‚РёС‡РµСЃРєРёР№ СЃС‚Р°С‚СѓСЃ РІСЃРµС… РјРµСЂ С‚РµС…РЅРёС‡РµСЃРєРѕР№ Р·Р°С‰РёС‚С‹ РґР»СЏ РРЎРџР”РЅ Рё Р·Р°РїРѕР»РЅРёС‚СЊ "
-                "РєРѕРјРјРµРЅС‚Р°СЂРёР№, РµСЃР»Рё С„Р°РєС‚РёС‡РµСЃРєРёР№ СЃС‚Р°С‚СѓСЃ РЅРµ СЃРѕРІРїР°РґР°РµС‚ СЃ СЃС‚Р°С‚СѓСЃРѕРј РїРѕ РїСЂРёРєР°Р·Сѓ Р¤РЎРўР­Рљ в„–21"
+                "Вам необходимо указать фактический статус всех мер технической защиты для ИСПДн и заполнить "
+                "комментарий, если фактический статус не совпадает со статусом по приказу ФСТЭК №21"
             ),
             importance="high",
             status="pending",
@@ -60,16 +107,16 @@ class TaskAutomationService:
             ispdn_id=ispdn_id,
             event_type="actual_security_level_changed",
             source_module="security_level",
-            title="РР·РјРµРЅРµРЅРёРµ С„Р°РєС‚РёС‡РµСЃРєРѕРіРѕ СѓСЂРѕРІРЅСЏ Р·Р°С‰РёС‰С‘РЅРЅРѕСЃС‚Рё Сѓ РРЎРџР”РЅ",
-            description="РЈ РРЎРџР”РЅ Р±С‹Р» РёР·РјРµРЅС‘РЅ С„Р°РєС‚РёС‡РµСЃРєРёР№ СѓСЂРѕРІРµРЅСЊ Р·Р°С‰РёС‰С‘РЅРЅРѕСЃС‚Рё.",
+            title="Изменение фактического уровня защищённости у ИСПДн",
+            description="У ИСПДн был изменён фактический уровень защищённости.",
             organization_id=organization_id,
         )
         self.task_event_repository.create_task_once(
             task_event_id=task_event.id,
-            title="РџРµСЂРµСЃРјРѕС‚СЂ С‚РµС…РЅРёС‡РµСЃРєРёС… РјРµСЂ Р·Р°С‰РёС‚С‹",
+            title="Пересмотр технических мер защиты",
             description=(
-                "РЈ РРЎРџР”РЅ Р±С‹Р» РёР·РјРµРЅС‘РЅ С„Р°РєС‚РёС‡РµСЃРєРёР№ СѓСЂРѕРІРµРЅСЊ Р·Р°С‰РёС‰С‘РЅРЅРѕСЃС‚Рё. Р’Р°Рј РЅРµРѕР±С…РѕРґРёРјРѕ Р°РєС‚СѓР°Р»РёР·РёСЂРѕРІР°С‚СЊ РїСЂРёРјРµРЅСЏРµРјС‹Рµ "
-                "С‚РµС…РЅРёС‡РµСЃРєРёРµ РјРµСЂС‹ Р·Р°С‰РёС‚С‹"
+                "У ИСПДн был изменён фактический уровень защищённости. Вам необходимо актуализировать применяемые "
+                "технические меры защиты"
             ),
             importance="high",
             status="pending",
@@ -145,20 +192,20 @@ class TaskAutomationService:
                 ispdn_id=ispdn_id,
                 event_type="security_level_mismatch_without_file",
                 source_module="security_level",
-                title="Р¤Р°РєС‚РёС‡РµСЃРєРёР№ СѓСЂРѕРІРµРЅСЊ Р·Р°С‰РёС‰С‘РЅРЅРѕСЃС‚Рё РРЎРџР”РЅ РЅРµ СЃРѕРІРїР°РґР°РµС‚ СЃ СЂРµРєРѕРјРµРЅРґСѓРµРјС‹Рј",
+                title="Фактический уровень защищённости ИСПДн не совпадает с рекомендуемым",
                 description=(
-                    "Р¤Р°РєС‚РёС‡РµСЃРєРёР№ СѓСЂРѕРІРµРЅСЊ Р·Р°С‰РёС‰С‘РЅРЅРѕСЃС‚Рё РѕС‚Р»РёС‡Р°РµС‚СЃСЏ РѕС‚ СЂРµРєРѕРјРµРЅРґСѓРµРјРѕРіРѕ, Р° С„Р°Р№Р» СЃ РѕР±РѕСЃРЅРѕРІР°РЅРёРµРј РѕС‚СЃСѓС‚СЃС‚РІСѓРµС‚."
+                    "Фактический уровень защищённости отличается от рекомендуемого, а файл с обоснованием отсутствует."
                 ),
                 automation_key=automation_key,
                 organization_id=organization_id,
             )
             self.task_event_repository.create_task_once(
                 task_event_id=task_event.id,
-                title="Р”РѕР±Р°РІРёС‚СЊ РѕР±РѕСЃРЅРѕРІР°РЅРёРµ РѕС‚Р»РёС‡РёСЏ С„Р°РєС‚РёС‡РµСЃРєРѕРіРѕ СѓСЂРѕРІРЅСЏ Р·Р°С‰РёС‰С‘РЅРЅРѕСЃС‚Рё",
+                title="Добавить обоснование отличия фактического уровня защищённости",
                 description=(
-                    "РЈ РІР°С€РµР№ РРЎРџР”РЅ СЂРµРєРѕРјРµРЅРґСѓРµРјС‹Р№ СѓСЂРѕРІРµРЅСЊ Р·Р°С‰РёС‰С‘РЅРЅРѕСЃС‚Рё РїРѕ РџРѕСЃС‚Р°РЅРѕРІР»РµРЅРёСЋ РїСЂР°РІРёС‚РµР»СЊСЃС‚РІР° в„–1119 РѕС‚Р»РёС‡Р°РµС‚СЃСЏ "
-                    "РѕС‚ С„Р°РєС‚РёС‡РµСЃРєРѕРіРѕ, РїСЂРё СЌС‚Рѕ РѕС‚СЃСѓС‚СЃС‚РІСѓРµС‚ РґРѕРєСѓРјРµРЅС‚ СЃ РѕР±РѕСЃРЅРѕРІР°РЅРёРµРј. Р”РѕР±Р°РІСЊС‚Рµ РµРіРѕ РІ Р±Р»РёР¶Р°Р№С€РµРµ РІСЂРµРјСЏ РёР»Рё "
-                    "РёР·РјРµРЅРёС‚Рµ С„Р°РєС‚РёС‡РµСЃРєРёР№ СѓСЂРѕРІРµРЅСЊ Р·Р°С‰РёС‰С‘РЅРЅРѕСЃС‚Рё"
+                    "У вашей ИСПДн рекомендуемый уровень защищённости по Постановлению правительства №1119 отличается "
+                    "от фактического, при этом отсутствует документ с обоснованием. Добавьте его в ближайшее время или "
+                    "измените фактический уровень защищённости"
                 ),
                 importance="high",
                 status="pending",
@@ -202,9 +249,9 @@ class TaskAutomationService:
                 ispdn_id=ispdn.id,
                 event_type="processing_process_created",
                 source_module="processing_processes",
-                title="РЎРѕР·РґР°РЅРёРµ РЅРѕРІРѕРіРѕ РїСЂРѕС†РµСЃСЃР° РѕР±СЂР°Р±РѕС‚РєРё",
+                title="Создание нового процесса обработки",
                 description=(
-                    "РќРѕРІС‹Р№ РїСЂРѕС†РµСЃСЃ РѕР±СЂР°Р±РѕС‚РєРё СЃРІСЏР·Р°РЅ СЃ РґРµР№СЃС‚РІСѓСЋС‰РµР№ РРЎРџР”РЅ Рё С‚СЂРµР±СѓРµС‚ Р°РєС‚СѓР°Р»РёР·Р°С†РёРё РґРѕРєСѓРјРµРЅС‚РѕРІ."
+                    "Новый процесс обработки связан с действующей ИСПДн и требует актуализации документов."
                 ),
                 automation_key=f"processing_process_created:{ispdn.id}:{process.id}",
                 organization_id=organization_id,
@@ -212,17 +259,17 @@ class TaskAutomationService:
             self._create_rkn_change_notification_task(
                 task_event_id=task_event.id,
                 description=(
-                    "Р’Р°РјРё Р±С‹Р» СЃРѕР·РґР°РЅ РЅРѕРІС‹Р№ РїСЂРѕС†РµСЃСЃ РѕР±СЂР°Р±РѕС‚РєРё, Рѕ РєРѕС‚РѕСЂРѕРј РЅРµРѕР±С…РѕРґРёРјРѕ СѓРІРµРґРѕРјРёС‚СЊ Р РѕСЃРєРѕРјРЅР°РґР·РѕСЂ С‡РµСЂРµР· "
-                    "СѓРІРµРґРѕРјР»РµРЅРёРµ РѕР± РёР·РјРµРЅРµРЅРёРё СЃРІРµРґРµРЅРёР№."
+                    "Вами был создан новый процесс обработки, о котором необходимо уведомить Роскомнадзор через "
+                    "уведомление об изменении сведений."
                 ),
                 responsible_employee_id=responsible_employee_id,
             )
             self.task_event_repository.create_task_once(
                 task_event_id=task_event.id,
-                title="Р’С‹РїСѓСЃРє РЅРѕРІРѕРіРѕ РџРѕР»РѕР¶РµРЅРёСЏ РѕР± РѕР±СЂР°Р±РѕС‚РєРµ РїРµСЂСЃРѕРЅР°Р»СЊРЅС‹С… РґР°РЅРЅС‹С…",
+                title="Выпуск нового Положения об обработке персональных данных",
                 description=(
-                    "Р’Р°РјРё Р±С‹Р» СЃРѕР·РґР°РЅ РЅРѕРІС‹Р№ РїСЂРѕС†РµСЃСЃ РѕР±СЂР°Р±РѕС‚РєРё, РєРѕС‚РѕСЂС‹Р№ РЅРµРѕР±С…РѕРґРёРјРѕ РІРЅРµСЃС‚Рё РІ РїРѕР»РѕР¶РµРЅРёРµ РѕР± РѕР±СЂР°Р±РѕС‚РєРµ "
-                    "РїРµСЂСЃРѕРЅР°Р»СЊРЅС‹С… РґР°РЅРЅС‹С…. РЎРѕР·РґР°Р№С‚Рµ Рё РІС‹РїСѓСЃС‚РёС‚Рµ РЅРѕРІС‹Р№ РґРѕРєСѓРјРµРЅС‚"
+                    "Вами был создан новый процесс обработки, который необходимо внести в положение об обработке "
+                    "персональных данных. Создайте и выпустите новый документ"
                 ),
                 importance="medium",
                 status="pending",
@@ -243,10 +290,10 @@ class TaskAutomationService:
                 ispdn_id=ispdn.id,
                 event_type="crypto_tool_added_to_active_ispdn",
                 source_module="cryptography",
-                title="РџРѕСЏРІР»РµРЅРёРµ РЅРѕРІРѕРіРѕ РЎРљР—Р Сѓ РґРµР№СЃС‚РІСѓСЋС‰РµР№ РРЎРџР”РЅ",
+                title="Появление нового СКЗИ у действующей ИСПДн",
                 description=(
-                    "Р’С‹ СѓРєР°Р·Р°Р»Рё РёСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ РЅРѕРІРѕРіРѕ РЎРљР—Р РІ РѕРґРЅРѕР№ РёР· РґРµР№СЃС‚РІСѓСЋС‰РёС… РРЎРџР”РЅ. РќРµРѕР±С…РѕРґРёРјРѕ РїРѕРґР°С‚СЊ "
-                    "СѓРІРµРґРѕРјР»РµРЅРёРµ РІ Р РљРќ РѕР± РёСЃРїРѕР»СЊР·РѕРІР°РЅРёРё РЅРѕРІРѕРіРѕ РЎРљР—Р РїСЂРё РѕР±СЂР°Р±РѕС‚РєРµ РџР”РЅ."
+                    "Вы указали использование нового СКЗИ в одной из действующих ИСПДн. Необходимо подать "
+                    "уведомление в РКН об использовании нового СКЗИ при обработке ПДн."
                 ),
                 automation_key=f"crypto_tool_added_to_active_ispdn:{ispdn.id}:{crypto_tool_id}",
                 organization_id=organization_id,
@@ -254,7 +301,7 @@ class TaskAutomationService:
             self._create_rkn_change_notification_task(
                 task_event_id=task_event.id,
                 description=(
-                    "Р’ РРЎРџР”РЅ Р±С‹Р»Рѕ РґРѕР±Р°РІР»РµРЅРѕ РЅРѕРІРѕРµ РЎРљР—Р. РќРµРѕР±С…РѕРґРёРјРѕ РїРѕРґР°С‚СЊ СѓРІРµРґРѕРјР»РµРЅРёРµ РІ Р РљРќ РѕР± РёР·РјРµРЅРµРЅРёРё СЃРІРµРґРµРЅРёР№."
+                    "В ИСПДн было добавлено новое СКЗИ. Необходимо подать уведомление в РКН об изменении сведений."
                 ),
                 responsible_employee_id=ispdn.responsible_employee_id,
             )
@@ -272,10 +319,10 @@ class TaskAutomationService:
                 ispdn_id=ispdn.id,
                 event_type="data_center_added_to_active_ispdn",
                 source_module="data_centers",
-                title="РџРѕСЏРІР»РµРЅРёРµ РЅРѕРІРѕРіРѕ Р¦РћР” Сѓ РґРµР№СЃС‚РІСѓСЋС‰РµР№ РРЎРџР”РЅ",
+                title="Появление нового ЦОД у действующей ИСПДн",
                 description=(
-                    "Р’С‹ СѓРєР°Р·Р°Р»Рё РёСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ РЅРѕРІРѕРіРѕ Р¦РћР” РІ РѕРґРЅРѕР№ РёР· РґРµР№СЃС‚РІСѓСЋС‰РёС… РРЎРџР”РЅ. РќРµРѕР±С…РѕРґРёРјРѕ РїРѕРґР°С‚СЊ СѓРІРµРґРѕРјР»РµРЅРёРµ "
-                    "РІ Р РљРќ РѕР± РёСЃРїРѕР»СЊР·РѕРІР°РЅРёРё РЅРѕРІРѕРіРѕ Р¦РћР” РїСЂРё РѕР±СЂР°Р±РѕС‚РєРµ РџР”РЅ."
+                    "Вы указали использование нового ЦОД в одной из действующих ИСПДн. Необходимо подать уведомление "
+                    "в РКН об использовании нового ЦОД при обработке ПДн."
                 ),
                 automation_key=f"data_center_added_to_active_ispdn:{ispdn.id}:{data_center_id}",
                 organization_id=organization_id,
@@ -283,7 +330,7 @@ class TaskAutomationService:
             self._create_rkn_change_notification_task(
                 task_event_id=task_event.id,
                 description=(
-                    "Р’ РРЎРџР”РЅ Р±С‹Р» РґРѕР±Р°РІР»РµРЅ РЅРѕРІС‹Р№ Р¦РћР”. РќРµРѕР±С…РѕРґРёРјРѕ РїРѕРґР°С‚СЊ СѓРІРµРґРѕРјР»РµРЅРёРµ РІ Р РљРќ РѕР± РёР·РјРµРЅРµРЅРёРё СЃРІРµРґРµРЅРёР№."
+                    "В ИСПДн был добавлен новый ЦОД. Необходимо подать уведомление в РКН об изменении сведений."
                 ),
                 responsible_employee_id=ispdn.responsible_employee_id,
             )
@@ -298,14 +345,14 @@ class TaskAutomationService:
                 ispdn_id=ispdn.id,
                 event_type="organization_data_changed",
                 source_module="organization",
-                title="РР·РјРµРЅРёР»РёСЃСЊ РґР°РЅРЅС‹Рµ РѕСЂРіР°РЅРёР·Р°С†РёРё",
-                description="Р’С‹ РёР·РјРµРЅРёР»Рё РґР°РЅРЅС‹Рµ РІР°С€РµР№ РѕСЂРіР°РЅРёР·Р°С†РёРё. РќРµРѕР±С…РѕРґРёРјРѕ РїРѕРґР°С‚СЊ СѓРІРµРґРѕРјР»РµРЅРёРµ РІ Р РљРќ РѕР± РёР·РјРµРЅРµРЅРёСЏС….",
+                title="Изменились данные организации",
+                description="Вы изменили данные вашей организации. Необходимо подать уведомление в РКН об изменениях.",
                 organization_id=organization_id,
             )
             self._create_rkn_change_notification_task(
                 task_event_id=task_event.id,
                 description=(
-                    "Р‘С‹Р»Рё РёР·РјРµРЅРµРЅС‹ РґР°РЅРЅС‹Рµ РѕСЂРіР°РЅРёР·Р°С†РёРё. РќРµРѕР±С…РѕРґРёРјРѕ РїРѕРґР°С‚СЊ СѓРІРµРґРѕРјР»РµРЅРёРµ РІ Р РљРќ РѕР± РёР·РјРµРЅРµРЅРёРё СЃРІРµРґРµРЅРёР№."
+                    "Были изменены данные организации. Необходимо подать уведомление в РКН об изменении сведений."
                 ),
                 responsible_employee_id=ispdn.responsible_employee_id,
             )
@@ -325,7 +372,7 @@ class TaskAutomationService:
     ) -> None:
         self.task_event_repository.create_task_once(
             task_event_id=task_event_id,
-            title="РћС‚РїСЂР°РІРєР° СѓРІРµРґРѕРјР»РµРЅРёСЏ РѕР± РёР·РјРµРЅРµРЅРёСЏС… РІ Р РљРќ",
+            title="Отправка уведомления об изменениях в РКН",
             description=description,
             importance="high",
             status="pending",
@@ -334,6 +381,17 @@ class TaskAutomationService:
             deadline=self._rkn_change_deadline(),
         )
 
+    def _mark_first_steps_task_done(self, organization_id: int, automation_key: str) -> None:
+        task_event = self.task_event_repository.get_event_by_automation_key(
+            self._first_steps_key(organization_id),
+            organization_id,
+        )
+        if task_event is None:
+            return
+        task = self.task_event_repository.get_task_by_automation_key(task_event.id, automation_key)
+        if task is not None and task.status != "done":
+            self.task_event_repository.mark_task_done(task)
+
     @staticmethod
     def _rkn_change_deadline() -> date:
         return date.today() + timedelta(days=15)
@@ -341,6 +399,10 @@ class TaskAutomationService:
     @staticmethod
     def _ispdn_created_key(ispdn_id: int) -> str:
         return f"ispdn_created:{ispdn_id}"
+
+    @staticmethod
+    def _first_steps_key(organization_id: int) -> str:
+        return f"first_steps:{organization_id}"
 
     @staticmethod
     def _security_level_mismatch_key(ispdn_id: int) -> str:

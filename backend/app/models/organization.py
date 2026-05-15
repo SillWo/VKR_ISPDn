@@ -47,11 +47,11 @@ class OrganizationCard(Base):
         nullable=False,
         index=True,
     )
-    short_legal_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    short_legal_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     full_legal_name: Mapped[str] = mapped_column(Text, nullable=False)
-    inn: Mapped[str] = mapped_column(String(10), nullable=False)
-    ogrn: Mapped[str] = mapped_column(String(13), nullable=False)
-    kpp: Mapped[str] = mapped_column(String(9), nullable=False)
+    inn: Mapped[str] = mapped_column(String(12), nullable=False)
+    ogrn: Mapped[str] = mapped_column(String(15), nullable=False)
+    kpp: Mapped[str | None] = mapped_column(String(9), nullable=True)
     head_full_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     head_position: Mapped[str | None] = mapped_column(String(255), nullable=True)
     head_employee_id: Mapped[int | None] = mapped_column(
@@ -62,6 +62,12 @@ class OrganizationCard(Base):
     registration_city: Mapped[str] = mapped_column(String(255), nullable=False)
     okved: Mapped[str | None] = mapped_column(String(32), nullable=True)
     operator_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    identity_document_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    identity_document_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    identity_document_series: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    identity_document_number: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    identity_document_issued_by: Mapped[str | None] = mapped_column(Text, nullable=True)
+    identity_document_issued_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     head_office_region: Mapped[str | None] = mapped_column(String(255), nullable=True)
     activity_regions: Mapped[str | None] = mapped_column(Text, nullable=True)
     rkn_office_address: Mapped[str | None] = mapped_column(Text, nullable=True)

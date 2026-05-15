@@ -79,6 +79,18 @@ ACCESS_PERSON_NAME_LABELS = {
     "foreign_organization": "Наименование организации",
 }
 
+RKN_OPERATOR_TYPE_LABELS = {
+    "legal_entity": "Юридическое лицо",
+    "individual_entrepreneur": "Индивидуальный предприниматель",
+    "state_body": "Государственный орган",
+    "municipal_body": "Муниципальный орган",
+}
+
+IDENTITY_DOCUMENT_TYPE_LABELS = {
+    "passport_rf": "Паспорт гражданина РФ",
+    "other_rf_document": "Другой документ гражданина РФ",
+}
+
 
 def _text(value: object) -> str:
     if value is None:
@@ -134,6 +146,7 @@ class RknNotificationContextProvider:
             raise DocumentPrerequisiteMissingError(
                 "В карточке организации не указан адрес офиса Роскомнадзора.",
             )
+        self._validate_org_info_prerequisites(organization)
 
         termination_text = self._build_termination_text(organization)
         processes = filter_subsumed_processing_processes(self.processing_repository.list_unique_for_active_ispdns(self.organization_id))
@@ -184,6 +197,7 @@ class RknNotificationContextProvider:
             "main_office_reg": _text(organization.head_office_region),
             "operator_type": _text(OPERATOR_TYPE_LABELS.get(organization.operator_type or "", organization.operator_type)),
             "sokr_org_name": _text(organization.short_legal_name),
+            "org_info": self._org_info(organization),
             "org_adress": _text(organization.registration_address),
             "mail_org_adress": self._organization_postal_address(organization),
             "org_phone": _text(organization.phone),
@@ -208,6 +222,68 @@ class RknNotificationContextProvider:
 
     def _branches_list(self, organization: OrganizationCard) -> str:
         return "; ".join(f"{branch.name}: {branch.postal_address}" for branch in organization.branches)
+
+    def _validate_org_info_prerequisites(self, organization: OrganizationCard) -> None:
+        operator_type = organization.operator_type
+        if not operator_type:
+            raise DocumentPrerequisiteMissingError("В карточке организации не указан тип оператора.")
+        if operator_type in {"legal_entity", "state_body", "municipal_body"}:
+            if not organization.short_legal_name or not organization.short_legal_name.strip():
+                raise DocumentPrerequisiteMissingError(
+                    "В карточке организации не указано сокращённое наименование оператора.",
+                )
+            return
+        if operator_type == "individual_entrepreneur" and not self._has_identity_document_data(organization):
+            raise DocumentPrerequisiteMissingError(
+                "В карточке организации не заполнены данные документа, удостоверяющего личность индивидуального предпринимателя.",
+            )
+
+    @staticmethod
+    def _has_identity_document_data(organization: OrganizationCard) -> bool:
+        if organization.identity_document_type not in IDENTITY_DOCUMENT_TYPE_LABELS:
+            return False
+        if organization.identity_document_type == "other_rf_document" and not (
+            organization.identity_document_name and organization.identity_document_name.strip()
+        ):
+            return False
+        return all(
+            [
+                organization.identity_document_series and organization.identity_document_series.strip(),
+                organization.identity_document_number and organization.identity_document_number.strip(),
+                organization.identity_document_issued_by and organization.identity_document_issued_by.strip(),
+                organization.identity_document_issued_date,
+            ],
+        )
+
+    def _org_info(self, organization: OrganizationCard) -> str:
+        operator_type = organization.operator_type or ""
+        operator_label = RKN_OPERATOR_TYPE_LABELS.get(operator_type, _text(operator_type))
+        if operator_type == "individual_entrepreneur":
+            lines = [
+                f"Тип оператора: {operator_label}",
+                f"Наименование оператора: {_text(organization.full_legal_name)}",
+                "Документ, удостоверяющий личность: "
+                f"{IDENTITY_DOCUMENT_TYPE_LABELS.get(organization.identity_document_type or '', _text(organization.identity_document_type))}",
+            ]
+            if organization.identity_document_type == "other_rf_document":
+                lines.append(f"Документ: {_text(organization.identity_document_name)}")
+            lines.extend(
+                [
+                    f"Серия: {_text(organization.identity_document_series)}",
+                    f"Номер: {_text(organization.identity_document_number)}",
+                    f"Кем выдан: {_text(organization.identity_document_issued_by)}",
+                    f"Дата выдачи: {_date(organization.identity_document_issued_date)}",
+                ],
+            )
+            return "\n".join(lines)
+
+        return "\n".join(
+            [
+                f"Тип оператора: {operator_label}",
+                f"Наименование оператора: {_text(organization.full_legal_name)}",
+                f"Сокращённое наименование оператора: {_text(organization.short_legal_name)}",
+            ],
+        )
 
     def _process_context(self, process: ProcessingProcess) -> dict:
         return {

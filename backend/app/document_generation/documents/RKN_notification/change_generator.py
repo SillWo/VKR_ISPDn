@@ -55,10 +55,13 @@ class RknNotificationChangesGenerator(DocumentGenerator):
 
     def get_template_context_schema(self) -> dict:
         schema = RknNotificationGenerator().get_template_context_schema()
+        fields = list(schema.get("fields", []))
+        if "org_info" not in fields:
+            fields.append("org_info")
         return {
             **schema,
             "fields": [
-                *schema.get("fields", []),
+                *fields,
                 "change_date",
             ],
         }

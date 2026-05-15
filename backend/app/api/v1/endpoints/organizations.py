@@ -10,8 +10,10 @@ from app.repositories.processing_process import ProcessingProcessRepository
 from app.repositories.security_level import SecurityLevelRepository
 from app.repositories.security_measure import SecurityMeasureRepository
 from app.repositories.task_event import TaskEventRepository
-from app.schemas.organization import OrganizationRead, OrganizationUpsert
+from app.schemas.organization import OrganizationRead, OrganizationReadinessRead, OrganizationUpsert
 from app.services.organization import (
+    ORGANIZATION_CARD_NOT_READY_MESSAGE,
+    OrganizationCardNotReadyError,
     OrganizationEmployeeNotFoundError,
     OrganizationNotFoundError,
     OrganizationService,
@@ -19,6 +21,7 @@ from app.services.organization import (
 from app.services.task_automation import TaskAutomationService
 
 router = APIRouter(prefix="/organization", tags=["organization"])
+card_readiness_router = APIRouter(prefix="/organizations/card", tags=["organization"])
 
 
 def get_organization_service(db: Session = Depends(get_db)) -> OrganizationService:
@@ -47,6 +50,36 @@ def get_organization(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Organization card is not created yet",
         ) from exc
+
+
+@router.get("/readiness", response_model=OrganizationReadinessRead)
+def get_organization_readiness(
+    service: OrganizationService = Depends(get_organization_service),
+    current_user: User = Depends(get_current_user),
+):
+    return _get_organization_readiness(service, current_user.organization_id)
+
+
+@card_readiness_router.get("/readiness", response_model=OrganizationReadinessRead)
+def get_organization_card_readiness(
+    service: OrganizationService = Depends(get_organization_service),
+    current_user: User = Depends(get_current_user),
+):
+    return _get_organization_readiness(service, current_user.organization_id)
+
+
+def _get_organization_readiness(
+    service: OrganizationService,
+    organization_id: int,
+) -> OrganizationReadinessRead:
+    try:
+        service.validate_card_ready_for_ispdn_creation(organization_id)
+    except OrganizationCardNotReadyError:
+        return OrganizationReadinessRead(
+            is_ready_for_ispdn_creation=False,
+            message=ORGANIZATION_CARD_NOT_READY_MESSAGE,
+        )
+    return OrganizationReadinessRead(is_ready_for_ispdn_creation=True, message=None)
 
 
 @router.put("", response_model=OrganizationRead)

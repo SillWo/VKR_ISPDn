@@ -11,6 +11,7 @@ from app.schemas.text import strip_optional_text, strip_required_text
 PHONE_PATTERN = r"^\+7\(\d{3}\)\d{3}-\d{2}-\d{2}$"
 EMAIL_PATTERN = r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
 OrganizationTerminationType = Literal["end_date", "end_condition"]
+IdentityDocumentType = Literal["passport_rf", "other_rf_document"]
 
 
 class OrganizationOperatorType(str, Enum):
@@ -51,15 +52,21 @@ class OrganizationBranchRead(OrganizationBranchUpsert):
 
 
 class OrganizationBase(BaseModel):
-    short_legal_name: str = Field(min_length=1, max_length=255)
+    short_legal_name: str | None = Field(default=None, max_length=255)
     full_legal_name: str = Field(min_length=1)
-    inn: str = Field(min_length=10, max_length=10, pattern=r"^\d+$")
-    ogrn: str = Field(min_length=13, max_length=13, pattern=r"^\d+$")
-    kpp: str = Field(min_length=9, max_length=9, pattern=r"^\d+$")
+    inn: str = Field(min_length=10, max_length=12, pattern=r"^\d+$")
+    ogrn: str = Field(min_length=13, max_length=15, pattern=r"^\d+$")
+    kpp: str | None = Field(default=None, min_length=9, max_length=9, pattern=r"^\d+$")
     head_employee_id: int | None = None
     registration_address: str = Field(min_length=1)
     registration_city: str = Field(min_length=1, max_length=255)
     operator_type: OrganizationOperatorType | None = None
+    identity_document_type: IdentityDocumentType | None = None
+    identity_document_name: str | None = Field(default=None, max_length=255)
+    identity_document_series: str | None = Field(default=None, max_length=32, pattern=r"^\d+$")
+    identity_document_number: str | None = Field(default=None, max_length=32, pattern=r"^\d+$")
+    identity_document_issued_by: str | None = None
+    identity_document_issued_date: date | None = None
     head_office_region: str | None = Field(default=None, max_length=255)
     activity_regions: str | None = None
     rkn_office_address: str | None = None
@@ -82,17 +89,21 @@ class OrganizationBase(BaseModel):
     branches: list[OrganizationBranchUpsert] = Field(default_factory=list)
 
     _validate_required_text = field_validator(
-        "short_legal_name",
         "full_legal_name",
         "inn",
         "ogrn",
-        "kpp",
         "registration_address",
         "registration_city",
         mode="before",
     )(strip_required_text)
 
     _validate_optional_text = field_validator(
+        "short_legal_name",
+        "identity_document_name",
+        "identity_document_series",
+        "identity_document_number",
+        "identity_document_issued_by",
+        "kpp",
         "head_office_region",
         "activity_regions",
         "rkn_office_address",
@@ -135,6 +146,42 @@ class OrganizationBase(BaseModel):
 
 class OrganizationUpsert(OrganizationBase):
     @model_validator(mode="after")
+    def validate_operator_fields(self) -> "OrganizationUpsert":
+        if self.operator_type in {
+            OrganizationOperatorType.legal_entity,
+            OrganizationOperatorType.state_body,
+            OrganizationOperatorType.municipal_body,
+        }:
+            if self.short_legal_name is None:
+                raise ValueError("Short legal name is required")
+            if len(self.inn) != 10:
+                raise ValueError("INN must contain 10 digits for legal entity")
+            if len(self.ogrn) != 13:
+                raise ValueError("OGRN must contain 13 digits for legal entity")
+            if self.kpp is None:
+                raise ValueError("KPP is required for legal entity")
+            return self
+
+        if self.operator_type == OrganizationOperatorType.individual_entrepreneur:
+            if len(self.inn) != 12:
+                raise ValueError("INN must contain 12 digits for individual entrepreneur")
+            if len(self.ogrn) != 15:
+                raise ValueError("OGRNIP must contain 15 digits for individual entrepreneur")
+            self.kpp = None
+            missing_identity_fields = (
+                self.identity_document_type is None
+                or self.identity_document_series is None
+                or self.identity_document_number is None
+                or self.identity_document_issued_by is None
+                or self.identity_document_issued_date is None
+            )
+            if missing_identity_fields:
+                raise ValueError("Identity document data is required")
+            if self.identity_document_type == "other_rf_document" and self.identity_document_name is None:
+                raise ValueError("Identity document name is required")
+        return self
+
+    @model_validator(mode="after")
     def validate_head_employee(self) -> "OrganizationUpsert":
         if self.head_employee_id is None:
             raise ValueError("Head employee is required")
@@ -157,3 +204,8 @@ class OrganizationRead(OrganizationBase):
     personal_data_processing_responsible_employee: EmployeeShortRead | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class OrganizationReadinessRead(BaseModel):
+    is_ready_for_ispdn_creation: bool
+    message: str | None = None

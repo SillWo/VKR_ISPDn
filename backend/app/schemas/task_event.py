@@ -38,7 +38,7 @@ class TaskCreate(BaseModel):
 
 
 class TaskEventCreate(BaseModel):
-    ispdn_id: int
+    ispdn_id: int | None = None
     title: str = Field(min_length=1, max_length=255)
     description: str | None = None
 
@@ -103,8 +103,8 @@ class TaskEventRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    ispdn_id: int
-    ispdn: IspdnTaskShortRead
+    ispdn_id: int | None
+    ispdn: IspdnTaskShortRead | None
     event_type: str
     source_module: str
     automation_key: str | None

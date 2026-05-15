@@ -76,7 +76,7 @@ class PdnDocumentContextProvider:
             "date": generation_date.strftime("%d.%m.%Y"),
             "org_city": organization.registration_city,
             "org_full_name": organization.full_legal_name,
-            "main_post": organization.head_position,
+            "main_post": self._head_position(organization),
             "main_FIO": self._head_full_name(organization),
             "year": generation_date.strftime("%Y"),
             "pdn_policy_subject_categories": self._unique_labels(
@@ -92,7 +92,7 @@ class PdnDocumentContextProvider:
         }
 
     def _validate_organization(self, organization: OrganizationCard) -> None:
-        if not _strip(organization.head_position):
+        if not self._head_position(organization):
             raise DocumentPrerequisiteMissingError("В карточке организации не указана должность руководителя.")
         if not _strip(organization.head_full_name) and organization.head_employee is None:
             raise DocumentPrerequisiteMissingError("В карточке организации не указан руководитель организации.")
@@ -101,6 +101,11 @@ class PdnDocumentContextProvider:
         if organization.head_employee is not None:
             return organization.head_employee.full_name
         return _strip(organization.head_full_name)
+
+    def _head_position(self, organization: OrganizationCard) -> str:
+        if organization.head_employee is not None:
+            return organization.head_employee.position
+        return _strip(organization.head_position)
 
     def _unique_labels(
         self,

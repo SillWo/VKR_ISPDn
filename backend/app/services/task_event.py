@@ -65,11 +65,12 @@ class TaskEventService:
         return task_event
 
     def create_manual_event(self, payload: TaskEventCreate, organization_id: int) -> TaskEvent:
-        ispdn = self.ispdn_repository.get_by_id(payload.ispdn_id, organization_id)
-        if ispdn is None:
-            raise TaskEventIspdnNotFoundError
-        if ispdn.status != "active":
-            raise TaskEventIspdnArchivedError
+        if payload.ispdn_id is not None:
+            ispdn = self.ispdn_repository.get_by_id(payload.ispdn_id, organization_id)
+            if ispdn is None:
+                raise TaskEventIspdnNotFoundError
+            if ispdn.status != "active":
+                raise TaskEventIspdnArchivedError
         task_event = self.repository.create_event(
             ispdn_id=payload.ispdn_id,
             event_type="manual",
@@ -221,6 +222,8 @@ class TaskEventService:
 
     @staticmethod
     def _to_actual_task_read(task: Task) -> ActualTaskRead:
+        if task.task_event.ispdn_id is None or task.task_event.ispdn is None:
+            raise TaskEventIspdnNotFoundError
         return ActualTaskRead(
             id=task.id,
             task_event_id=task.task_event_id,

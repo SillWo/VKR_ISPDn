@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from typing import TYPE_CHECKING
 
 from sqlalchemy.exc import IntegrityError
 
@@ -14,6 +15,9 @@ from app.models.user import User, UserSession
 from app.repositories.auth import AuthRepository
 from app.schemas.auth import AuthTokenResponse, AuthUserRead, LoginRequest, RegisterRequest
 
+if TYPE_CHECKING:
+    from app.services.task_automation import TaskAutomationService
+
 
 class AuthUsernameConflictError(Exception):
     pass
@@ -28,8 +32,13 @@ class AuthForbiddenError(Exception):
 
 
 class AuthService:
-    def __init__(self, repository: AuthRepository) -> None:
+    def __init__(
+        self,
+        repository: AuthRepository,
+        task_automation_service: "TaskAutomationService | None" = None,
+    ) -> None:
         self.repository = repository
+        self.task_automation_service = task_automation_service
 
     def register(self, payload: RegisterRequest) -> AuthTokenResponse:
         if self.repository.get_user_by_username(payload.username) is not None:
@@ -49,6 +58,8 @@ class AuthService:
             owner_role.permissions = self.repository.get_or_create_permissions()
             user.roles.append(owner_role)
             response = self._create_token_response(user)
+            if self.task_automation_service is not None:
+                self.task_automation_service.create_first_steps_event(organization.id, commit=False)
             self.repository.commit()
             return response
         except IntegrityError as exc:
