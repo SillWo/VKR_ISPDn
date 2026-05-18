@@ -95,16 +95,18 @@ export function TaskList({ tasks, onEdit, onDelete, onStatusChange, onImportance
               <TableCell>{task.deadline ? formatDateOnly(task.deadline) : "Не указан"}</TableCell>
               <TableCell>{task.responsibleEmployee?.fullName ?? "Не назначен"}</TableCell>
               <TableCell align="right">
-                <Tooltip title="Редактировать">
-                  <IconButton aria-label="Редактировать задачу" onClick={() => onEdit(task)}>
-                    <EditIcon />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="Удалить">
-                  <IconButton aria-label="Удалить задачу" color="error" onClick={() => onDelete(task)}>
-                    <DeleteIcon />
-                  </IconButton>
-                </Tooltip>
+                <Stack direction="row" spacing={0.5} sx={{ justifyContent: "flex-end", flexWrap: "nowrap" }}>
+                  <Tooltip title="Редактировать">
+                    <IconButton aria-label="Редактировать задачу" onClick={() => onEdit(task)}>
+                      <EditIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Удалить">
+                    <IconButton aria-label="Удалить задачу" color="error" onClick={() => onDelete(task)}>
+                      <DeleteIcon />
+                    </IconButton>
+                  </Tooltip>
+                </Stack>
               </TableCell>
             </TableRow>
           ))}

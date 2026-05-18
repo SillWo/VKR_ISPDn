@@ -4,11 +4,11 @@ import SaveIcon from "@mui/icons-material/Save";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Button,
+  Checkbox,
   FormControlLabel,
   IconButton,
   MenuItem,
   Stack,
-  Switch,
   Table,
   TableBody,
   TableCell,
@@ -337,7 +337,9 @@ export function OrganizationCardForm({
             <Controller
               control={control}
               name="postalAddressMatchesRegistration"
-              render={({ field }) => <Switch checked={field.value} onChange={(_, checked) => field.onChange(checked)} />}
+              render={({ field }) => (
+                <Checkbox checked={field.value} onChange={(event) => field.onChange(event.target.checked)} />
+              )}
             />
           }
           label="Почтовый адрес совпадает с адресом местонахождения"

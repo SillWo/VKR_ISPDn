@@ -1,9 +1,12 @@
 import AddIcon from "@mui/icons-material/Add";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import {
   Alert,
+  AlertTitle,
   Box,
   Button,
+  Checkbox,
+  Chip,
   CircularProgress,
   Dialog,
   DialogActions,
@@ -16,10 +19,11 @@ import {
   Paper,
   Select,
   Stack,
+  Tab,
   Step,
   StepLabel,
   Stepper,
-  Switch,
+  Tabs,
   Table,
   TableBody,
   TableCell,
@@ -59,7 +63,9 @@ import { ProcessingProcessForm } from "../../features/processing-process-form/ui
 import { defaultSecurityLevelFormValues } from "../../features/security-level-form/model/schema";
 import { SecurityLevelForm } from "../../features/security-level-form/ui/SecurityLevelForm";
 import { GenerateActIspdnDocumentForm } from "../../features/document-generation/ui/GenerateActIspdnDocumentForm";
+import type { GenerateActIspdnDocumentFormHandle } from "../../features/document-generation/ui/GenerateActIspdnDocumentForm";
 import { GenerateActSafetyLevelDocumentForm } from "../../features/document-generation/ui/GenerateActSafetyLevelDocumentForm";
+import type { GenerateActSafetyLevelDocumentFormHandle } from "../../features/document-generation/ui/GenerateActSafetyLevelDocumentForm";
 
 const steps = [
   "Основные сведения",
@@ -88,6 +94,8 @@ type ProcessDialogState =
   | { mode: "create" }
   | { mode: "link" };
 
+type DocumentStatus = "not_prepared" | "prepared" | "error";
+
 function toFormValues(card: IspdnCard): IspdnFormValues {
   return {
     name: card.name,
@@ -109,6 +117,8 @@ export function IspdnCreatePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const allowExitRef = useRef(false);
+  const actIspdnDocumentRef = useRef<GenerateActIspdnDocumentFormHandle>(null);
+  const safetyLevelDocumentRef = useRef<GenerateActSafetyLevelDocumentFormHandle>(null);
   const readinessQuery = useQuery({
     queryKey: ["organization", "readiness"],
     queryFn: getOrganizationReadiness,
@@ -117,6 +127,7 @@ export function IspdnCreatePage() {
   const canUseWizard = readinessQuery.data?.isReadyForIspdnCreation === true;
   const blocker = useBlocker(() => canUseWizard && !allowExitRef.current);
   const [activeStep, setActiveStep] = useState(0);
+  const [cardFormTab, setCardFormTab] = useState(0);
   const [card, setCard] = useState<IspdnCard | null>(null);
   const [cardValues, setCardValues] = useState<IspdnFormValues>(defaultIspdnFormValues);
   const [securityLevelValues, setSecurityLevelValues] =
@@ -130,6 +141,13 @@ export function IspdnCreatePage() {
   const [cryptographyStepError, setCryptographyStepError] = useState(false);
   const [actIspdnGenerated, setActIspdnGenerated] = useState(false);
   const [safetyLevelActGenerated, setSafetyLevelActGenerated] = useState(false);
+  const [documentTab, setDocumentTab] = useState(0);
+  const [documentStatuses, setDocumentStatuses] = useState<Record<"actIspdn" | "safetyLevel", DocumentStatus>>({
+    actIspdn: "not_prepared",
+    safetyLevel: "not_prepared",
+  });
+  const [documentGenerationError, setDocumentGenerationError] = useState<string | null>(null);
+  const [isPreparingDocuments, setIsPreparingDocuments] = useState(false);
 
   useEffect(() => {
     if (!canUseWizard) {
@@ -313,6 +331,7 @@ export function IspdnCreatePage() {
     linkProcessMutation.isPending ||
     dataCentersMutation.isPending ||
     cryptographyMutation.isPending ||
+    isPreparingDocuments ||
     cancelCreationMutation.isPending;
   const dialogDefaultValues = defaultProcessingProcessFormValues;
 
@@ -343,6 +362,43 @@ export function IspdnCreatePage() {
     }
     setCryptographyStepError(false);
     cryptographyMutation.mutate();
+  };
+
+  const handlePrepareAllDocuments = async () => {
+    if (!actIspdnDocumentRef.current || !safetyLevelDocumentRef.current) {
+      return;
+    }
+
+    setIsPreparingDocuments(true);
+    setDocumentGenerationError(null);
+
+    try {
+      await actIspdnDocumentRef.current.generate();
+      setActIspdnGenerated(true);
+      setDocumentStatuses((current) => ({ ...current, actIspdn: "prepared" }));
+    } catch (error) {
+      setActIspdnGenerated(false);
+      setDocumentStatuses((current) => ({ ...current, actIspdn: "error" }));
+      setDocumentGenerationError(error instanceof Error ? `Акт ввода ИСПДн: ${error.message}` : "Акт ввода ИСПДн не удалось подготовить.");
+      setIsPreparingDocuments(false);
+      return;
+    }
+
+    try {
+      await safetyLevelDocumentRef.current.generate();
+      setSafetyLevelActGenerated(true);
+      setDocumentStatuses((current) => ({ ...current, safetyLevel: "prepared" }));
+    } catch (error) {
+      setSafetyLevelActGenerated(false);
+      setDocumentStatuses((current) => ({ ...current, safetyLevel: "error" }));
+      setDocumentGenerationError(
+        error instanceof Error
+          ? `Акт оценки уровня защищённости: ${error.message}`
+          : "Акт оценки уровня защищённости не удалось подготовить.",
+      );
+    } finally {
+      setIsPreparingDocuments(false);
+    }
   };
 
   const handleDocumentsFinish = () => {
@@ -383,20 +439,30 @@ export function IspdnCreatePage() {
       {readinessQuery.data?.isReadyForIspdnCreation === false && (
         <Alert
           severity="warning"
-          action={
+          sx={{
+            alignItems: "flex-start",
+            "& .MuiAlert-message": { width: "100%" },
+          }}
+        >
+          <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ justifyContent: "space-between" }}>
+            <Box>
+              <AlertTitle>Заполните карточку организации</AlertTitle>
+              <Typography sx={{ fontWeight: 600 }}>
+                Вам нужно заполнить информацию о вашей организации, прежде чем создавать ИСПДн.
+              </Typography>
+            </Box>
             <Button
-              color="inherit"
-              size="small"
+              variant="contained"
+              endIcon={<ArrowForwardIcon />}
               onClick={() => {
                 allowExitRef.current = true;
                 navigate("/organization");
               }}
+              sx={{ alignSelf: { xs: "flex-start", md: "center" }, whiteSpace: "nowrap" }}
             >
               Перейти в карточку организации
             </Button>
-          }
-        >
-          {readinessQuery.data.message ?? "Вам нужно заполнить информацию о вашей организации."}
+          </Stack>
         </Alert>
       )}
 
@@ -457,6 +523,9 @@ export function IspdnCreatePage() {
             isSubmitting={isBusy}
             showActions={false}
             showSecurityTools={false}
+            useTabs
+            activeTab={cardFormTab}
+            onActiveTabChange={setCardFormTab}
             onSubmit={(values) => cardMutation.mutate(values)}
             onCancel={() => undefined}
           />
@@ -512,14 +581,16 @@ export function IspdnCreatePage() {
             </Alert>
           )}
 
-          <Paper variant="outlined" sx={{ borderRadius: 2, bgcolor: "background.paper" }}>
-            <Box sx={{ p: 2 }}>
-              <LinkedProcessingProcessesTable
-                processes={linkedProcessesQuery.data ?? []}
-                isLoading={linkedProcessesQuery.isLoading}
-              />
-            </Box>
-          </Paper>
+          {(linkedProcessesQuery.isLoading || (linkedProcessesQuery.data?.length ?? 0) > 0) && (
+            <Paper variant="outlined" sx={{ borderRadius: 2, bgcolor: "background.paper" }}>
+              <Box sx={{ p: 2 }}>
+                <LinkedProcessingProcessesTable
+                  processes={linkedProcessesQuery.data ?? []}
+                  isLoading={linkedProcessesQuery.isLoading}
+                />
+              </Box>
+            </Paper>
+          )}
         </Stack>
       )}
 
@@ -557,11 +628,11 @@ export function IspdnCreatePage() {
             </Box>
             <Box>
               <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
-                <Typography color={usesCryptography ? "text.secondary" : "text.primary"}>Нет</Typography>
-                <Switch
+                <Checkbox
                   checked={usesCryptography}
                   disabled={isBusy}
-                  onChange={(_, checked) => {
+                  onChange={(event) => {
+                    const checked = event.target.checked;
                     setUsesCryptography(checked);
                     if (!checked) {
                       setCryptoToolIds([]);
@@ -569,7 +640,9 @@ export function IspdnCreatePage() {
                     }
                   }}
                 />
-                <Typography color={usesCryptography ? "text.primary" : "text.secondary"}>Да</Typography>
+                <Typography color={usesCryptography ? "text.primary" : "text.secondary"}>
+                  Используется СКЗИ
+                </Typography>
               </Stack>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                 Используется СКЗИ в данной ИСПДн
@@ -586,6 +659,7 @@ export function IspdnCreatePage() {
                 label="Связанные СКЗИ"
               />
             )}
+            {!usesCryptography && <Alert severity="info">СКЗИ не используются в данной ИСПДн.</Alert>}
             {cryptographyStepError && <Alert severity="error">Выберите минимум одно СКЗИ.</Alert>}
           </Stack>
         </Paper>
@@ -605,40 +679,88 @@ export function IspdnCreatePage() {
 
           <Paper variant="outlined" sx={{ p: 3, borderRadius: 2, bgcolor: "background.paper" }}>
             <Stack spacing={2.5}>
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ justifyContent: "space-between" }}>
-                <Box>
-                  <Typography component="h3" variant="h6" sx={{ fontWeight: 600 }}>
-                    1. Акт ввода ИСПДн
-                  </Typography>
-                </Box>
-                {actIspdnGenerated && <DocumentGeneratedStatus />}
+              <Tabs
+                value={documentTab}
+                onChange={(_, value: number) => setDocumentTab(value)}
+                variant="scrollable"
+                allowScrollButtonsMobile
+                sx={{ borderBottom: "1px solid", borderColor: "divider" }}
+              >
+                <Tab
+                  label={
+                    <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+                      <span>Акт ввода ИСПДн</span>
+                      <DocumentStatusChip status={documentStatuses.actIspdn} />
+                    </Stack>
+                  }
+                />
+                <Tab
+                  label={
+                    <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+                      <span>Акт оценки уровня защищённости</span>
+                      <DocumentStatusChip status={documentStatuses.safetyLevel} />
+                    </Stack>
+                  }
+                />
+              </Tabs>
+
+              <Box sx={{ display: documentTab === 0 ? "block" : "none" }}>
+                <Stack spacing={2.5}>
+                  <Alert severity="info">
+                    Документ фиксирует ввод ИСПДн в эксплуатацию и используется как один из внутренних организационных
+                    документов.
+                  </Alert>
+                  <GenerateActIspdnDocumentForm
+                    ref={actIspdnDocumentRef}
+                    ispdnId={card.id}
+                    showSubmitButton={false}
+                    disabled={isPreparingDocuments}
+                    onGenerated={() => {
+                      setActIspdnGenerated(true);
+                      setDocumentStatuses((current) => ({ ...current, actIspdn: "prepared" }));
+                    }}
+                  />
+                </Stack>
+              </Box>
+
+              <Box sx={{ display: documentTab === 1 ? "block" : "none" }}>
+                <Stack spacing={2.5}>
+                  <Alert severity="info">
+                    Документ фиксирует результаты определения необходимого уровня защищённости ИСПДн.
+                  </Alert>
+                  <GenerateActSafetyLevelDocumentForm
+                    ref={safetyLevelDocumentRef}
+                    ispdnId={card.id}
+                    showSubmitButton={false}
+                    disabled={isPreparingDocuments}
+                    onGenerated={() => {
+                      setSafetyLevelActGenerated(true);
+                      setDocumentStatuses((current) => ({ ...current, safetyLevel: "prepared" }));
+                    }}
+                  />
+                </Stack>
+              </Box>
+
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ alignItems: { sm: "center" } }}>
+                <Button
+                  type="button"
+                  variant="contained"
+                  onClick={handlePrepareAllDocuments}
+                  disabled={isPreparingDocuments}
+                >
+                  {isPreparingDocuments ? "Документы подготавливаются..." : "Подготовить все документы"}
+                </Button>
+                <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
+                  <DocumentStatusChip status={documentStatuses.actIspdn} labelPrefix="Акт ввода" />
+                  <DocumentStatusChip status={documentStatuses.safetyLevel} labelPrefix="Акт оценки" />
+                </Stack>
               </Stack>
-              <GenerateActIspdnDocumentForm
-                ispdnId={card.id}
-                onGenerated={() => setActIspdnGenerated(true)}
-              />
             </Stack>
           </Paper>
 
-          <Paper variant="outlined" sx={{ p: 3, borderRadius: 2, bgcolor: "background.paper" }}>
-            <Stack spacing={2.5}>
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ justifyContent: "space-between" }}>
-                <Box>
-                  <Typography component="h3" variant="h6" sx={{ fontWeight: 600 }}>
-                    2. Акт оценки необходимого уровня защищённости ИСПДн
-                  </Typography>
-                </Box>
-                {safetyLevelActGenerated && <DocumentGeneratedStatus />}
-              </Stack>
-              <GenerateActSafetyLevelDocumentForm
-                ispdnId={card.id}
-                onGenerated={() => setSafetyLevelActGenerated(true)}
-              />
-            </Stack>
-          </Paper>
-
+          {documentGenerationError && <Alert severity="error">{documentGenerationError}</Alert>}
           {(!actIspdnGenerated || !safetyLevelActGenerated) && (
-            <Alert severity="info">Сформируйте оба документа, чтобы завершить создание ИСПДн.</Alert>
+            <Alert severity="info">Подготовьте оба документа, чтобы завершить создание ИСПДн.</Alert>
           )}
         </Stack>
       )}
@@ -668,7 +790,10 @@ export function IspdnCreatePage() {
                 : undefined
         }
         nextLabel={activeStep === 6 ? "Завершить" : "Далее"}
-        nextDisabled={activeStep === 6 && (!actIspdnGenerated || !safetyLevelActGenerated)}
+        nextDisabled={
+          (activeStep === 0 && cardFormTab < 2) ||
+          (activeStep === 6 && (!actIspdnGenerated || !safetyLevelActGenerated))
+        }
       />
 
       <Dialog
@@ -788,47 +913,51 @@ function SecurityToolsStep({
           </Typography>
         </Box>
 
-        <Stack spacing={1}>
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+            columnGap: 2,
+            rowGap: 0.5,
+          }}
+        >
           {securityToolOptions.map((option) => {
             const checked = Boolean(values[option.key]);
             return (
-              <Box
-                key={option.key}
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 2,
-                  py: 1,
-                  borderBottom: "1px solid",
-                  borderColor: "divider",
-                }}
-              >
-                <Typography>{option.label}</Typography>
-                <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexShrink: 0 }}>
-                  <Typography color={checked ? "text.secondary" : "text.primary"}>Нет</Typography>
-                  <Switch
-                    checked={checked}
-                    disabled={isBusy}
-                    onChange={(_, nextChecked) => onChange({ ...values, [option.key]: nextChecked })}
-                  />
-                  <Typography color={checked ? "text.primary" : "text.secondary"}>Да</Typography>
-                </Stack>
+              <Box key={option.key}>
+                <Checkbox
+                  checked={checked}
+                  disabled={isBusy}
+                  onChange={(event) => onChange({ ...values, [option.key]: event.target.checked })}
+                  sx={{ verticalAlign: "middle" }}
+                />
+                <Typography
+                  component="span"
+                  onClick={() => !isBusy && onChange({ ...values, [option.key]: !checked })}
+                  sx={{ cursor: isBusy ? "default" : "pointer", verticalAlign: "middle" }}
+                >
+                  {option.label}
+                </Typography>
               </Box>
             );
           })}
-        </Stack>
+        </Box>
 
-        <TextField
-          label="Иные средства защиты"
-          fullWidth
-          multiline
-          minRows={3}
-          value={values.otherSecurityTools ?? ""}
-          onChange={(event) => onChange({ ...values, otherSecurityTools: event.target.value })}
-          helperText="Введите дополнительные средства защиты через ;."
-          disabled={isBusy}
-        />
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ alignItems: { sm: "flex-start" } }}>
+          <TextField
+            label="Иные средства защиты"
+            placeholder="Укажите дополнительные средства защиты, если они используются в ИСПДн"
+            fullWidth
+            multiline
+            minRows={3}
+            value={values.otherSecurityTools ?? ""}
+            onChange={(event) => onChange({ ...values, otherSecurityTools: event.target.value })}
+            disabled={isBusy}
+          />
+          <Button type="submit" variant="outlined" disabled={isBusy} sx={{ minWidth: 120 }}>
+            Сохранить
+          </Button>
+        </Stack>
       </Stack>
     </Paper>
   );
@@ -852,8 +981,8 @@ function WizardNavigation({
   onNext?: () => void;
 }) {
   return (
-    <Stack direction="row" spacing={2} sx={{ justifyContent: "space-between" }}>
-      <Button variant="outlined" onClick={onBack} disabled={isBusy || activeStep === 0}>
+    <Stack direction="row" spacing={1.5} sx={{ justifyContent: "flex-start" }}>
+      <Button variant="outlined" onClick={onBack} disabled={isBusy || activeStep === 0} sx={{ minWidth: 120 }}>
         Назад
       </Button>
       <Button
@@ -862,6 +991,7 @@ function WizardNavigation({
         variant="contained"
         onClick={onNext}
         disabled={isBusy || nextDisabled}
+        sx={{ minWidth: 120 }}
       >
         {isBusy ? "Сохранение..." : nextLabel}
       </Button>
@@ -869,15 +999,20 @@ function WizardNavigation({
   );
 }
 
-function DocumentGeneratedStatus() {
-  return (
-    <Stack direction="row" spacing={0.75} sx={{ alignItems: "center", color: "success.main" }}>
-      <CheckCircleIcon fontSize="small" />
-      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-        Документ сформирован
-      </Typography>
-    </Stack>
-  );
+function DocumentStatusChip({ status, labelPrefix }: { status: DocumentStatus; labelPrefix?: string }) {
+  const labels: Record<DocumentStatus, string> = {
+    not_prepared: "Не подготовлен",
+    prepared: "Подготовлен",
+    error: "Ошибка подготовки",
+  };
+  const colors: Record<DocumentStatus, "default" | "success" | "error"> = {
+    not_prepared: "default",
+    prepared: "success",
+    error: "error",
+  };
+  const label = labelPrefix ? `${labelPrefix}: ${labels[status]}` : labels[status];
+
+  return <Chip label={label} color={colors[status]} size="small" />;
 }
 
 function LinkedProcessingProcessesTable({
@@ -892,7 +1027,7 @@ function LinkedProcessingProcessesTable({
   }
 
   if (processes.length === 0) {
-    return <Alert severity="info">Добавьте первый процесс обработки для новой ИСПДн.</Alert>;
+    return null;
   }
 
   return (

@@ -256,15 +256,15 @@ export function IspdnSecurityMeasuresPage() {
               </Button>
             </Stack>
           )}
-          <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
-            <Table size="small">
+          <TableContainer component={Paper} elevation={0} sx={{ borderRadius: 2, bgcolor: "background.paper" }}>
+            <Table size="small" sx={{ tableLayout: "fixed" }}>
               <TableHead>
                 <TableRow>
-                  <TableCell sx={{ width: 120 }}>Код меры по приказу</TableCell>
-                  <TableCell>Содержание меры по приказу</TableCell>
-                  <TableCell sx={{ width: 170 }}>Статус по приказу</TableCell>
-                  <TableCell sx={{ width: 220 }}>Фактический статус</TableCell>
-                  <TableCell sx={{ width: 360 }}>Комментарий</TableCell>
+                  <TableCell sx={{ width: "12%" }}>Код меры по приказу</TableCell>
+                  <TableCell sx={{ width: "38%" }}>Содержание меры по приказу</TableCell>
+                  <TableCell sx={{ width: "15%" }}>Статус по приказу</TableCell>
+                  <TableCell sx={{ width: "17%" }}>Фактический статус</TableCell>
+                  <TableCell sx={{ width: "18%" }}>Комментарий</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -295,12 +295,12 @@ export function IspdnSecurityMeasuresPage() {
 
 function SecurityMeasuresDashboard({ table }: { table: TechnicalSecurityMeasuresTable }) {
   return (
-    <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-      <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2, minWidth: { md: 260 } }}>
-        <Typography variant="body2" color="text.secondary">
+    <Stack direction={{ xs: "column", lg: "row" }} spacing={2}>
+      <Paper elevation={0} sx={{ p: 2, borderRadius: 2, minWidth: { lg: 240 }, bgcolor: "background.paper" }}>
+        <Typography sx={{ fontSize: 15, fontWeight: 600, color: "text.secondary" }}>
           Уровень защищённости ИСПДн
         </Typography>
-        <Typography sx={{ mt: 1, fontSize: 32, lineHeight: 1.2, fontWeight: 700 }}>
+        <Typography sx={{ mt: 0.75, fontSize: 36, lineHeight: 1.1, fontWeight: 700 }}>
           {table.actualLevel} уровень
         </Typography>
       </Paper>
@@ -349,13 +349,13 @@ function PieChartCard({
           .join(", ")})`;
 
   return (
-    <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2, flex: 1, minWidth: 260 }}>
-      <Typography sx={{ fontWeight: 700 }}>{title}</Typography>
-      <Stack direction="row" spacing={2} sx={{ mt: 2, alignItems: "center" }}>
+    <Paper elevation={0} sx={{ p: 2, borderRadius: 2, flex: 1, minWidth: 300, bgcolor: "background.paper" }}>
+      <Typography sx={{ fontSize: 16, fontWeight: 700 }}>{title}</Typography>
+      <Stack direction="row" spacing={2} sx={{ mt: 1.5, alignItems: "center", justifyContent: "space-between" }}>
         <Box
           sx={{
-            width: 112,
-            height: 112,
+            width: 124,
+            height: 124,
             flex: "0 0 auto",
             borderRadius: "50%",
             background: gradient,
@@ -365,8 +365,8 @@ function PieChartCard({
         >
           <Box
             sx={{
-              width: 58,
-              height: 58,
+              width: 62,
+              height: 62,
               borderRadius: "50%",
               bgcolor: "background.paper",
               display: "grid",
@@ -375,16 +375,16 @@ function PieChartCard({
               borderColor: "divider",
             }}
           >
-            <Typography variant="body2" sx={{ fontWeight: 700 }}>
+            <Typography sx={{ fontSize: 16, fontWeight: 700 }}>
               {total === 0 ? "Нет данных" : total}
             </Typography>
           </Box>
         </Box>
-        <Stack spacing={1} sx={{ minWidth: 0 }}>
+        <Stack spacing={0.75} sx={{ minWidth: 0, flex: 1 }}>
           {items.map((item) => (
             <Stack key={item.label} direction="row" spacing={1} sx={{ alignItems: "center" }}>
               <Box sx={{ width: 10, height: 10, borderRadius: "50%", bgcolor: item.color, flex: "0 0 auto" }} />
-              <Typography variant="body2" sx={{ minWidth: 0 }}>
+              <Typography sx={{ minWidth: 0, fontSize: 14.5 }}>
                 {item.label}: <Box component="span" sx={{ fontWeight: 700 }}>{item.value}</Box>
               </Typography>
             </Stack>
@@ -506,7 +506,6 @@ const TechnicalSecurityMeasureRow = memo(function TechnicalSecurityMeasureRow({
   const [isEditingComment, setIsEditingComment] = useState(false);
   const [isCommentOpen, setIsCommentOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const chipColor = item.regulatoryStatus === "base_set" ? "primary" : "default";
   const draftCommentRequired =
     (item.regulatoryStatus === "base_set" && draftFactualStatus === "not_implemented") ||
     (item.regulatoryStatus === "not_base_set" && draftFactualStatus === "implemented");
@@ -530,6 +529,19 @@ const TechnicalSecurityMeasureRow = memo(function TechnicalSecurityMeasureRow({
     }
   };
 
+  const handleFactualStatusChange = async (status: TechnicalMeasureFactualStatus) => {
+    setDraftFactualStatus(status);
+    setIsSaving(true);
+    try {
+      await onSave({
+        factualStatus: status,
+        comment: draftComment,
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <TableRow hover>
       <TableCell>
@@ -537,22 +549,31 @@ const TechnicalSecurityMeasureRow = memo(function TechnicalSecurityMeasureRow({
       </TableCell>
       <TableCell>{item.content}</TableCell>
       <TableCell>
-        <Chip size="small" color={chipColor} variant={chipColor === "default" ? "outlined" : "filled"} label={item.regulatoryStatusLabel} />
+        <Chip
+          size="small"
+          variant="outlined"
+          label={item.regulatoryStatusLabel}
+          sx={{
+            color: "text.secondary",
+            borderColor: "divider",
+            bgcolor: "background.default",
+            fontWeight: 500,
+          }}
+        />
       </TableCell>
       <TableCell>
         <Stack spacing={1}>
           <FormControl fullWidth size="small">
             <Select
               value={draftFactualStatus}
-              onChange={(event) => setDraftFactualStatus(event.target.value as TechnicalMeasureFactualStatus)}
+              onChange={(event) => void handleFactualStatusChange(event.target.value as TechnicalMeasureFactualStatus)}
+              disabled={isSaving}
             >
               <MenuItem value="implemented">внедрена</MenuItem>
               <MenuItem value="not_implemented">не внедрена</MenuItem>
             </Select>
           </FormControl>
-          <Button size="small" variant="outlined" onClick={handleSave} disabled={isSaving}>
-            {isSaving ? "Сохранение..." : "Сохранить"}
-          </Button>
+          {isSaving && <Typography variant="body2" color="text.secondary">Сохранение...</Typography>}
         </Stack>
       </TableCell>
       <TableCell>
@@ -584,10 +605,13 @@ const TechnicalSecurityMeasureRow = memo(function TechnicalSecurityMeasureRow({
 
           {!isEditingComment && !item.hasComment && (
             <Stack spacing={1}>
-              <Typography variant="body2" color="text.secondary">
-                Комментарий не заполнен
-              </Typography>
-              {item.commentRequired && <Chip size="small" color="warning" label="Требуется комментарий" sx={{ alignSelf: "flex-start" }} />}
+              {item.commentRequired ? (
+                <Chip size="small" color="warning" label="Требуется комментарий" sx={{ alignSelf: "flex-start" }} />
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  —
+                </Typography>
+              )}
               <Button size="small" variant="outlined" startIcon={<EditIcon />} onClick={() => setIsEditingComment(true)} sx={{ alignSelf: "flex-start" }}>
                 Редактировать
               </Button>

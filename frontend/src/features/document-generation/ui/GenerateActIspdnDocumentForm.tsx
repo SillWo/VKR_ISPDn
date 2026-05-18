@@ -4,7 +4,7 @@ import DownloadIcon from "@mui/icons-material/Download";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Alert, Box, Button, Divider, Stack, TextField, Typography } from "@mui/material";
 import { useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { forwardRef, useImperativeHandle, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -67,14 +67,23 @@ function downloadBlob(blob: Blob, filename: string) {
 type GenerateActIspdnDocumentFormProps = {
   ispdnId: number;
   disabled?: boolean;
+  showSubmitButton?: boolean;
   onGenerated?: () => void;
 };
 
-export function GenerateActIspdnDocumentForm({
+export type GenerateActIspdnDocumentFormHandle = {
+  generate: () => Promise<void>;
+};
+
+export const GenerateActIspdnDocumentForm = forwardRef<
+  GenerateActIspdnDocumentFormHandle,
+  GenerateActIspdnDocumentFormProps
+>(function GenerateActIspdnDocumentForm({
   ispdnId,
   disabled = false,
+  showSubmitButton = true,
   onGenerated,
-}: GenerateActIspdnDocumentFormProps) {
+}: GenerateActIspdnDocumentFormProps, ref) {
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const {
     register,
@@ -96,20 +105,42 @@ export function GenerateActIspdnDocumentForm({
   });
 
   const mutation = useMutation({
-    mutationFn: (values: ActIspdnCommissioningFormValues) => generateIspdnDocument(ispdnId, mapToPayload(values)),
-    onSuccess: ({ blob, filename }) => {
+    mutationFn: async (values: ActIspdnCommissioningFormValues) => {
+      const file = await generateIspdnDocument(ispdnId, mapToPayload(values));
       setDownloadError(null);
       try {
-        downloadBlob(blob, filename);
+        downloadBlob(file.blob, file.filename);
         onGenerated?.();
       } catch {
         setDownloadError("Файл сформирован, но браузер не смог начать скачивание.");
+        throw new Error("Файл сформирован, но браузер не смог начать скачивание.");
       }
     },
   });
 
+  useImperativeHandle(ref, () => ({
+    generate: () =>
+      new Promise<void>((resolve, reject) => {
+        void handleSubmit(
+          async (values) => {
+            try {
+              await mutation.mutateAsync(values);
+              resolve();
+            } catch (error) {
+              reject(error);
+            }
+          },
+          () => reject(new Error("Проверьте ручные данные акта ввода ИСПДн.")),
+        )();
+      }),
+  }));
+
+  const submitForm = handleSubmit((values) => {
+    mutation.mutate(values);
+  });
+
   return (
-    <Box component="form" onSubmit={handleSubmit((values) => mutation.mutate(values))}>
+    <Box component="form" onSubmit={submitForm}>
       <Stack spacing={3}>
         {mutation.isError && (
           <Alert severity="error">
@@ -246,17 +277,19 @@ export function GenerateActIspdnDocumentForm({
           </Button>
         </Stack>
 
-        <Button
-          type="submit"
-          variant="contained"
-          color="secondary"
-          startIcon={<DownloadIcon />}
-          disabled={disabled || mutation.isPending}
-          sx={{ alignSelf: "flex-start" }}
-        >
-          {mutation.isPending ? "Формирование..." : "Сформировать .docx"}
-        </Button>
+        {showSubmitButton && (
+          <Button
+            type="submit"
+            variant="contained"
+            color="secondary"
+            startIcon={<DownloadIcon />}
+            disabled={disabled || mutation.isPending}
+            sx={{ alignSelf: "flex-start" }}
+          >
+            {mutation.isPending ? "Формирование..." : "Сформировать .docx"}
+          </Button>
+        )}
       </Stack>
     </Box>
   );
-}
+});

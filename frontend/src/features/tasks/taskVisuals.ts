@@ -62,6 +62,14 @@ export function getTaskImportanceControlSx(importance: TaskImportance | null): S
   return buildControlSx(taskImportanceVisuals[importance ?? "none"]);
 }
 
+export function getTaskStatusChipSx(status: TaskStatus): SxProps<Theme> {
+  return buildChipSx(taskStatusVisuals[status]);
+}
+
+export function getTaskImportanceChipSx(importance: TaskImportance | null): SxProps<Theme> {
+  return buildChipSx(taskImportanceVisuals[importance ?? "none"]);
+}
+
 function buildControlSx(visual: TaskVisual): SxProps<Theme> {
   return {
     minWidth: 152,
@@ -78,5 +86,15 @@ function buildControlSx(visual: TaskVisual): SxProps<Theme> {
     "&:hover .MuiOutlinedInput-notchedOutline": {
       borderColor: visual.borderColor,
     },
+  };
+}
+
+function buildChipSx(visual: TaskVisual): SxProps<Theme> {
+  return {
+    color: visual.color,
+    backgroundColor: visual.backgroundColor,
+    border: "1px solid",
+    borderColor: visual.borderColor,
+    fontWeight: 600,
   };
 }

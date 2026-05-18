@@ -1,16 +1,6 @@
-import DescriptionIcon from "@mui/icons-material/Description";
-import {
-  Alert,
-  Box,
-  Card,
-  CardContent,
-  CircularProgress,
-  Divider,
-  Paper,
-  Stack,
-  Typography,
-} from "@mui/material";
+import { Alert, Box, Button, CircularProgress, Paper, Stack, Tab, Tabs, Typography } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 
 import { getDocumentTypes } from "../../entities/document/api/documentApi";
 import { globalDocumentFormRegistry } from "../../features/document-generation/model/globalDocumentFormRegistry";
@@ -18,12 +8,16 @@ import { globalDocumentFormRegistry } from "../../features/document-generation/m
 const globalDocumentDescriptions: Record<string, string> = {
   RKN_notification:
     "Документ используется для первичного уведомления Роскомнадзора о намерении осуществлять обработку персональных данных.",
-  RKN_notification_changes: "Документ используется для уведомления Роскомнадзора об изменении ранее поданных сведений.",
+  RKN_notification_changes:
+    "Документ используется для уведомления Роскомнадзора об изменении ранее поданных сведений.",
   PDn_security:
-    "Документ формируется по карточке организации и номеру приказа. Он фиксирует порядок организации и обеспечения защиты персональных данных.",
+    "Документ фиксирует порядок организации и обеспечения защиты персональных данных.",
+  PDn_document:
+    "Документ фиксирует порядок обработки персональных данных в организации.",
 };
 
 export function DocumentsPage() {
+  const [activeTab, setActiveTab] = useState(0);
   const documentTypesQuery = useQuery({
     queryKey: ["document-types"],
     queryFn: getDocumentTypes,
@@ -31,6 +25,19 @@ export function DocumentsPage() {
   });
 
   const globalDocumentTypes = documentTypesQuery.data?.filter((documentType) => !documentType.requiresIspdn) ?? [];
+  const selectedDocumentType = globalDocumentTypes[activeTab] ?? null;
+  const FormComponent = selectedDocumentType ? globalDocumentFormRegistry[selectedDocumentType.code] : null;
+
+  useEffect(() => {
+    if (activeTab >= globalDocumentTypes.length && globalDocumentTypes.length > 0) {
+      setActiveTab(0);
+    }
+  }, [activeTab, globalDocumentTypes.length]);
+
+  const handleTabChange = (value: number) => {
+    setActiveTab(value);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   return (
     <Stack spacing={3}>
@@ -43,17 +50,8 @@ export function DocumentsPage() {
         </Typography>
       </Box>
 
-      <Paper variant="outlined" sx={{ p: 3, borderRadius: 2, bgcolor: "background.paper" }}>
+      <Paper elevation={0} sx={{ p: 3, borderRadius: 2, bgcolor: "background.paper" }}>
         <Stack spacing={3}>
-          <Box>
-            <Typography component="h2" variant="h6" sx={{ fontWeight: 600 }}>
-              Доступные документы уровня организации
-            </Typography>
-            <Typography color="text.secondary" sx={{ mt: 0.5 }}>
-              Список загружается из backend и показывает только документы без привязки к конкретной ИСПДн.
-            </Typography>
-          </Box>
-
           {documentTypesQuery.isLoading && (
             <Box sx={{ py: 3, textAlign: "center" }}>
               <CircularProgress size={28} />
@@ -73,38 +71,71 @@ export function DocumentsPage() {
             <Alert severity="info">Документы уровня организации пока не зарегистрированы.</Alert>
           )}
 
-          <Stack spacing={2}>
-            {globalDocumentTypes.map((documentType) => {
-              const FormComponent = globalDocumentFormRegistry[documentType.code];
-              return (
-                <Card key={documentType.code} variant="outlined">
-                  <CardContent>
-                    <Stack spacing={2.5}>
-                      <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-                        <DescriptionIcon color="primary" />
-                        <Box>
-                          <Typography component="h3" variant="h6" sx={{ fontWeight: 600 }}>
-                            {documentType.title}
-                          </Typography>
-                          <Typography color="text.secondary" sx={{ mt: 0.5 }}>
-                            {globalDocumentDescriptions[documentType.code] ?? documentType.description}
-                          </Typography>
-                        </Box>
-                      </Stack>
+          {globalDocumentTypes.length > 0 && (
+            <>
+              <Tabs
+                value={activeTab}
+                onChange={(_, value: number) => handleTabChange(value)}
+                variant="scrollable"
+                allowScrollButtonsMobile
+                sx={{
+                  borderBottom: "1px solid",
+                  borderColor: "divider",
+                  "& .MuiTab-root": {
+                    maxWidth: 320,
+                    minHeight: 56,
+                    whiteSpace: "normal",
+                    lineHeight: 1.25,
+                    alignItems: "flex-start",
+                    textAlign: "left",
+                  },
+                }}
+              >
+                {globalDocumentTypes.map((documentType) => (
+                  <Tab key={documentType.code} label={documentType.title} />
+                ))}
+              </Tabs>
 
-                      <Divider />
+              {selectedDocumentType && (
+                <Stack spacing={2.5}>
+                  <Box>
+                    <Typography component="h2" variant="h6" sx={{ fontWeight: 600 }}>
+                      {selectedDocumentType.title}
+                    </Typography>
+                    <Typography color="text.secondary" sx={{ mt: 0.5 }}>
+                      {globalDocumentDescriptions[selectedDocumentType.code] ?? selectedDocumentType.description}
+                    </Typography>
+                  </Box>
 
-                      {FormComponent ? (
-                        <FormComponent />
-                      ) : (
-                        <Alert severity="warning">Для этого документа форма генерации ещё не реализована.</Alert>
-                      )}
-                    </Stack>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </Stack>
+                  {FormComponent ? (
+                    <FormComponent />
+                  ) : (
+                    <Alert severity="warning">Для этого документа форма генерации ещё не реализована.</Alert>
+                  )}
+
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
+                    <Button
+                      type="button"
+                      variant="outlined"
+                      disabled={activeTab === 0}
+                      onClick={() => handleTabChange(Math.max(activeTab - 1, 0))}
+                    >
+                      Назад
+                    </Button>
+                    {activeTab < globalDocumentTypes.length - 1 && (
+                      <Button
+                        type="button"
+                        variant="contained"
+                        onClick={() => handleTabChange(Math.min(activeTab + 1, globalDocumentTypes.length - 1))}
+                      >
+                        Далее
+                      </Button>
+                    )}
+                  </Stack>
+                </Stack>
+              )}
+            </>
+          )}
         </Stack>
       </Paper>
     </Stack>

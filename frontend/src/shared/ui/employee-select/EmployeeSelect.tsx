@@ -59,6 +59,12 @@ export function EmployeeSelect({
         alignSelf: quickCreateButtonPlacement === "inline" ? "flex-start" : "flex-start",
         mt: quickCreateButtonPlacement === "inline" ? 0.5 : 0,
         whiteSpace: "nowrap",
+        px: 1.75,
+        py: 0.75,
+        gap: 0.5,
+        borderColor: "primary.main",
+        color: "primary.main",
+        "& .MuiButton-startIcon": { mr: 0.5 },
       }}
     >
       Создать сотрудника

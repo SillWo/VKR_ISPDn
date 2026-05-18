@@ -4,6 +4,7 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
@@ -11,7 +12,6 @@ import {
   FormControlLabel,
   Paper,
   Stack,
-  Switch,
   Table,
   TableBody,
   TableCell,
@@ -143,9 +143,10 @@ export function IspdnCryptographyPage() {
           <Stack spacing={2.5} sx={{ pt: 1 }}>
             <FormControlLabel
               control={
-                <Switch
+                <Checkbox
                   checked={usesCryptography}
-                  onChange={(_, checked) => {
+                  onChange={(event) => {
+                    const checked = event.target.checked;
                     setUsesCryptography(checked);
                     if (!checked) {
                       setSelectedIds([]);

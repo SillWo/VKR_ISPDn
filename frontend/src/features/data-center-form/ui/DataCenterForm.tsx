@@ -9,7 +9,7 @@ import {
   MenuItem,
   Select,
   Stack,
-  Switch,
+  Checkbox,
   TextField,
   Typography,
 } from "@mui/material";
@@ -84,9 +84,9 @@ export function DataCenterForm({
             <Box>
               <FormControlLabel
                 control={
-                  <Switch
+                  <Checkbox
                     checked={field.value}
-                    onChange={(_, checked) => field.onChange(checked)}
+                    onChange={(event) => field.onChange(event.target.checked)}
                     disabled={isSubmitting}
                   />
                 }

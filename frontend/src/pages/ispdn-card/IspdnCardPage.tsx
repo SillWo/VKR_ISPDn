@@ -102,23 +102,34 @@ export function IspdnCardPage() {
 
   return (
     <Stack spacing={3}>
-      <Paper variant="outlined" sx={{ p: 3, borderRadius: 2 }}>
+      <Paper
+        elevation={0}
+        sx={{
+          p: 3,
+          borderRadius: 2,
+          bgcolor: "background.paper",
+          boxShadow:
+            "rgba(17, 26, 74, 0.04) 0px 0px 0px 1px, rgba(17, 26, 74, 0.06) 0px 8px 20px -16px",
+        }}
+      >
         <Stack spacing={1.5}>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ justifyContent: "space-between" }}>
             <Box>
+              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+                Карточка ИСПДн #{data.id}
+              </Typography>
               <Typography component="h1" variant="h5" sx={{ fontWeight: 600 }}>
                 {data.name}
-              </Typography>
-              <Typography color="text.secondary" sx={{ mt: 0.5 }}>
-                Карточка ИСПДн #{data.id}
               </Typography>
             </Box>
             <Chip label={statusLabels[data.status]} color={data.status === "active" ? "success" : "default"} sx={{ alignSelf: { sm: "flex-start" } }} />
           </Stack>
-          <Typography>{data.shortDescription}</Typography>
-          <Typography color="text.secondary">
-            Ответственный: {data.responsibleEmployee?.fullName ?? data.responsiblePerson}
-          </Typography>
+          <Chip
+            size="small"
+            label={data.responsibleEmployee?.fullName ?? data.responsiblePerson ?? "Ответственный не назначен"}
+            variant="outlined"
+            sx={{ alignSelf: "flex-start", bgcolor: "background.default" }}
+          />
         </Stack>
       </Paper>
 

@@ -23,9 +23,9 @@ export function SecurityLevelResultCard({ result, isCalculating, error }: Securi
 
   return (
     <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, bgcolor: "#f6f6f8" }}>
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ alignItems: { sm: "center" } }}>
-        <Typography sx={{ fontWeight: 600 }}>Рекомендуемый уровень защищённости:</Typography>
-        <Chip label={`${result.recommendedLevel} уровень`} color="info" />
+      <Stack spacing={1.5}>
+        <Typography sx={{ fontWeight: 600 }}>Рекомендуемый уровень защищённости</Typography>
+        <Chip label={`${result.recommendedLevel} уровень`} color="info" sx={{ alignSelf: "flex-start" }} />
       </Stack>
     </Paper>
   );

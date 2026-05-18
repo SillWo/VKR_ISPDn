@@ -1,5 +1,20 @@
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
-import { Alert, Box, Button, Chip, Paper, Stack, Typography } from "@mui/material";
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  Link,
+  Paper,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Typography,
+} from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
 import { Link as RouterLink, useParams } from "react-router-dom";
 
@@ -8,6 +23,7 @@ import type { ActualTask } from "../../entities/task/model/types";
 import { formatTaskImportance } from "../../features/tasks/TaskImportanceSelect";
 import { formatDateOnly } from "../../features/tasks/TaskList";
 import { taskStatusLabels } from "../../features/tasks/TaskStatusSelect";
+import { getTaskImportanceChipSx, getTaskStatusChipSx } from "../../features/tasks/taskVisuals";
 
 export function IspdnTasksPage() {
   const { ispdnId } = useParams();
@@ -58,39 +74,61 @@ export function IspdnTasksPage() {
         </Paper>
       )}
 
-      <Stack spacing={2}>
-        {(actualTasksQuery.data ?? []).map((task) => (
-          <ActualTaskCard key={task.id} task={task} />
-        ))}
-      </Stack>
+      {(actualTasksQuery.data ?? []).length > 0 && <ActualTasksTable tasks={actualTasksQuery.data ?? []} />}
     </Stack>
   );
 }
 
-function ActualTaskCard({ task }: { task: ActualTask }) {
+function ActualTasksTable({ tasks }: { tasks: ActualTask[] }) {
   return (
-    <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
-      <Stack spacing={1.5}>
-        <Box>
-          <Typography component="h2" variant="h6" sx={{ fontWeight: 600 }}>
-            {task.title}
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            Событие: {task.taskEventTitle}
-          </Typography>
-        </Box>
-        <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
-          <Chip size="small" label={taskStatusLabels[task.status]} />
-          <Chip
-            size="small"
-            label={formatTaskImportance(task.importance)}
-            color={task.importance === "critical" ? "error" : task.importance === "high" ? "warning" : "default"}
-          />
-          <Chip size="small" label={`Дедлайн: ${task.deadline ? formatDateOnly(task.deadline) : "не указан"}`} />
-          <Chip size="small" label={`Ответственный: ${task.responsibleEmployee?.fullName ?? "не назначен"}`} />
-        </Stack>
-        {task.description && <Typography>{task.description}</Typography>}
-      </Stack>
-    </Paper>
+    <TableContainer component={Paper} elevation={0} sx={{ borderRadius: 2, bgcolor: "background.paper" }}>
+      <Table size="small">
+        <TableHead>
+          <TableRow>
+            <TableCell>Задача</TableCell>
+            <TableCell sx={{ width: 170 }}>Статус</TableCell>
+            <TableCell sx={{ width: 170 }}>Важность</TableCell>
+            <TableCell sx={{ width: 150 }}>Дедлайн</TableCell>
+            <TableCell sx={{ width: 220 }}>Ответственный</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {tasks.map((task) => (
+            <TableRow key={task.id} hover>
+              <TableCell>
+                <Stack spacing={0.75}>
+                  <Link
+                    component={RouterLink}
+                    to={`/tasks?ispdn_id=${task.ispdnId}&task_id=${task.id}`}
+                    underline="hover"
+                    sx={{ fontWeight: 700, color: "text.primary" }}
+                  >
+                    {task.title}
+                  </Link>
+                  <Chip size="small" label={task.taskEventTitle} variant="outlined" sx={{ alignSelf: "flex-start" }} />
+                  {task.description && (
+                    <Typography variant="body2" color="text.secondary">
+                      {task.description}
+                    </Typography>
+                  )}
+                </Stack>
+              </TableCell>
+              <TableCell>
+                <Chip size="small" label={taskStatusLabels[task.status]} sx={getTaskStatusChipSx(task.status)} />
+              </TableCell>
+              <TableCell>
+                <Chip size="small" label={formatTaskImportance(task.importance)} sx={getTaskImportanceChipSx(task.importance)} />
+              </TableCell>
+              <TableCell>
+                <Chip size="small" label={task.deadline ? formatDateOnly(task.deadline) : "Не указан"} variant="outlined" />
+              </TableCell>
+              <TableCell>
+                <Chip size="small" label={task.responsibleEmployee?.fullName ?? "Не назначен"} variant="outlined" />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
   );
 }

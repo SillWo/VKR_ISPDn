@@ -1,6 +1,6 @@
 import DownloadIcon from "@mui/icons-material/Download";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Alert, Box, Button, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Stack, TextField } from "@mui/material";
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -81,16 +81,7 @@ export function GeneratePdnSecurityForm() {
           <Alert severity="success">Документ сформирован и передан на скачивание.</Alert>
         )}
 
-        <Stack spacing={2}>
-          <Box>
-            <Typography component="h3" variant="h6" sx={{ fontWeight: 600 }}>
-              Ручные данные
-            </Typography>
-            <Typography color="text.secondary" sx={{ mt: 0.5 }}>
-              Номер приказа будет подставлен в системный шаблон положения о защите персональных данных.
-            </Typography>
-          </Box>
-
+        <Box sx={{ p: 2, borderRadius: 2, bgcolor: "background.default" }}>
           <TextField
             label="Номер приказа"
             disabled={disabled}
@@ -98,7 +89,7 @@ export function GeneratePdnSecurityForm() {
             helperText={errors.orderNumber?.message}
             {...register("orderNumber")}
           />
-        </Stack>
+        </Box>
 
         <Button
           type="submit"

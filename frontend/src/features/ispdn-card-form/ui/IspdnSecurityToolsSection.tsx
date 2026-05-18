@@ -1,4 +1,4 @@
-import { Box, Stack, Switch, TextField, Typography } from "@mui/material";
+import { Box, Checkbox, FormControlLabel, Stack, TextField, Typography } from "@mui/material";
 import { Controller, type Control, type FieldErrors } from "react-hook-form";
 
 import type { IspdnFormValues } from "../../../entities/ispdn/model/types";
@@ -53,19 +53,18 @@ export function IspdnSecurityToolsSection({
                 }}
               >
                 <Box sx={{ minWidth: 0 }}>{item.label}</Box>
-                <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexShrink: 0 }}>
-                  <Box component="span" sx={{ color: field.value ? "text.secondary" : "text.primary" }}>
-                    Нет
-                  </Box>
-                  <Switch
-                    checked={Boolean(field.value)}
-                    onChange={(_, checked) => field.onChange(checked)}
-                    disabled={isSubmitting}
-                  />
-                  <Box component="span" sx={{ color: field.value ? "text.primary" : "text.secondary" }}>
-                    Да
-                  </Box>
-                </Stack>
+                <FormControlLabel
+                  label={Boolean(field.value) ? "Да" : "Нет"}
+                  labelPlacement="start"
+                  control={
+                    <Checkbox
+                      checked={Boolean(field.value)}
+                      onChange={(event) => field.onChange(event.target.checked)}
+                      disabled={isSubmitting}
+                    />
+                  }
+                  sx={{ m: 0, flexShrink: 0 }}
+                />
               </Box>
             )}
           />

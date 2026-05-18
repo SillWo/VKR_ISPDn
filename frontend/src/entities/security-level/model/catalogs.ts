@@ -15,27 +15,27 @@ export const dataCategoryOptions: readonly { value: SecurityLevelDataCategoryKey
 ];
 
 export const subjectCountRangeOptions: readonly { value: SubjectCountRange; label: string }[] = [
-  { value: "more_than_100k", label: "более чем 100 000 субъектов персональных данных" },
-  { value: "less_than_100k", label: "менее чем 100 000 субъектов персональных данных" },
+  { value: "more_than_100k", label: "Более чем 100 000 субъектов персональных данных" },
+  { value: "less_than_100k", label: "Менее чем 100 000 субъектов персональных данных" },
 ];
 
 export const threatTypeOptions: readonly { value: ThreatType; label: string }[] = [
-  { value: "threat_type_1", label: "1 тип угроз" },
-  { value: "threat_type_2", label: "2 тип угроз" },
-  { value: "threat_type_3", label: "3 тип угроз" },
+  { value: "threat_type_1", label: "1 Тип угроз" },
+  { value: "threat_type_2", label: "2 Тип угроз" },
+  { value: "threat_type_3", label: "3 Тип угроз" },
 ];
 
 export const subjectGroupOptions: readonly { value: SubjectGroup; label: string }[] = [
-  { value: "clients_only", label: "только клиенты" },
-  { value: "employees_only", label: "только сотрудники" },
-  { value: "employees_and_clients", label: "и работники и сотрудники" },
+  { value: "clients_only", label: "Только клиенты" },
+  { value: "employees_only", label: "Только сотрудники" },
+  { value: "employees_and_clients", label: "И работники и сотрудники" },
 ];
 
 export const securityLevelOptions: readonly { value: SecurityLevelValue; label: string }[] = [
-  { value: 1, label: "1" },
-  { value: 2, label: "2" },
-  { value: 3, label: "3" },
-  { value: 4, label: "4" },
+  { value: 1, label: "Уровень 1" },
+  { value: 2, label: "Уровень 2" },
+  { value: 3, label: "Уровень 3" },
+  { value: 4, label: "Уровень 4" },
 ];
 
 export const threatTypeLabels: Record<ThreatType, string> = {

@@ -49,7 +49,6 @@ export function AppLayout() {
             sx={{
               display: "inline-flex",
               alignItems: "center",
-              gap: 1.5,
               flexGrow: 1,
               width: "fit-content",
               minWidth: 0,
@@ -57,17 +56,6 @@ export function AppLayout() {
               color: "text.primary",
             }}
           >
-            <Box
-              component="img"
-              src="/logo.svg"
-              alt="Логотип"
-              sx={{
-                display: "block",
-                width: 44,
-                height: 44,
-                objectFit: "contain",
-              }}
-            />
             <Typography
               component="span"
               sx={{

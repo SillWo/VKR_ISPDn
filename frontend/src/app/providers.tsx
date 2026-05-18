@@ -119,9 +119,30 @@ const theme = createTheme({
         size: "small",
       },
     },
+    MuiFormControl: {
+      defaultProps: {
+        size: "small",
+      },
+    },
+    MuiInputLabel: {
+      styleOverrides: {
+        outlined: {
+          "&.MuiInputLabel-sizeSmall:not(.MuiInputLabel-shrink)": {
+            transform: "translate(14px, 8px) scale(1)",
+          },
+        },
+      },
+    },
     MuiSelect: {
       defaultProps: {
         size: "small",
+      },
+      styleOverrides: {
+        select: {
+          display: "flex",
+          alignItems: "center",
+          minHeight: "1.5em",
+        },
       },
     },
     MuiOutlinedInput: {
@@ -129,6 +150,29 @@ const theme = createTheme({
         root: {
           borderRadius: 8,
           backgroundColor: "#ffffff",
+          minHeight: 40,
+          alignItems: "center",
+          "&.MuiInputBase-multiline": {
+            alignItems: "flex-start",
+            paddingTop: "8.5px",
+            paddingBottom: "8.5px",
+          },
+        },
+        input: {
+          paddingTop: "8.5px",
+          paddingBottom: "8.5px",
+          lineHeight: 1.5,
+          "&::placeholder": {
+            opacity: 0.65,
+          },
+        },
+      },
+    },
+    MuiAutocomplete: {
+      styleOverrides: {
+        inputRoot: {
+          alignItems: "center",
+          minHeight: 40,
         },
       },
     },

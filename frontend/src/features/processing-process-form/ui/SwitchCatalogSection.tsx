@@ -1,4 +1,4 @@
-import { Alert, Box, Divider, FormControlLabel, Stack, Switch, Typography } from "@mui/material";
+import { Alert, Checkbox, FormControlLabel, FormGroup, Stack } from "@mui/material";
 import { Controller, type Control, type FieldErrors, type FieldPath } from "react-hook-form";
 
 import type { CatalogItem } from "../../../entities/processing-process/model/catalogs";
@@ -17,13 +17,12 @@ export function SwitchCatalogSection({ catalog, fieldName, control, errors }: Sw
   return (
     <Stack spacing={2}>
       {errorMessage && <Alert severity="error">{String(errorMessage)}</Alert>}
-      <Stack
-        divider={<Divider flexItem />}
+      <FormGroup
         sx={{
-          border: "1px solid",
-          borderColor: "divider",
-          borderRadius: 2,
-          bgcolor: "background.paper",
+          display: "grid",
+          gridTemplateColumns: catalog.length >= 4 ? { xs: "1fr", md: "1fr 1fr" } : "1fr",
+          columnGap: 2,
+          rowGap: 0.5,
         }}
       >
         {catalog.map((item) => (
@@ -32,34 +31,28 @@ export function SwitchCatalogSection({ catalog, fieldName, control, errors }: Sw
             name={`${fieldName}.${item.key}` as FieldPath<ProcessingProcessFormValues>}
             control={control}
             render={({ field }) => (
-              <Box
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={Boolean(field.value)}
+                    onChange={(event) => field.onChange(event.target.checked)}
+                  />
+                }
+                label={item.label}
                 sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 2,
-                  px: 2,
-                  py: 1,
+                  m: 0,
+                  px: 1,
+                  py: 0.5,
+                  borderRadius: 1,
+                  alignItems: "flex-start",
+                  "& .MuiCheckbox-root": { py: 0.25 },
+                  "& .MuiFormControlLabel-label": { lineHeight: 1.45 },
                 }}
-              >
-                <Typography>{item.label}</Typography>
-                <FormControlLabel
-                  label={field.value ? "Да" : "Нет"}
-                  labelPlacement="start"
-                  control={
-                    <Switch
-                      checked={Boolean(field.value)}
-                      onChange={(_, checked) => field.onChange(checked)}
-                      slotProps={{ input: { "aria-label": item.label } }}
-                    />
-                  }
-                  sx={{ m: 0, minWidth: 88, justifyContent: "space-between" }}
-                />
-              </Box>
+              />
             )}
           />
         ))}
-      </Stack>
+      </FormGroup>
     </Stack>
   );
 }

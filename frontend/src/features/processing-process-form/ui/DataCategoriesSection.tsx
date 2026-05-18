@@ -1,10 +1,9 @@
 import {
   Alert,
   Box,
-  Divider,
+  Checkbox,
   FormControlLabel,
   Stack,
-  Switch,
   TextField,
   Typography,
 } from "@mui/material";
@@ -16,15 +15,19 @@ import type { ProcessingProcessFormValues } from "../../../entities/processing-p
 type DataCategoriesSectionProps = {
   control: Control<ProcessingProcessFormValues>;
   errors: FieldErrors<ProcessingProcessFormValues>;
+  groupTitles?: string[];
 };
 
-export function DataCategoriesSection({ control, errors }: DataCategoriesSectionProps) {
+export function DataCategoriesSection({ control, errors, groupTitles }: DataCategoriesSectionProps) {
   const errorMessage = errors.dataCategories?.message;
+  const groups = groupTitles
+    ? dataCategoryGroups.filter((group) => groupTitles.includes(group.title))
+    : dataCategoryGroups;
 
   return (
     <Stack spacing={3}>
       {errorMessage && <Alert severity="error">{String(errorMessage)}</Alert>}
-      {dataCategoryGroups.map((group) => (
+      {groups.map((group) => (
         <Stack key={group.title} spacing={1.5}>
           <Typography component="h3" variant="subtitle1" sx={{ fontWeight: 600 }}>
             {group.title}
@@ -33,48 +36,36 @@ export function DataCategoriesSection({ control, errors }: DataCategoriesSection
             sx={{
               display: "grid",
               gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
-              border: "1px solid",
-              borderColor: "divider",
-              borderRadius: 2,
-              bgcolor: "background.paper",
-              overflow: "hidden",
+              columnGap: 2,
+              rowGap: 0.5,
             }}
           >
-            {group.items.map((item, index) => (
-              <Box key={item.key}>
+            {group.items.map((item) => (
                 <Controller
+                  key={item.key}
                   name={`dataCategories.${item.key}` as FieldPath<ProcessingProcessFormValues>}
                   control={control}
                   render={({ field }) => (
-                    <Box
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={Boolean(field.value)}
+                          onChange={(event) => field.onChange(event.target.checked)}
+                        />
+                      }
+                      label={item.label}
                       sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: 2,
-                        px: 2,
-                        py: 1,
-                        minHeight: 56,
+                        m: 0,
+                        px: 1,
+                        py: 0.5,
+                        borderRadius: 1,
+                        alignItems: "flex-start",
+                        "& .MuiCheckbox-root": { py: 0.25 },
+                        "& .MuiFormControlLabel-label": { lineHeight: 1.45 },
                       }}
-                    >
-                      <Typography>{item.label}</Typography>
-                      <FormControlLabel
-                        label={field.value ? "Да" : "Нет"}
-                        labelPlacement="start"
-                        control={
-                          <Switch
-                            checked={Boolean(field.value)}
-                            onChange={(_, checked) => field.onChange(checked)}
-                            slotProps={{ input: { "aria-label": item.label } }}
-                          />
-                        }
-                        sx={{ m: 0, minWidth: 88, justifyContent: "space-between" }}
-                      />
-                    </Box>
+                    />
                   )}
                 />
-                {index < group.items.length - 1 && <Divider />}
-              </Box>
             ))}
           </Box>
           {group.textItems?.map((item) => (

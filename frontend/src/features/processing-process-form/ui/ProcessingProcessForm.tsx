@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Button, Stack, TextField } from "@mui/material";
-import { forwardRef, useImperativeHandle } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Box, Button, Stack, Tab, Tabs, TextField } from "@mui/material";
+import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
+import { Controller, type FieldPath, useForm } from "react-hook-form";
 
 import {
   legalBasisCatalog,
@@ -31,6 +31,12 @@ export type ProcessingProcessFormHandle = {
   validate: () => Promise<ProcessingProcessFormValues | null>;
 };
 
+const tabFieldNames: FieldPath<ProcessingProcessFormValues>[][] = [
+  ["purposeName", "processingPeriod", "subjectCategories", "legalBases"],
+  ["dataCategories"],
+  ["personalDataActions", "processingType", "internalNetworkTransfer", "internetTransfer", "crossBorderTransfer"],
+];
+
 export const ProcessingProcessForm = forwardRef<ProcessingProcessFormHandle, ProcessingProcessFormProps>(
   function ProcessingProcessForm(
     {
@@ -43,6 +49,7 @@ export const ProcessingProcessForm = forwardRef<ProcessingProcessFormHandle, Pro
     }: ProcessingProcessFormProps,
     ref,
   ) {
+    const [activeTab, setActiveTab] = useState(0);
     const {
       control,
       handleSubmit,
@@ -68,84 +75,150 @@ export const ProcessingProcessForm = forwardRef<ProcessingProcessFormHandle, Pro
       },
     }));
 
+    useEffect(() => {
+      document.getElementById("processing-process-form")?.scrollIntoView({ block: "start" });
+    }, [activeTab]);
+
+    const handleNextTab = async () => {
+      const isValid = await trigger(tabFieldNames[activeTab], { shouldFocus: true });
+      if (isValid) {
+        setActiveTab((current) => Math.min(current + 1, tabFieldNames.length - 1));
+      }
+    };
+
     return (
-      <Stack component="form" spacing={3} onSubmit={handleSubmit(onSubmit)} noValidate>
-        <FormSection title="Основные сведения процесса">
-          <TextField
-            label="Цель обработки"
-            fullWidth
-            required
-            disabled={isSubmitting}
-            {...register("purposeName")}
-            error={Boolean(errors.purposeName)}
-            helperText={
-              errors.purposeName?.message ??
-              "Цель обработки используется как наименование процесса во всех реестрах и документах."
-            }
-          />
-          <TextField
-            label="Период обработки"
-            fullWidth
-            required
-            disabled={isSubmitting}
-            {...register("processingPeriod")}
-            error={Boolean(errors.processingPeriod)}
-            helperText={errors.processingPeriod?.message ?? "Например: до достижения цели обработки или 5 лет."}
-          />
-        </FormSection>
+      <Stack id="processing-process-form" component="form" spacing={3} onSubmit={handleSubmit(onSubmit)} noValidate>
+        <Tabs
+          value={activeTab}
+          onChange={(_, value: number) => setActiveTab(value)}
+          variant="scrollable"
+          allowScrollButtonsMobile
+          sx={{
+            borderBottom: "1px solid",
+            borderColor: "divider",
+            "& .MuiTab-root": { whiteSpace: "normal", lineHeight: 1.25, minHeight: 48 },
+          }}
+        >
+          <Tab label="Основные сведения процесса" />
+          <Tab label="Обрабатываемые персональные данные" />
+          <Tab label="Способы отправки" />
+        </Tabs>
 
-        <FormSection title="Категории субъектов">
-          <SwitchCatalogSection
-            catalog={subjectCategoryCatalog}
-            fieldName="subjectCategories"
-            control={control}
-            errors={errors}
-          />
-        </FormSection>
+        <Box>
+          {activeTab === 0 && (
+            <Stack spacing={3}>
+              <FormSection title="Основные сведения процесса">
+                <TextField
+                  label="Цель обработки"
+                  fullWidth
+                  required
+                  disabled={isSubmitting}
+                  {...register("purposeName")}
+                  error={Boolean(errors.purposeName)}
+                  helperText={
+                    errors.purposeName?.message ??
+                    "Цель обработки используется как наименование процесса во всех реестрах и документах."
+                  }
+                />
+                <TextField
+                  label="Период обработки"
+                  fullWidth
+                  required
+                  disabled={isSubmitting}
+                  {...register("processingPeriod")}
+                  error={Boolean(errors.processingPeriod)}
+                  helperText={errors.processingPeriod?.message ?? "Например: до достижения цели обработки или 5 лет."}
+                />
+              </FormSection>
 
-        <FormSection title="Категории данных">
-          <DataCategoriesSection control={control} errors={errors} />
-        </FormSection>
+              <FormSection title="Категории субъектов">
+                <SwitchCatalogSection
+                  catalog={subjectCategoryCatalog}
+                  fieldName="subjectCategories"
+                  control={control}
+                  errors={errors}
+                />
+              </FormSection>
 
-        <FormSection title="Основания обработки">
-          <SwitchCatalogSection catalog={legalBasisCatalog} fieldName="legalBases" control={control} errors={errors} />
-        </FormSection>
+              <FormSection title="Правовые основания обработки">
+                <SwitchCatalogSection
+                  catalog={legalBasisCatalog}
+                  fieldName="legalBases"
+                  control={control}
+                  errors={errors}
+                />
+              </FormSection>
+            </Stack>
+          )}
 
-        <FormSection title="Действия с ПДн">
-          <SwitchCatalogSection
-            catalog={personalDataActionCatalog.filter((item) => item.key !== "other_actions")}
-            fieldName="personalDataActions"
-            control={control}
-            errors={errors}
-          />
-          <Controller
-            name="personalDataActions.other_actions"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                label="Иные действия"
-                fullWidth
-                multiline
-                minRows={2}
-                value={typeof field.value === "string" ? field.value : ""}
-                onChange={field.onChange}
-                helperText="Заполните, если действие не входит в стандартный перечень."
+          {activeTab === 1 && (
+            <FormSection title="Обрабатываемые персональные данные">
+              <DataCategoriesSection
+                control={control}
+                errors={errors}
+                groupTitles={[
+                  "Персональные данные",
+                  "Специальные категории персональных данных",
+                  "Биометрические персональные данные",
+                ]}
               />
-            )}
-          />
-        </FormSection>
+            </FormSection>
+          )}
 
-        <FormSection title="Способы обработки">
-          <ProcessingMethodsSection control={control} errors={errors} />
-        </FormSection>
+          {activeTab === 2 && (
+            <Stack spacing={3}>
+              <FormSection title="Действия с ПДн">
+                <SwitchCatalogSection
+                  catalog={personalDataActionCatalog.filter((item) => item.key !== "other_actions")}
+                  fieldName="personalDataActions"
+                  control={control}
+                  errors={errors}
+                />
+                <Controller
+                  name="personalDataActions.other_actions"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      label="Иные действия"
+                      fullWidth
+                      multiline
+                      minRows={2}
+                      value={typeof field.value === "string" ? field.value : ""}
+                      onChange={field.onChange}
+                      helperText="Заполните, если действие не входит в стандартный перечень."
+                    />
+                  )}
+                />
+              </FormSection>
+
+              <FormSection title="Способы отправки">
+                <ProcessingMethodsSection control={control} errors={errors} />
+              </FormSection>
+            </Stack>
+          )}
+        </Box>
 
         {showActions && (
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ justifyContent: "flex-end" }}>
-            <Button variant="outlined" onClick={onCancel} disabled={isSubmitting}>
-              Отмена
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ justifyContent: "flex-start" }}>
+            <Button
+              type="button"
+              variant="outlined"
+              onClick={() => setActiveTab((current) => Math.max(current - 1, 0))}
+              disabled={isSubmitting || activeTab === 0}
+            >
+              Назад
             </Button>
-            <Button type="submit" variant="contained" disabled={isSubmitting}>
-              {isSubmitting ? "Сохранение..." : submitLabel}
+            {activeTab < tabFieldNames.length - 1 ? (
+              <Button type="button" variant="contained" disabled={isSubmitting} onClick={handleNextTab}>
+                Далее
+              </Button>
+            ) : (
+              <Button type="submit" variant="contained" disabled={isSubmitting}>
+                {isSubmitting ? "Сохранение..." : submitLabel}
+              </Button>
+            )}
+            <Button variant="text" onClick={onCancel} disabled={isSubmitting}>
+              Отмена
             </Button>
           </Stack>
         )}

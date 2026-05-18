@@ -1,12 +1,12 @@
 import {
   FormControl,
+  Checkbox,
   FormControlLabel,
   FormHelperText,
   InputLabel,
   MenuItem,
   Select,
   Stack,
-  Switch,
 } from "@mui/material";
 import { Controller, type Control, type FieldErrors } from "react-hook-form";
 
@@ -91,11 +91,11 @@ export function ProcessingMethodsSection({ control, errors }: ProcessingMethodsS
               <FormControlLabel
                 label="Данные передаются иностранным компаниям, сотрудникам иностранных компаний"
                 control={
-                  <Switch checked={field.value} onChange={(_, checked) => field.onChange(checked)} />
+                  <Checkbox checked={field.value} onChange={(event) => field.onChange(event.target.checked)} />
                 }
               />
               <FormHelperText>
-                {errors.crossBorderTransfer?.message ?? `Текущее значение: ${field.value ? "Да" : "Нет"}.`}
+                {errors.crossBorderTransfer?.message}
               </FormHelperText>
             </FormControl>
           )}

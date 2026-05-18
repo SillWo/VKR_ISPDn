@@ -225,13 +225,11 @@ export function SecurityLevelForm({
         />
       </FormSection>
 
-      <FormSection title="Рекомендуемый уровень защищённости">
-        <SecurityLevelResultCard
-          result={result ?? null}
-          isCalculating={calculateMutation.isPending}
-          error={calculateMutation.isError}
-        />
-      </FormSection>
+      <SecurityLevelResultCard
+        result={result ?? null}
+        isCalculating={calculateMutation.isPending}
+        error={calculateMutation.isError}
+      />
 
       <FormSection title="Фактический уровень и обоснование">
         <Stack spacing={2}>

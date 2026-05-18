@@ -53,7 +53,7 @@ export function IspdnRegistryPage() {
             Реестр ИСПДн
           </Typography>
           <Typography color="text.secondary" sx={{ mt: 0.5, maxWidth: 760 }}>
-            Карточки информационных систем персональных данных организации, их статус и ответственные за обработку ПДн.
+            Карточки ИСПДн организации, их статусы и ответственные лица.
           </Typography>
         </Box>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ alignSelf: { sm: "flex-start" } }}>
@@ -81,10 +81,11 @@ export function IspdnRegistryPage() {
         <Paper variant="outlined" sx={{ p: 4, borderRadius: 2 }}>
           <Stack spacing={1.5} sx={{ alignItems: "flex-start" }}>
             <Typography variant="h6" sx={{ fontWeight: 600 }}>
-              В реестре пока нет карточек ИСПДн
+              В реестре пока нет ИСПДн
             </Typography>
             <Typography color="text.secondary">
-              Создайте первую карточку, чтобы зафиксировать базовые сведения об ИСПДн и открыть связанные разделы.
+              Создайте первую карточку ИСПДн, чтобы вести сведения о системе, ответственных лицах, процессах обработки
+              и мерах защиты.
             </Typography>
             <Button component={RouterLink} to="/ispdns/new" variant="contained" startIcon={<AddIcon />}>
               Создать ИСПДн
