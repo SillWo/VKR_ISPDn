@@ -1,6 +1,6 @@
 import { Alert, Box, Button, CircularProgress, Paper, Stack, Tab, Tabs, Typography } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { getDocumentTypes } from "../../entities/document/api/documentApi";
 import { globalDocumentFormRegistry } from "../../features/document-generation/model/globalDocumentFormRegistry";
@@ -24,7 +24,10 @@ export function DocumentsPage() {
     retry: false,
   });
 
-  const globalDocumentTypes = documentTypesQuery.data?.filter((documentType) => !documentType.requiresIspdn) ?? [];
+  const globalDocumentTypes = useMemo(
+    () => documentTypesQuery.data?.filter((documentType) => !documentType.requiresIspdn) ?? [],
+    [documentTypesQuery.data],
+  );
   const selectedDocumentType = globalDocumentTypes[activeTab] ?? null;
   const FormComponent = selectedDocumentType ? globalDocumentFormRegistry[selectedDocumentType.code] : null;
 

@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 
 import { getDataCenterOptions } from "../../entities/data-center/api/dataCenterApi";
 import type { DataCenterOption } from "../../entities/data-center/model/types";
+import { selectItemsByIds } from "../../shared/lib/selectItemsByIds";
 import { SelectableItemsDialog } from "../../shared/ui/SelectableItemsDialog";
 import { DataCenterQuickCreateDialog } from "./DataCenterQuickCreateDialog";
 
@@ -31,10 +32,7 @@ export function DataCenterSelect({
   });
 
   const selectedDataCenters = useMemo(
-    () =>
-      value
-        .map((id) => dataCentersQuery.data?.find((dataCenter) => dataCenter.id === id))
-        .filter((dataCenter): dataCenter is DataCenterOption => dataCenter !== undefined),
+    () => selectItemsByIds(value, dataCentersQuery.data, (dataCenter) => dataCenter.id),
     [dataCentersQuery.data, value],
   );
 

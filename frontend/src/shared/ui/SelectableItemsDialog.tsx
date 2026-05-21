@@ -11,7 +11,7 @@ import {
   Button,
   Typography,
 } from "@mui/material";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 type SelectableItemsDialogProps<TItem> = {
   open: boolean;
@@ -41,6 +41,7 @@ export function SelectableItemsDialog<TItem>({
   onConfirm,
 }: SelectableItemsDialogProps<TItem>) {
   const [draftIds, setDraftIds] = useState<number[]>(selectedIds);
+  const draftIdSet = useMemo(() => new Set(draftIds), [draftIds]);
 
   useEffect(() => {
     if (open) {
@@ -49,7 +50,10 @@ export function SelectableItemsDialog<TItem>({
   }, [open, selectedIds]);
 
   const toggleId = (id: number) => {
-    setDraftIds((current) => (current.includes(id) ? current.filter((itemId) => itemId !== id) : [...current, id]));
+    setDraftIds((current) => {
+      const currentIds = new Set(current);
+      return currentIds.has(id) ? current.filter((itemId) => itemId !== id) : [...current, id];
+    });
   };
 
   return (
@@ -62,7 +66,7 @@ export function SelectableItemsDialog<TItem>({
           <List disablePadding>
             {items.map((item) => {
               const id = getId(item);
-              const checked = draftIds.includes(id);
+              const checked = draftIdSet.has(id);
 
               return (
                 <ListItemButton key={id} onClick={() => toggleId(id)} disabled={disabled} dense>

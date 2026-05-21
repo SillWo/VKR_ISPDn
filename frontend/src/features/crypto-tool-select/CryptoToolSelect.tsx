@@ -19,6 +19,7 @@ import { useMemo, useState } from "react";
 
 import { getCryptoToolOptions } from "../../entities/crypto-tool/api/cryptoToolApi";
 import type { CryptoToolOption } from "../../entities/crypto-tool/model/types";
+import { selectItemsByIds } from "../../shared/lib/selectItemsByIds";
 import { SelectableItemsDialog } from "../../shared/ui/SelectableItemsDialog";
 import { cryptoToolClassLabels } from "../crypto-tool-form/model/schema";
 import { CryptoToolQuickCreateDialog } from "./CryptoToolQuickCreateDialog";
@@ -46,10 +47,7 @@ export function CryptoToolSelect({
   });
 
   const selectedCryptoTools = useMemo(
-    () =>
-      value
-        .map((id) => cryptoToolsQuery.data?.find((cryptoTool) => cryptoTool.id === id))
-        .filter((cryptoTool): cryptoTool is CryptoToolOption => cryptoTool !== undefined),
+    () => selectItemsByIds(value, cryptoToolsQuery.data, (cryptoTool) => cryptoTool.id),
     [cryptoToolsQuery.data, value],
   );
 
