@@ -10,6 +10,7 @@ const optionalDigits = (label: string) =>
     .trim()
     .refine((value) => !value || /^\d+$/.test(value), `${label} должен состоять только из цифр`);
 const terminationTypeSchema = z.enum(["end_date", "end_condition", ""]);
+const okvedCodePattern = /^\d{2}(?:\.\d{1,2}){0,3}$/;
 const optionalStatisticalCode = z.string().trim().max(32, "Значение должно быть не длиннее 32 символов");
 const optionalPhone = z
   .string()
@@ -66,7 +67,9 @@ export const organizationCardFormSchema = z
     personalDataProcessingTerminationCondition: optionalText,
     okveds: z.array(
       z.object({
-        code: requiredText("Укажите код ОКВЭД").max(32, "Код должен быть не длиннее 32 символов"),
+        code: requiredText("Укажите код ОКВЭД")
+          .max(32, "Код должен быть не длиннее 32 символов")
+          .regex(okvedCodePattern, "Код ОКВЭД должен соответствовать формату 01, 01.1, 01.11, 01.11.1 или 01.11.11"),
         name: requiredText("Укажите наименование ОКВЭД"),
       }),
     ),
@@ -204,6 +207,19 @@ export const organizationCardFormSchema = z
         message: "Укажите условие окончания прекращения обработки ПДн",
       });
     }
+    const selectedOkvedCodes = new Set<string>();
+    values.okveds.forEach((okved, index) => {
+      const code = okved.code.trim();
+      if (selectedOkvedCodes.has(code)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["okveds", index, "code"],
+          message: "ОКВЭД с таким кодом уже выбран",
+        });
+        return;
+      }
+      selectedOkvedCodes.add(code);
+    });
   });
 
 export const defaultOrganizationFormValues: OrganizationFormValues = {

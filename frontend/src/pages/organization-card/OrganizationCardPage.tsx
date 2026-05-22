@@ -115,8 +115,14 @@ export function OrganizationCardPage() {
   });
 
   const formValues = useMemo(
-    () => (visibleCard ? toFormValues(visibleCard) : defaultOrganizationFormValues),
-    [visibleCard],
+    () =>
+      visibleCard
+        ? toFormValues(visibleCard)
+        : {
+            ...defaultOrganizationFormValues,
+            fullLegalName: auth.user?.organizationName ?? "",
+          },
+    [auth.user?.organizationName, visibleCard],
   );
 
   const closeDeleteDialog = () => {

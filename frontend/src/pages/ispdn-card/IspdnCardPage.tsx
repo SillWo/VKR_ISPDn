@@ -1,12 +1,17 @@
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import { Alert, Box, Button, Chip, CircularProgress, Paper, Stack, Typography } from "@mui/material";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRef, useState } from "react";
 import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
 
 import { getIspdnById, updateIspdn } from "../../entities/ispdn/api/ispdnApi";
-import type { IspdnCard, IspdnFormValues, IspdnStatus } from "../../entities/ispdn/model/types";
+import { toIspdnFormValues } from "../../entities/ispdn/model/toIspdnFormValues";
+import type { IspdnFormValues, IspdnStatus } from "../../entities/ispdn/model/types";
 import { IspdnCardForm } from "../../features/ispdn-card-form/ui/IspdnCardForm";
+import type { IspdnCardFormHandle } from "../../features/ispdn-card-form/ui/IspdnCardForm";
 import { HttpError } from "../../shared/api/httpClient";
+import { useUnsavedChangesBlocker } from "../../shared/lib/useUnsavedChangesBlocker";
+import { UnsavedChangesDialog } from "../../shared/ui/UnsavedChangesDialog";
 
 const sections = [
   { label: "Уровень защищённости", path: "security-level" },
@@ -23,27 +28,12 @@ const statusLabels: Record<IspdnStatus, string> = {
   archived: "Архив",
 };
 
-function toFormValues(card: IspdnCard): IspdnFormValues {
-  return {
-    name: card.name,
-    shortDescription: card.shortDescription,
-    commissioningDate: card.commissioningDate,
-    decommissioningDate: card.decommissioningDate ?? "",
-    websiteUrl: card.websiteUrl ?? "",
-    responsibleEmployeeId: card.responsibleEmployeeId,
-    systemComposition: card.systemComposition,
-    securityTools: {
-      ...card.securityTools,
-      otherSecurityTools: card.securityTools.otherSecurityTools ?? "",
-    },
-    status: card.status,
-  };
-}
-
 export function IspdnCardPage() {
   const { ispdnId } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const formRef = useRef<IspdnCardFormHandle>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const numericId = Number(ispdnId);
   const isValidId = Number.isInteger(numericId) && numericId > 0;
 
@@ -59,6 +49,16 @@ export function IspdnCardPage() {
     onSuccess: async (card) => {
       queryClient.setQueryData(["ispdn", numericId], card);
       await queryClient.invalidateQueries({ queryKey: ["ispdns"] });
+    },
+  });
+  const unsavedChanges = useUnsavedChangesBlocker({
+    when: hasUnsavedChanges && !mutation.isPending,
+    onSave: async () => {
+      await formRef.current?.submit();
+    },
+    onDiscard: () => {
+      formRef.current?.resetToDefaults();
+      setHasUnsavedChanges(false);
     },
   });
 
@@ -124,12 +124,17 @@ export function IspdnCardPage() {
             </Box>
             <Chip label={statusLabels[data.status]} color={data.status === "active" ? "success" : "default"} sx={{ alignSelf: { sm: "flex-start" } }} />
           </Stack>
-          <Chip
-            size="small"
-            label={data.responsibleEmployee?.fullName ?? data.responsiblePerson ?? "Ответственный не назначен"}
-            variant="outlined"
-            sx={{ alignSelf: "flex-start", bgcolor: "background.default" }}
-          />
+          <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap" }}>
+            <Typography variant="body2" color="text.secondary">
+              Ответственный:
+            </Typography>
+            <Chip
+              size="small"
+              label={data.responsibleEmployee?.fullName ?? data.responsiblePerson ?? "Ответственный не назначен"}
+              variant="outlined"
+              sx={{ bgcolor: "background.default" }}
+            />
+          </Stack>
         </Stack>
       </Paper>
 
@@ -146,12 +151,16 @@ export function IspdnCardPage() {
           {mutation.isError && <Alert severity="error">Не удалось сохранить изменения. Проверьте данные и доступность API.</Alert>}
           {mutation.isSuccess && <Alert severity="success">Изменения сохранены.</Alert>}
           <IspdnCardForm
-            defaultValues={toFormValues(data)}
+            ref={formRef}
+            defaultValues={toIspdnFormValues(data)}
             submitLabel="Сохранить изменения"
             isSubmitting={mutation.isPending}
             legacyResponsiblePerson={data.responsiblePerson}
             showSecurityTools={false}
-            onSubmit={(values) => mutation.mutate(values)}
+            onDirtyChange={setHasUnsavedChanges}
+            onSubmit={async (values) => {
+              await mutation.mutateAsync(values);
+            }}
             onCancel={() => navigate("/ispdns")}
           />
         </Stack>
@@ -184,6 +193,13 @@ export function IspdnCardPage() {
           </Stack>
         </Stack>
       </Paper>
+      <UnsavedChangesDialog
+        open={unsavedChanges.isDialogOpen}
+        isSaving={unsavedChanges.isSaving || mutation.isPending}
+        onCancel={unsavedChanges.cancelNavigation}
+        onDiscard={unsavedChanges.discardAndProceed}
+        onSave={() => void unsavedChanges.saveAndProceed()}
+      />
     </Stack>
   );
 }

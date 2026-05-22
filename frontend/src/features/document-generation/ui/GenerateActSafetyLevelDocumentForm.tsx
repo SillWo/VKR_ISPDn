@@ -11,6 +11,7 @@ import { z } from "zod";
 import { generateIspdnDocument } from "../../../entities/document/api/documentApi";
 import type {
   ActSafetyLevelDocumentFormValues,
+  GeneratedDocumentFile,
   GenerateIspdnDocumentPayload,
 } from "../../../entities/document/model/types";
 import { HttpError } from "../../../shared/api/httpClient";
@@ -86,6 +87,7 @@ type GenerateActSafetyLevelDocumentFormProps = {
 
 export type GenerateActSafetyLevelDocumentFormHandle = {
   generate: () => Promise<void>;
+  prepare: () => Promise<GeneratedDocumentFile>;
 };
 
 export const GenerateActSafetyLevelDocumentForm = forwardRef<
@@ -114,10 +116,14 @@ export const GenerateActSafetyLevelDocumentForm = forwardRef<
     name: "commissionMembers",
   });
 
+  const generateFile = async (values: ActSafetyLevelDocumentFormValues) => {
+    setDownloadError(null);
+    return generateIspdnDocument(ispdnId, mapToPayload(values));
+  };
+
   const mutation = useMutation({
     mutationFn: async (values: ActSafetyLevelDocumentFormValues) => {
-      const file = await generateIspdnDocument(ispdnId, mapToPayload(values));
-      setDownloadError(null);
+      const file = await generateFile(values);
       try {
         downloadBlob(file.blob, file.filename);
         onGenerated?.();
@@ -143,6 +149,19 @@ export const GenerateActSafetyLevelDocumentForm = forwardRef<
           () => reject(new Error("Проверьте состав комиссии в акте оценки уровня защищённости.")),
         )();
       }),
+    prepare: () =>
+      new Promise<GeneratedDocumentFile>((resolve, reject) => {
+        void handleSubmit(
+          async (values) => {
+            try {
+              resolve(await generateFile(values));
+            } catch (error) {
+              reject(error);
+            }
+          },
+          () => reject(new Error("Проверьте состав комиссии в акте оценки уровня защищённости.")),
+        )();
+      }),
   }));
 
   const submitForm = handleSubmit((values) => {
@@ -160,9 +179,6 @@ export const GenerateActSafetyLevelDocumentForm = forwardRef<
           <Box>
             <Typography component="h3" variant="h6" sx={{ fontWeight: 600 }}>
               Состав комиссии
-            </Typography>
-            <Typography color="text.secondary" sx={{ mt: 0.5 }}>
-              Выберите сотрудников из реестра. ФИО и должности будут подставлены backend при формировании документа.
             </Typography>
           </Box>
 

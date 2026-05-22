@@ -13,10 +13,11 @@ import {
   Tabs,
   TextField,
 } from "@mui/material";
-import { useEffect, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
 import { Controller, type FieldPath, useForm } from "react-hook-form";
 
 import type { IspdnFormValues } from "../../../entities/ispdn/model/types";
+import { findFirstInvalidTab, scrollTabContainerToTop } from "../../../shared/lib/tabsValidation";
 import { FormSection } from "../../../shared/ui/FormSection";
 import { EmployeeSelect } from "../../../shared/ui/employee-select/EmployeeSelect";
 import { ispdnCardFormSchema } from "../model/schema";
@@ -32,8 +33,14 @@ type IspdnCardFormProps = {
   useTabs?: boolean;
   activeTab?: number;
   onActiveTabChange?: (activeTab: number) => void;
-  onSubmit: (values: IspdnFormValues) => void;
+  onDirtyChange?: (isDirty: boolean) => void;
+  onSubmit: (values: IspdnFormValues) => Promise<void> | void;
   onCancel: () => void;
+};
+
+export type IspdnCardFormHandle = {
+  submit: () => Promise<void>;
+  resetToDefaults: () => void;
 };
 
 const tabFieldNames: FieldPath<IspdnFormValues>[][] = [
@@ -42,7 +49,7 @@ const tabFieldNames: FieldPath<IspdnFormValues>[][] = [
   ["commissioningDate", "decommissioningDate", "status"],
 ];
 
-export function IspdnCardForm({
+export const IspdnCardForm = forwardRef<IspdnCardFormHandle, IspdnCardFormProps>(function IspdnCardForm({
   defaultValues,
   submitLabel,
   isSubmitting,
@@ -52,17 +59,19 @@ export function IspdnCardForm({
   useTabs = false,
   activeTab: controlledActiveTab,
   onActiveTabChange,
+  onDirtyChange,
   onSubmit,
   onCancel,
-}: IspdnCardFormProps) {
+}: IspdnCardFormProps, ref) {
   const [uncontrolledActiveTab, setUncontrolledActiveTab] = useState(0);
   const activeTab = controlledActiveTab ?? uncontrolledActiveTab;
   const {
     control,
     handleSubmit,
     register,
+    reset,
     trigger,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<IspdnFormValues>({
     resolver: zodResolver(ispdnCardFormSchema),
     defaultValues,
@@ -76,15 +85,54 @@ export function IspdnCardForm({
   };
 
   useEffect(() => {
-    document.getElementById("ispdn-card-form")?.scrollIntoView({ block: "start" });
+    scrollTabContainerToTop("ispdn-card-form");
   }, [activeTab]);
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   const handleNextTab = async () => {
     const isValid = await trigger(tabFieldNames[activeTab], { shouldFocus: true });
-    if (isValid) {
-      setActiveTab(Math.min(activeTab + 1, tabFieldNames.length - 1));
+    if (!isValid) {
+      return;
     }
+
+    const firstInvalidTab = await findFirstInvalidTab(trigger, tabFieldNames);
+    if (firstInvalidTab >= 0) {
+      setActiveTab(firstInvalidTab);
+      return;
+    }
+
+    setActiveTab(Math.min(activeTab + 1, tabFieldNames.length - 1));
   };
+
+  const submitForm = async (throwOnInvalid = false) => {
+    if (useTabs) {
+      const firstInvalidTab = await findFirstInvalidTab(trigger, tabFieldNames);
+      if (firstInvalidTab >= 0) {
+        setActiveTab(firstInvalidTab);
+        if (throwOnInvalid) {
+          throw new Error("Form contains invalid tab fields");
+        }
+        return;
+      }
+    }
+
+    await handleSubmit(async (values) => {
+      await onSubmit(values);
+      reset(values);
+    }, () => {
+      if (throwOnInvalid) {
+        throw new Error("Form contains invalid fields");
+      }
+    })();
+  };
+
+  useImperativeHandle(ref, () => ({
+    submit: () => submitForm(true),
+    resetToDefaults: () => reset(defaultValues),
+  }));
 
   const basicFields = (
     <Stack spacing={2}>
@@ -192,7 +240,16 @@ export function IspdnCardForm({
   );
 
   return (
-    <Stack id="ispdn-card-form" component="form" spacing={3} onSubmit={handleSubmit(onSubmit)} noValidate>
+    <Stack
+      id="ispdn-card-form"
+      component="form"
+      spacing={3}
+      onSubmit={(event) => {
+        event.preventDefault();
+        void submitForm();
+      }}
+      noValidate
+    >
       {useTabs ? (
         <Stack spacing={3}>
           <Tabs
@@ -277,4 +334,4 @@ export function IspdnCardForm({
       )}
     </Stack>
   );
-}
+});

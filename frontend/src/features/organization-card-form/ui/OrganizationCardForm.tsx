@@ -3,6 +3,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import SaveIcon from "@mui/icons-material/Save";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
+  Autocomplete,
   Button,
   Checkbox,
   FormControlLabel,
@@ -22,8 +23,10 @@ import { useEffect } from "react";
 import { Controller, type Resolver, useFieldArray, useForm, useWatch } from "react-hook-form";
 
 import { getEmployeeOptions } from "../../../entities/employee/api/employeeApi";
+import { okvedOptions, type OkvedOption } from "../../../entities/okved/model/okved2";
 import type { OrganizationFormValues } from "../../../entities/organization/model/types";
 import { FormSection } from "../../../shared/ui/FormSection";
+import { EmployeeSelect } from "../../../shared/ui/employee-select/EmployeeSelect";
 import { organizationCardFormSchema } from "../model/schema";
 
 const operatorTypeOptions = [
@@ -43,6 +46,58 @@ const terminationTypeOptions = [
   { value: "end_date", label: "Дата окончания" },
   { value: "end_condition", label: "Условие окончания" },
 ] as const;
+
+const MAX_OKVED_RESULTS = 50;
+const okvedOptionCodes = new Set(okvedOptions.map((option) => option.code));
+
+function getOkvedLabel(option: OkvedOption) {
+  const suffix = okvedOptionCodes.has(option.code) ? "" : " (нет в справочнике)";
+  return `${option.code} — ${option.name}${suffix}`;
+}
+
+function filterOkvedOptions(options: OkvedOption[], query: string) {
+  const normalizedQueryText = query.toLowerCase().trim().replace(/\s+/g, " ");
+  const normalizedQueryCode = query.replace(/\D/g, "");
+  const queryWords = normalizedQueryText.split(" ").filter(Boolean);
+
+  if (!normalizedQueryText && !normalizedQueryCode) {
+    return options.slice(0, MAX_OKVED_RESULTS);
+  }
+
+  return options
+    .filter((option) => {
+      const optionCode = option.code.replace(/\D/g, "");
+      const optionText = `${option.code} ${option.name}`.toLowerCase();
+      const optionName = option.name.toLowerCase();
+
+      return (
+        option.code.toLowerCase().includes(normalizedQueryText) ||
+        Boolean(normalizedQueryCode && optionCode.includes(normalizedQueryCode)) ||
+        optionName.includes(normalizedQueryText) ||
+        queryWords.every((word) => optionText.includes(word))
+      );
+    })
+    .slice(0, MAX_OKVED_RESULTS);
+}
+
+function getOkvedErrorMessage(error: unknown): string | undefined {
+  if (!error) {
+    return undefined;
+  }
+  if (Array.isArray(error)) {
+    for (const item of error) {
+      const fieldError = item as { code?: { message?: unknown }; name?: { message?: unknown } } | undefined;
+      const message = fieldError?.code?.message ?? fieldError?.name?.message;
+      if (typeof message === "string") {
+        return message;
+      }
+    }
+    return undefined;
+  }
+
+  const message = (error as { message?: unknown }).message;
+  return typeof message === "string" ? message : undefined;
+}
 
 type OrganizationCardFormProps = {
   defaultValues: OrganizationFormValues;
@@ -99,10 +154,6 @@ export function OrganizationCardForm({
     defaultValues,
   });
 
-  const { fields: okvedFields, append: appendOkved, remove: removeOkved } = useFieldArray({
-    control,
-    name: "okveds",
-  });
   const { fields: branchFields, append: appendBranch, remove: removeBranch } = useFieldArray({
     control,
     name: "branches",
@@ -177,23 +228,17 @@ export function OrganizationCardForm({
           control={control}
           name="headEmployeeId"
           render={({ field }) => (
-            <TextField
-              select
+            <EmployeeSelect
+              value={field.value}
+              onChange={field.onChange}
               label="Руководитель организации"
-              fullWidth
               required
-              value={field.value ?? ""}
-              onChange={(event) => field.onChange(event.target.value === "" ? null : Number(event.target.value))}
+              allowQuickCreate
+              quickCreateButtonPlacement="inline"
+              disabled={isSubmitting}
               error={Boolean(errors.headEmployeeId)}
               helperText={errors.headEmployeeId?.message ?? employeeHelperText}
-            >
-              <MenuItem value="">Не выбран</MenuItem>
-              {employeeOptions.map((employee) => (
-                <MenuItem key={employee.id} value={employee.id}>
-                  {employee.fullName} - {employee.position}
-                </MenuItem>
-              ))}
-            </TextField>
+            />
           )}
         />
         <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
@@ -499,55 +544,79 @@ export function OrganizationCardForm({
             helperText={errors.okopf?.message ?? "ОКОПФ — код организационно-правовой формы."}
           />
         </Stack>
-        <Stack spacing={1.5}>
-          <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between" }}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-              ОКВЭД
-            </Typography>
-            <Button type="button" variant="outlined" startIcon={<AddIcon />} onClick={() => appendOkved({ code: "", name: "" })}>
-              Добавить строку
-            </Button>
-          </Stack>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell sx={{ width: 180 }}>Код</TableCell>
-                <TableCell>Наименование</TableCell>
-                <TableCell align="right" sx={{ width: 96 }}>
-                  Действия
-                </TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {okvedFields.map((field, index) => (
-                <TableRow key={field.id}>
-                  <TableCell>
+        <Controller
+          control={control}
+          name="okveds"
+          render={({ field }) => {
+            const value = field.value ?? [];
+            const unknownCount = value.filter((item) => !okvedOptionCodes.has(item.code)).length;
+            const errorMessage = getOkvedErrorMessage(errors.okveds);
+            const helperText =
+              errorMessage ??
+              (unknownCount > 0
+                ? `Есть ОКВЭД вне текущего справочника: ${unknownCount}. Его можно удалить.`
+                : undefined);
+
+            return (
+              <Stack spacing={1.5}>
+                <Autocomplete
+                  multiple
+                  options={okvedOptions}
+                  value={value}
+                  filterSelectedOptions
+                  disableCloseOnSelect
+                  noOptionsText="ОКВЭД не найден"
+                  filterOptions={(options, state) => filterOkvedOptions(options, state.inputValue)}
+                  getOptionLabel={getOkvedLabel}
+                  isOptionEqualToValue={(option, selected) => option.code === selected.code}
+                  onChange={(_, selectedOptions) =>
+                    field.onChange(selectedOptions.map((option) => ({ code: option.code, name: option.name })))
+                  }
+                  renderValue={() => null}
+                  renderInput={(params) => (
                     <TextField
-                      fullWidth
-                      slotProps={{ htmlInput: { maxLength: 32 } }}
-                      {...register(`okveds.${index}.code`)}
-                      error={Boolean(errors.okveds?.[index]?.code)}
-                      helperText={errors.okveds?.[index]?.code?.message}
+                      {...params}
+                      label="ОКВЭД"
+                      placeholder="Введите код или название ОКВЭД"
+                      error={Boolean(errorMessage)}
+                      helperText={helperText}
                     />
-                  </TableCell>
-                  <TableCell>
-                    <TextField
-                      fullWidth
-                      {...register(`okveds.${index}.name`)}
-                      error={Boolean(errors.okveds?.[index]?.name)}
-                      helperText={errors.okveds?.[index]?.name?.message}
-                    />
-                  </TableCell>
-                  <TableCell align="right">
-                    <IconButton type="button" aria-label="Удалить ОКВЭД" onClick={() => removeOkved(index)}>
-                      <DeleteIcon />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Stack>
+                  )}
+                />
+                {value.length > 0 && (
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell sx={{ width: 180 }}>Код</TableCell>
+                        <TableCell>Наименование</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {value.map((okved) => (
+                        <TableRow key={okved.code}>
+                          <TableCell>{okved.code}</TableCell>
+                          <TableCell>
+                            <Stack direction="row" spacing={1} sx={{ alignItems: "center", justifyContent: "space-between" }}>
+                              <Typography variant="body2">{okved.name}</Typography>
+                              <IconButton
+                                type="button"
+                                aria-label="Удалить ОКВЭД"
+                                size="small"
+                                onClick={() => field.onChange(value.filter((item) => item.code !== okved.code))}
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Stack>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </Stack>
+            );
+          }}
+        />
       </FormSection>
 
       <FormSection title="Ответственные лица">

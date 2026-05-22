@@ -73,18 +73,33 @@ export function getTaskImportanceChipSx(importance: TaskImportance | null): SxPr
 function buildControlSx(visual: TaskVisual): SxProps<Theme> {
   return {
     minWidth: 152,
+    backgroundColor: "transparent",
+    boxShadow: "none",
+    "&.MuiOutlinedInput-root": {
+      backgroundColor: "transparent",
+    },
     "& .MuiSelect-select": {
       py: 0.5,
       fontSize: 13,
       fontWeight: 500,
       color: visual.color,
       backgroundColor: visual.backgroundColor,
+      borderRadius: 1,
     },
     "& .MuiOutlinedInput-notchedOutline": {
-      borderColor: visual.borderColor,
+      border: 0,
     },
     "&:hover .MuiOutlinedInput-notchedOutline": {
-      borderColor: visual.borderColor,
+      border: 0,
+    },
+    "&:hover": {
+      backgroundColor: "transparent",
+    },
+    "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+      border: 0,
+    },
+    "&.Mui-focused": {
+      backgroundColor: "transparent",
     },
   };
 }

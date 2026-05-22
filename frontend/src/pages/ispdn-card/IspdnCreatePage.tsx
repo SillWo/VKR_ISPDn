@@ -38,7 +38,9 @@ import { useEffect, useRef, useState } from "react";
 import { useBlocker, useNavigate } from "react-router-dom";
 
 import { createIspdn, deleteIspdn, updateIspdn } from "../../entities/ispdn/api/ispdnApi";
+import { toIspdnFormValues } from "../../entities/ispdn/model/toIspdnFormValues";
 import type { IspdnCard, IspdnFormValues, IspdnSecurityTools } from "../../entities/ispdn/model/types";
+import type { GeneratedDocumentFile } from "../../entities/document/model/types";
 import { updateIspdnDataCenters } from "../../entities/data-center/api/dataCenterApi";
 import { updateIspdnCryptography } from "../../entities/crypto-tool/api/cryptoToolApi";
 import {
@@ -96,21 +98,15 @@ type ProcessDialogState =
 
 type DocumentStatus = "not_prepared" | "prepared" | "error";
 
-function toFormValues(card: IspdnCard): IspdnFormValues {
-  return {
-    name: card.name,
-    shortDescription: card.shortDescription,
-    commissioningDate: card.commissioningDate,
-    decommissioningDate: card.decommissioningDate ?? "",
-    websiteUrl: card.websiteUrl ?? "",
-    responsibleEmployeeId: card.responsibleEmployeeId,
-    systemComposition: card.systemComposition,
-    securityTools: {
-      ...card.securityTools,
-      otherSecurityTools: card.securityTools.otherSecurityTools ?? "",
-    },
-    status: card.status,
-  };
+function downloadBlob(blob: Blob, filename: string) {
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
 }
 
 export function IspdnCreatePage() {
@@ -139,8 +135,6 @@ export function IspdnCreatePage() {
   const [usesCryptography, setUsesCryptography] = useState(false);
   const [cryptoToolIds, setCryptoToolIds] = useState<number[]>([]);
   const [cryptographyStepError, setCryptographyStepError] = useState(false);
-  const [actIspdnGenerated, setActIspdnGenerated] = useState(false);
-  const [safetyLevelActGenerated, setSafetyLevelActGenerated] = useState(false);
   const [documentTab, setDocumentTab] = useState(0);
   const [documentStatuses, setDocumentStatuses] = useState<Record<"actIspdn" | "safetyLevel", DocumentStatus>>({
     actIspdn: "not_prepared",
@@ -148,6 +142,10 @@ export function IspdnCreatePage() {
   });
   const [documentGenerationError, setDocumentGenerationError] = useState<string | null>(null);
   const [isPreparingDocuments, setIsPreparingDocuments] = useState(false);
+  const areDocumentsPrepared =
+    documentStatuses.actIspdn === "prepared" && documentStatuses.safetyLevel === "prepared";
+  const isCardFormLastTab = cardFormTab >= 2;
+  const shouldShowWizardNavigation = activeStep !== 0 || isCardFormLastTab;
 
   useEffect(() => {
     if (!canUseWizard) {
@@ -182,7 +180,7 @@ export function IspdnCreatePage() {
     mutationFn: (values: IspdnFormValues) => (card ? updateIspdn(card.id, values) : createIspdn(values)),
     onSuccess: async (savedCard) => {
       setCard(savedCard);
-      setCardValues(toFormValues(savedCard));
+      setCardValues(toIspdnFormValues(savedCard));
       await queryClient.invalidateQueries({ queryKey: ["ispdns"] });
       await queryClient.invalidateQueries({ queryKey: ["ispdn", savedCard.id] });
       setActiveStep(1);
@@ -198,7 +196,7 @@ export function IspdnCreatePage() {
     },
     onSuccess: async (savedCard) => {
       setCard(savedCard);
-      setCardValues(toFormValues(savedCard));
+      setCardValues(toIspdnFormValues(savedCard));
       await queryClient.invalidateQueries({ queryKey: ["ispdns"] });
       await queryClient.invalidateQueries({ queryKey: ["ispdn", savedCard.id] });
       setActiveStep(2);
@@ -371,43 +369,104 @@ export function IspdnCreatePage() {
 
     setIsPreparingDocuments(true);
     setDocumentGenerationError(null);
+    setDocumentStatuses({
+      actIspdn: "not_prepared",
+      safetyLevel: "not_prepared",
+    });
+
+    let actIspdnFile: GeneratedDocumentFile | null = null;
+    let safetyLevelFile: GeneratedDocumentFile | null = null;
+    let generationError: string | null = null;
 
     try {
-      await actIspdnDocumentRef.current.generate();
-      setActIspdnGenerated(true);
+      actIspdnFile = await actIspdnDocumentRef.current.prepare();
       setDocumentStatuses((current) => ({ ...current, actIspdn: "prepared" }));
     } catch (error) {
-      setActIspdnGenerated(false);
       setDocumentStatuses((current) => ({ ...current, actIspdn: "error" }));
-      setDocumentGenerationError(error instanceof Error ? `Акт ввода ИСПДн: ${error.message}` : "Акт ввода ИСПДн не удалось подготовить.");
-      setIsPreparingDocuments(false);
-      return;
+      generationError =
+        error instanceof Error ? `Акт ввода ИСПДн: ${error.message}` : "Акт ввода ИСПДн не удалось подготовить.";
     }
 
     try {
-      await safetyLevelDocumentRef.current.generate();
-      setSafetyLevelActGenerated(true);
+      safetyLevelFile = await safetyLevelDocumentRef.current.prepare();
       setDocumentStatuses((current) => ({ ...current, safetyLevel: "prepared" }));
     } catch (error) {
-      setSafetyLevelActGenerated(false);
       setDocumentStatuses((current) => ({ ...current, safetyLevel: "error" }));
-      setDocumentGenerationError(
+      const safetyLevelError =
         error instanceof Error
           ? `Акт оценки уровня защищённости: ${error.message}`
-          : "Акт оценки уровня защищённости не удалось подготовить.",
-      );
+          : "Акт оценки уровня защищённости не удалось подготовить.";
+      generationError = generationError ? `${generationError} ${safetyLevelError}` : safetyLevelError;
     } finally {
+      if (!generationError && actIspdnFile && safetyLevelFile) {
+        try {
+          downloadBlob(actIspdnFile.blob, actIspdnFile.filename);
+          downloadBlob(safetyLevelFile.blob, safetyLevelFile.filename);
+        } catch {
+          generationError = "Не удалось начать скачивание подготовленных документов.";
+        }
+      }
+      if (generationError) {
+        setDocumentGenerationError(generationError);
+      }
       setIsPreparingDocuments(false);
     }
   };
 
   const handleDocumentsFinish = () => {
-    if (!card || !actIspdnGenerated || !safetyLevelActGenerated) {
+    if (!card) {
+      return;
+    }
+    if (documentStatuses.actIspdn !== "prepared") {
+      setDocumentTab(0);
+      document.getElementById("ispdn-create-documents")?.scrollIntoView({ block: "start" });
+      return;
+    }
+    if (documentStatuses.safetyLevel !== "prepared") {
+      setDocumentTab(1);
+      document.getElementById("ispdn-create-documents")?.scrollIntoView({ block: "start" });
       return;
     }
     allowExitRef.current = true;
     navigate(`/ispdns/${card.id}`);
   };
+
+  const wizardNavigation = (
+    <WizardNavigation
+      activeStep={activeStep}
+      isBusy={isBusy}
+      backDisabled={activeStep === 0 && cardFormTab === 0}
+      onBack={() => {
+        if (activeStep === 0) {
+          setCardFormTab((current) => Math.max(0, current - 1));
+          return;
+        }
+        setActiveStep((current) => Math.max(0, current - 1));
+      }}
+      onNext={
+        activeStep === 3
+          ? handleFinish
+          : activeStep === 4
+            ? () => dataCentersMutation.mutate()
+            : activeStep === 5
+              ? handleCryptographyFinish
+              : activeStep === 6
+                ? handleDocumentsFinish
+                : undefined
+      }
+      nextFormId={
+        activeStep === 0
+          ? "ispdn-card-form"
+          : activeStep === 1
+            ? "security-tools-create-form"
+            : activeStep === 2
+              ? "security-level-create-form"
+              : undefined
+      }
+      nextLabel={activeStep === 6 ? "Завершить" : "Далее"}
+      nextDisabled={activeStep === 0 ? !isCardFormLastTab : activeStep === 6 ? !areDocumentsPrepared : false}
+    />
+  );
 
   return (
     <Stack spacing={3}>
@@ -516,6 +575,7 @@ export function IspdnCreatePage() {
 
       {activeStep === 0 && (
         <Paper variant="outlined" sx={{ p: 3, borderRadius: 2, bgcolor: "background.paper" }}>
+          <Stack spacing={3}>
           <IspdnCardForm
             key={card?.updatedAt ?? "new-card"}
             defaultValues={cardValues}
@@ -529,6 +589,8 @@ export function IspdnCreatePage() {
             onSubmit={(values) => cardMutation.mutate(values)}
             onCancel={() => undefined}
           />
+          {shouldShowWizardNavigation && wizardNavigation}
+          </Stack>
         </Paper>
       )}
 
@@ -677,7 +739,7 @@ export function IspdnCreatePage() {
             </Typography>
           </Box>
 
-          <Paper variant="outlined" sx={{ p: 3, borderRadius: 2, bgcolor: "background.paper" }}>
+          <Paper id="ispdn-create-documents" variant="outlined" sx={{ p: 3, borderRadius: 2, bgcolor: "background.paper" }}>
             <Stack spacing={2.5}>
               <Tabs
                 value={documentTab}
@@ -706,17 +768,12 @@ export function IspdnCreatePage() {
 
               <Box sx={{ display: documentTab === 0 ? "block" : "none" }}>
                 <Stack spacing={2.5}>
-                  <Alert severity="info">
-                    Документ фиксирует ввод ИСПДн в эксплуатацию и используется как один из внутренних организационных
-                    документов.
-                  </Alert>
                   <GenerateActIspdnDocumentForm
                     ref={actIspdnDocumentRef}
                     ispdnId={card.id}
                     showSubmitButton={false}
                     disabled={isPreparingDocuments}
                     onGenerated={() => {
-                      setActIspdnGenerated(true);
                       setDocumentStatuses((current) => ({ ...current, actIspdn: "prepared" }));
                     }}
                   />
@@ -725,16 +782,12 @@ export function IspdnCreatePage() {
 
               <Box sx={{ display: documentTab === 1 ? "block" : "none" }}>
                 <Stack spacing={2.5}>
-                  <Alert severity="info">
-                    Документ фиксирует результаты определения необходимого уровня защищённости ИСПДн.
-                  </Alert>
                   <GenerateActSafetyLevelDocumentForm
                     ref={safetyLevelDocumentRef}
                     ispdnId={card.id}
                     showSubmitButton={false}
                     disabled={isPreparingDocuments}
                     onGenerated={() => {
-                      setSafetyLevelActGenerated(true);
                       setDocumentStatuses((current) => ({ ...current, safetyLevel: "prepared" }));
                     }}
                   />
@@ -748,53 +801,17 @@ export function IspdnCreatePage() {
                   onClick={handlePrepareAllDocuments}
                   disabled={isPreparingDocuments}
                 >
-                  {isPreparingDocuments ? "Документы подготавливаются..." : "Подготовить все документы"}
+                  {isPreparingDocuments ? "Документы подготавливаются..." : "Подготовить документы"}
                 </Button>
-                <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
-                  <DocumentStatusChip status={documentStatuses.actIspdn} labelPrefix="Акт ввода" />
-                  <DocumentStatusChip status={documentStatuses.safetyLevel} labelPrefix="Акт оценки" />
-                </Stack>
               </Stack>
             </Stack>
           </Paper>
 
           {documentGenerationError && <Alert severity="error">{documentGenerationError}</Alert>}
-          {(!actIspdnGenerated || !safetyLevelActGenerated) && (
-            <Alert severity="info">Подготовьте оба документа, чтобы завершить создание ИСПДн.</Alert>
-          )}
         </Stack>
       )}
 
-      <WizardNavigation
-        activeStep={activeStep}
-        isBusy={isBusy}
-        onBack={() => setActiveStep((current) => Math.max(0, current - 1))}
-        onNext={
-          activeStep === 3
-            ? handleFinish
-            : activeStep === 4
-              ? () => dataCentersMutation.mutate()
-            : activeStep === 5
-                ? handleCryptographyFinish
-                : activeStep === 6
-                  ? handleDocumentsFinish
-              : undefined
-        }
-        nextFormId={
-          activeStep === 0
-            ? "ispdn-card-form"
-            : activeStep === 1
-              ? "security-tools-create-form"
-              : activeStep === 2
-                ? "security-level-create-form"
-                : undefined
-        }
-        nextLabel={activeStep === 6 ? "Завершить" : "Далее"}
-        nextDisabled={
-          (activeStep === 0 && cardFormTab < 2) ||
-          (activeStep === 6 && (!actIspdnGenerated || !safetyLevelActGenerated))
-        }
-      />
+      {activeStep !== 0 && shouldShowWizardNavigation && wizardNavigation}
 
       <Dialog
         open={blocker.state === "blocked"}
@@ -969,6 +986,7 @@ function WizardNavigation({
   nextFormId,
   nextLabel,
   nextDisabled = false,
+  backDisabled,
   onBack,
   onNext,
 }: {
@@ -977,12 +995,18 @@ function WizardNavigation({
   nextFormId?: string;
   nextLabel: string;
   nextDisabled?: boolean;
+  backDisabled?: boolean;
   onBack: () => void;
   onNext?: () => void;
 }) {
   return (
     <Stack direction="row" spacing={1.5} sx={{ justifyContent: "flex-start" }}>
-      <Button variant="outlined" onClick={onBack} disabled={isBusy || activeStep === 0} sx={{ minWidth: 120 }}>
+      <Button
+        variant="outlined"
+        onClick={onBack}
+        disabled={isBusy || backDisabled || (backDisabled === undefined && activeStep === 0)}
+        sx={{ minWidth: 120 }}
+      >
         Назад
       </Button>
       <Button

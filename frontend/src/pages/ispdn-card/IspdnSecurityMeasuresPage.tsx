@@ -2,7 +2,6 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DownloadIcon from "@mui/icons-material/Download";
 import EditIcon from "@mui/icons-material/Edit";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import {
   Alert,
@@ -10,7 +9,6 @@ import {
   Button,
   Chip,
   CircularProgress,
-  Collapse,
   FormControl,
   IconButton,
   MenuItem,
@@ -33,7 +31,8 @@ import { useForm } from "react-hook-form";
 import { Link as RouterLink, useParams } from "react-router-dom";
 
 import { getIspdnById, updateIspdn } from "../../entities/ispdn/api/ispdnApi";
-import type { IspdnCard, IspdnFormValues } from "../../entities/ispdn/model/types";
+import { toIspdnFormValues } from "../../entities/ispdn/model/toIspdnFormValues";
+import type { IspdnFormValues } from "../../entities/ispdn/model/types";
 import {
   deleteTechnicalSecurityMeasureDocument,
   downloadTechnicalSecurityMeasureDocument,
@@ -51,23 +50,8 @@ import type {
 } from "../../entities/security-measure/model/types";
 import { IspdnSecurityToolsSection } from "../../features/ispdn-card-form/ui/IspdnSecurityToolsSection";
 import { HttpError } from "../../shared/api/httpClient";
-
-function toIspdnFormValues(card: IspdnCard): IspdnFormValues {
-  return {
-    name: card.name,
-    shortDescription: card.shortDescription,
-    commissioningDate: card.commissioningDate,
-    decommissioningDate: card.decommissioningDate ?? "",
-    websiteUrl: card.websiteUrl ?? "",
-    responsibleEmployeeId: card.responsibleEmployeeId,
-    systemComposition: card.systemComposition,
-    securityTools: {
-      ...card.securityTools,
-      otherSecurityTools: card.securityTools.otherSecurityTools ?? "",
-    },
-    status: card.status,
-  };
-}
+import { useUnsavedChangesBlocker } from "../../shared/lib/useUnsavedChangesBlocker";
+import { UnsavedChangesDialog } from "../../shared/ui/UnsavedChangesDialog";
 
 export function IspdnSecurityMeasuresPage() {
   const { ispdnId } = useParams();
@@ -78,7 +62,7 @@ export function IspdnSecurityMeasuresPage() {
     control: securityToolsControl,
     handleSubmit: handleSecurityToolsSubmit,
     reset: resetSecurityToolsForm,
-    formState: { errors: securityToolsErrors },
+    formState: { errors: securityToolsErrors, isDirty: securityToolsIsDirty },
   } = useForm<IspdnFormValues>();
 
   const measuresQuery = useQuery({
@@ -150,6 +134,20 @@ export function IspdnSecurityMeasuresPage() {
       resetSecurityToolsForm(toIspdnFormValues(ispdnQuery.data));
     }
   }, [ispdnQuery.data, resetSecurityToolsForm]);
+
+  const unsavedChanges = useUnsavedChangesBlocker({
+    when: securityToolsIsDirty && !updateSecurityToolsMutation.isPending,
+    onSave: async () => {
+      await handleSecurityToolsSubmit(async (values) => {
+        await updateSecurityToolsMutation.mutateAsync(values);
+      })();
+    },
+    onDiscard: () => {
+      if (ispdnQuery.data) {
+        resetSecurityToolsForm(toIspdnFormValues(ispdnQuery.data));
+      }
+    },
+  });
 
   if (!isValidId) {
     return <Alert severity="error">Некорректный идентификатор ИСПДн в маршруте.</Alert>;
@@ -289,6 +287,13 @@ export function IspdnSecurityMeasuresPage() {
           </TableContainer>
         </>
       )}
+      <UnsavedChangesDialog
+        open={unsavedChanges.isDialogOpen}
+        isSaving={unsavedChanges.isSaving || updateSecurityToolsMutation.isPending}
+        onCancel={unsavedChanges.cancelNavigation}
+        onDiscard={unsavedChanges.discardAndProceed}
+        onSave={() => void unsavedChanges.saveAndProceed()}
+      />
     </Stack>
   );
 }
@@ -504,10 +509,10 @@ const TechnicalSecurityMeasureRow = memo(function TechnicalSecurityMeasureRow({
   const [draftFactualStatus, setDraftFactualStatus] = useState<TechnicalMeasureFactualStatus>(item.factualStatus);
   const [draftComment, setDraftComment] = useState(item.comment ?? "");
   const [isEditingComment, setIsEditingComment] = useState(false);
-  const [isCommentOpen, setIsCommentOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const isBaseSet = item.regulatoryStatus === "base_set";
   const draftCommentRequired =
-    (item.regulatoryStatus === "base_set" && draftFactualStatus === "not_implemented") ||
+    (isBaseSet && draftFactualStatus === "not_implemented") ||
     (item.regulatoryStatus === "not_base_set" && draftFactualStatus === "implemented");
 
   useEffect(() => {
@@ -554,9 +559,9 @@ const TechnicalSecurityMeasureRow = memo(function TechnicalSecurityMeasureRow({
           variant="outlined"
           label={item.regulatoryStatusLabel}
           sx={{
-            color: "text.secondary",
-            borderColor: "divider",
-            bgcolor: "background.default",
+            color: isBaseSet ? "#225ea8" : "text.secondary",
+            borderColor: isBaseSet ? "rgba(126, 167, 233, 0.55)" : "divider",
+            bgcolor: isBaseSet ? "rgba(126, 167, 233, 0.14)" : "background.default",
             fontWeight: 500,
           }}
         />
@@ -581,25 +586,15 @@ const TechnicalSecurityMeasureRow = memo(function TechnicalSecurityMeasureRow({
           {!isEditingComment && item.hasComment && (
             <Stack spacing={1}>
               <Stack direction="row" spacing={1} sx={{ alignItems: "center", justifyContent: "space-between" }}>
-                <Button
-                  size="small"
-                  variant="text"
-                  endIcon={<ExpandMoreIcon />}
-                  onClick={() => setIsCommentOpen((current) => !current)}
-                >
-                  Комментарий зафиксирован
-                </Button>
+                <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", flex: 1 }}>
+                  {item.comment}
+                </Typography>
                 <Tooltip title="Редактировать">
                   <IconButton size="small" onClick={() => setIsEditingComment(true)}>
                     <EditIcon fontSize="small" />
                   </IconButton>
                 </Tooltip>
               </Stack>
-              <Collapse in={isCommentOpen}>
-                <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
-                  {item.comment}
-                </Typography>
-              </Collapse>
             </Stack>
           )}
 

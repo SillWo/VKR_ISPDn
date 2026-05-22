@@ -7,7 +7,7 @@ import { z } from "zod";
 import { useAuth } from "./AuthProvider";
 
 const schema = z.object({
-  organizationName: z.string().trim().min(1, "Введите название организации"),
+  organizationName: z.string().trim().min(1, "Введите полное наименование организации"),
   username: z.string().trim().min(3, "Минимум 3 символа"),
   password: z.string().min(6, "Минимум 6 символов"),
 });
@@ -55,7 +55,7 @@ export function RegisterPage() {
 
           {errors.root?.message && <Alert severity="error">{errors.root.message}</Alert>}
 
-          <TextField label="Название организации" error={Boolean(errors.organizationName)} helperText={errors.organizationName?.message} {...register("organizationName")} />
+          <TextField label="Полное наименование организации" error={Boolean(errors.organizationName)} helperText={errors.organizationName?.message} {...register("organizationName")} />
           <TextField label="Имя пользователя" autoComplete="username" error={Boolean(errors.username)} helperText={errors.username?.message} {...register("username")} />
           <TextField label="Пароль" type="password" autoComplete="new-password" error={Boolean(errors.password)} helperText={errors.password?.message} {...register("password")} />
 

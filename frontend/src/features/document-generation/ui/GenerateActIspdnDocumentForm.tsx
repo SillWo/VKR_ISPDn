@@ -11,6 +11,7 @@ import { z } from "zod";
 import { generateIspdnDocument } from "../../../entities/document/api/documentApi";
 import type {
   ActIspdnCommissioningFormValues,
+  GeneratedDocumentFile,
   GenerateIspdnDocumentPayload,
 } from "../../../entities/document/model/types";
 import { requiredText } from "../../../shared/lib/validation";
@@ -73,6 +74,7 @@ type GenerateActIspdnDocumentFormProps = {
 
 export type GenerateActIspdnDocumentFormHandle = {
   generate: () => Promise<void>;
+  prepare: () => Promise<GeneratedDocumentFile>;
 };
 
 export const GenerateActIspdnDocumentForm = forwardRef<
@@ -104,10 +106,14 @@ export const GenerateActIspdnDocumentForm = forwardRef<
     name: "events",
   });
 
+  const generateFile = async (values: ActIspdnCommissioningFormValues) => {
+    setDownloadError(null);
+    return generateIspdnDocument(ispdnId, mapToPayload(values));
+  };
+
   const mutation = useMutation({
     mutationFn: async (values: ActIspdnCommissioningFormValues) => {
-      const file = await generateIspdnDocument(ispdnId, mapToPayload(values));
-      setDownloadError(null);
+      const file = await generateFile(values);
       try {
         downloadBlob(file.blob, file.filename);
         onGenerated?.();
@@ -126,6 +132,19 @@ export const GenerateActIspdnDocumentForm = forwardRef<
             try {
               await mutation.mutateAsync(values);
               resolve();
+            } catch (error) {
+              reject(error);
+            }
+          },
+          () => reject(new Error("Проверьте ручные данные акта ввода ИСПДн.")),
+        )();
+      }),
+    prepare: () =>
+      new Promise<GeneratedDocumentFile>((resolve, reject) => {
+        void handleSubmit(
+          async (values) => {
+            try {
+              resolve(await generateFile(values));
             } catch (error) {
               reject(error);
             }
@@ -152,14 +171,6 @@ export const GenerateActIspdnDocumentForm = forwardRef<
         {mutation.isSuccess && !downloadError && <Alert severity="success">Документ сформирован и передан на скачивание.</Alert>}
 
         <Stack spacing={2}>
-          <Box>
-            <Typography component="h3" variant="h6" sx={{ fontWeight: 600 }}>
-              Ручные данные
-            </Typography>
-            <Typography color="text.secondary" sx={{ mt: 0.5 }}>
-              Эти поля попадут в системный шаблон акта. Номер мероприятия backend назначит автоматически.
-            </Typography>
-          </Box>
           <TextField
             label="Обнаруженные нарушения и недостатки"
             multiline

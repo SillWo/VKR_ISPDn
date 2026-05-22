@@ -3,7 +3,6 @@ import {
   Alert,
   Box,
   Button,
-  Chip,
   CircularProgress,
   Paper,
   Stack,
@@ -19,17 +18,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link as RouterLink } from "react-router-dom";
 
 import { getIspdns } from "../../entities/ispdn/api/ispdnApi";
-import type { IspdnStatus } from "../../entities/ispdn/model/types";
-
-const statusLabels: Record<IspdnStatus, string> = {
-  active: "Работает",
-  archived: "Архив",
-};
-
-const statusColors: Record<IspdnStatus, "success" | "default"> = {
-  active: "success",
-  archived: "default",
-};
+import { IspdnStatusSelect } from "../../entities/ispdn/ui/IspdnStatusSelect";
 
 function formatDate(value: string | null) {
   if (!value) {
@@ -105,7 +94,7 @@ export function IspdnArchivePage() {
                     </Stack>
                   </TableCell>
                   <TableCell>
-                    <Chip label={statusLabels[item.status]} color={statusColors[item.status]} size="small" />
+                    <IspdnStatusSelect ispdnId={item.id} value={item.status} />
                   </TableCell>
                   <TableCell>{item.responsibleEmployee?.fullName ?? item.responsiblePerson}</TableCell>
                   <TableCell>{formatDate(item.commissioningDate)}</TableCell>

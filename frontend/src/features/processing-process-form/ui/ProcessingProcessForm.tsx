@@ -12,6 +12,7 @@ import {
   subjectCategoryCatalog,
 } from "../../../entities/processing-process/model/catalogs";
 import type { ProcessingProcessFormValues } from "../../../entities/processing-process/model/types";
+import { findFirstInvalidTab, scrollTabContainerToTop } from "../../../shared/lib/tabsValidation";
 import { FormSection } from "../../../shared/ui/FormSection";
 import { processingProcessFormSchema } from "../model/schema";
 import { DataCategoriesSection } from "./DataCategoriesSection";
@@ -23,7 +24,7 @@ type ProcessingProcessFormProps = {
   submitLabel: string;
   isSubmitting?: boolean;
   showActions?: boolean;
-  onSubmit: (values: ProcessingProcessFormValues) => void;
+  onSubmit: (values: ProcessingProcessFormValues) => Promise<void> | void;
   onCancel: () => void;
 };
 
@@ -70,24 +71,55 @@ export const ProcessingProcessForm = forwardRef<ProcessingProcessFormHandle, Pro
 
     useImperativeHandle(ref, () => ({
       validate: async () => {
-        const isValid = await trigger();
-        return isValid ? getValues() : null;
+        const firstInvalidTab = await findFirstInvalidTab(trigger, tabFieldNames);
+        if (firstInvalidTab >= 0) {
+          setActiveTab(firstInvalidTab);
+          return null;
+        }
+        return getValues();
       },
     }));
 
     useEffect(() => {
-      document.getElementById("processing-process-form")?.scrollIntoView({ block: "start" });
+      scrollTabContainerToTop("processing-process-form");
     }, [activeTab]);
 
     const handleNextTab = async () => {
       const isValid = await trigger(tabFieldNames[activeTab], { shouldFocus: true });
-      if (isValid) {
-        setActiveTab((current) => Math.min(current + 1, tabFieldNames.length - 1));
+      if (!isValid) {
+        return;
       }
+
+      const firstInvalidTab = await findFirstInvalidTab(trigger, tabFieldNames);
+      if (firstInvalidTab >= 0) {
+        setActiveTab(firstInvalidTab);
+        return;
+      }
+
+      setActiveTab((current) => Math.min(current + 1, tabFieldNames.length - 1));
+    };
+
+    const handleFormSubmit = async () => {
+      const firstInvalidTab = await findFirstInvalidTab(trigger, tabFieldNames);
+      if (firstInvalidTab >= 0) {
+        setActiveTab(firstInvalidTab);
+        return;
+      }
+
+      await handleSubmit(onSubmit)();
     };
 
     return (
-      <Stack id="processing-process-form" component="form" spacing={3} onSubmit={handleSubmit(onSubmit)} noValidate>
+      <Stack
+        id="processing-process-form"
+        component="form"
+        spacing={3}
+        onSubmit={(event) => {
+          event.preventDefault();
+          void handleFormSubmit();
+        }}
+        noValidate
+      >
         <Tabs
           value={activeTab}
           onChange={(_, value: number) => setActiveTab(value)}

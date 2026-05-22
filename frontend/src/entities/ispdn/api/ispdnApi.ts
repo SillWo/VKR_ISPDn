@@ -8,6 +8,7 @@ import type {
   IspdnSecurityTools,
   IspdnStatus,
 } from "../model/types";
+import { toIspdnFormValues } from "../model/toIspdnFormValues";
 
 type ResponsibleEmployeeDto = {
   id: number;
@@ -221,6 +222,14 @@ export function updateIspdn(id: number, payload: IspdnFormValues) {
     method: "PUT",
     body: JSON.stringify(mapPayload(payload)),
   }).then(mapCard);
+}
+
+export async function updateIspdnStatus(id: number, status: IspdnStatus) {
+  const card = await getIspdnById(id);
+  return updateIspdn(id, {
+    ...toIspdnFormValues(card),
+    status,
+  });
 }
 
 export function deleteIspdn(id: number) {
