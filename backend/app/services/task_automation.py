@@ -2,7 +2,6 @@ from datetime import date, timedelta
 
 from app.domain.fstek21_measures import FSTEK21_MEASURES, get_measure_regulatory_status
 from app.domain.processing_process_subsumption import is_new_processing_process_for_task_automation
-from app.models.processing_process import ProcessingProcess
 from app.models.task_event import TaskEvent
 from app.repositories.ispdn import IspdnRepository
 from app.repositories.processing_process import ProcessingProcessRepository
@@ -417,5 +416,3 @@ class TaskAutomationService:
     @staticmethod
     def _has_text(value: str | None) -> bool:
         return bool(value and value.strip())
-
-

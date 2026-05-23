@@ -9,7 +9,6 @@ from app.domain.security_level_algorithm import (
     SUBJECT_COUNT_RANGE_LABELS,
     SUBJECT_GROUP_LABELS,
     THREAT_TYPE_LABELS,
-    SecurityLevelCalculationError,
     calculate_security_level,
     selected_data_category_labels,
 )

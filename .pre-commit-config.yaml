@@ -1,0 +1,30 @@
+minimum_pre_commit_version: "3.5.0"
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-yaml
+      - id: check-added-large-files
+        args:
+          - --maxkb=6144
+
+  - repo: local
+    hooks:
+      - id: backend-ruff-check
+        name: backend ruff check
+        entry: ruff check backend/app
+        language: python
+        pass_filenames: false
+        additional_dependencies:
+          - ruff==0.15.14
+
+      - id: backend-bandit
+        name: backend bandit
+        entry: bandit -r backend/app -f txt
+        language: python
+        pass_filenames: false
+        additional_dependencies:
+          - bandit==1.9.4
