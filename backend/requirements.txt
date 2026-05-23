@@ -8,3 +8,5 @@ python-dotenv
 docxtpl
 python-multipart
 httpx
+idna>=3.15
+lxml>=6.1.0
