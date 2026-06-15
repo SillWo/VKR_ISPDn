@@ -52,7 +52,7 @@ def determine_primary_data_category(data_categories: dict[str, bool]) -> DataCat
         return "special"
     if normalized["biometric"]:
         return "biometric"
-    if normalized["public"]:
+    if normalized["public"] and not normalized["other"]:
         return "public"
     return "other"
 
@@ -190,7 +190,25 @@ def run_security_level_algorithm_self_check() -> None:
                 "data_categories": {"special": True, "biometric": False, "public": False, "other": False},
                 "subject_count_range": "less_than_100k",
                 "threat_type": "threat_type_1",
-                "subject_group": "clients_only",
+                "subject_group": "employees_only",
+            },
+            1,
+        ),
+        (
+            {
+                "data_categories": {"special": False, "biometric": True, "public": False, "other": False},
+                "subject_count_range": "less_than_100k",
+                "threat_type": "threat_type_1",
+                "subject_group": "employees_only",
+            },
+            1,
+        ),
+        (
+            {
+                "data_categories": {"special": False, "biometric": False, "public": False, "other": True},
+                "subject_count_range": "less_than_100k",
+                "threat_type": "threat_type_1",
+                "subject_group": "employees_only",
             },
             1,
         ),
@@ -199,14 +217,59 @@ def run_security_level_algorithm_self_check() -> None:
                 "data_categories": {"special": False, "biometric": False, "public": True, "other": False},
                 "subject_count_range": "less_than_100k",
                 "threat_type": "threat_type_1",
+                "subject_group": "employees_only",
+            },
+            2,
+        ),
+        (
+            {
+                "data_categories": {"special": True, "biometric": False, "public": False, "other": False},
+                "subject_count_range": "more_than_100k",
+                "threat_type": "threat_type_2",
+                "subject_group": "clients_only",
+            },
+            1,
+        ),
+        (
+            {
+                "data_categories": {"special": True, "biometric": False, "public": False, "other": False},
+                "subject_count_range": "less_than_100k",
+                "threat_type": "threat_type_2",
                 "subject_group": "clients_only",
             },
             2,
         ),
         (
             {
+                "data_categories": {"special": True, "biometric": False, "public": False, "other": False},
+                "subject_count_range": "more_than_100k",
+                "threat_type": "threat_type_2",
+                "subject_group": "employees_only",
+            },
+            2,
+        ),
+        (
+            {
                 "data_categories": {"special": False, "biometric": True, "public": False, "other": False},
-                "subject_count_range": "less_than_100k",
+                "subject_count_range": "more_than_100k",
+                "threat_type": "threat_type_2",
+                "subject_group": "clients_only",
+            },
+            2,
+        ),
+        (
+            {
+                "data_categories": {"special": False, "biometric": False, "public": True, "other": False},
+                "subject_count_range": "more_than_100k",
+                "threat_type": "threat_type_2",
+                "subject_group": "clients_only",
+            },
+            2,
+        ),
+        (
+            {
+                "data_categories": {"special": False, "biometric": False, "public": False, "other": True},
+                "subject_count_range": "more_than_100k",
                 "threat_type": "threat_type_2",
                 "subject_group": "clients_only",
             },
@@ -217,9 +280,63 @@ def run_security_level_algorithm_self_check() -> None:
                 "data_categories": {"special": False, "biometric": False, "public": True, "other": False},
                 "subject_count_range": "less_than_100k",
                 "threat_type": "threat_type_2",
-                "subject_group": "employees_only",
+                "subject_group": "clients_only",
             },
             3,
+        ),
+        (
+            {
+                "data_categories": {"special": False, "biometric": False, "public": False, "other": True},
+                "subject_count_range": "less_than_100k",
+                "threat_type": "threat_type_2",
+                "subject_group": "clients_only",
+            },
+            3,
+        ),
+        (
+            {
+                "data_categories": {"special": True, "biometric": False, "public": False, "other": False},
+                "subject_count_range": "more_than_100k",
+                "threat_type": "threat_type_3",
+                "subject_group": "clients_only",
+            },
+            2,
+        ),
+        (
+            {
+                "data_categories": {"special": True, "biometric": False, "public": False, "other": False},
+                "subject_count_range": "less_than_100k",
+                "threat_type": "threat_type_3",
+                "subject_group": "clients_only",
+            },
+            3,
+        ),
+        (
+            {
+                "data_categories": {"special": False, "biometric": True, "public": False, "other": False},
+                "subject_count_range": "less_than_100k",
+                "threat_type": "threat_type_3",
+                "subject_group": "clients_only",
+            },
+            3,
+        ),
+        (
+            {
+                "data_categories": {"special": False, "biometric": False, "public": False, "other": True},
+                "subject_count_range": "more_than_100k",
+                "threat_type": "threat_type_3",
+                "subject_group": "clients_only",
+            },
+            3,
+        ),
+        (
+            {
+                "data_categories": {"special": False, "biometric": False, "public": True, "other": False},
+                "subject_count_range": "less_than_100k",
+                "threat_type": "threat_type_3",
+                "subject_group": "clients_only",
+            },
+            4,
         ),
         (
             {
@@ -229,6 +346,24 @@ def run_security_level_algorithm_self_check() -> None:
                 "subject_group": "clients_only",
             },
             4,
+        ),
+        (
+            {
+                "data_categories": {"special": False, "biometric": False, "public": False, "other": True},
+                "subject_count_range": "more_than_100k",
+                "threat_type": "threat_type_3",
+                "subject_group": "employees_only",
+            },
+            4,
+        ),
+        (
+            {
+                "data_categories": {"special": False, "biometric": False, "public": True, "other": True},
+                "subject_count_range": "more_than_100k",
+                "threat_type": "threat_type_3",
+                "subject_group": "clients_only",
+            },
+            3,
         ),
     ]
 
