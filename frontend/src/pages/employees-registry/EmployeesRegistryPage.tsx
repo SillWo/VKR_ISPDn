@@ -160,9 +160,6 @@ export function EmployeesRegistryPage() {
           <Typography component="h1" variant="h5" sx={{ fontWeight: 600 }}>
             Реестр сотрудников
           </Typography>
-          <Typography color="text.secondary" sx={{ mt: 0.5, maxWidth: 760 }}>
-            Единый справочник сотрудников и подразделений, используемый в карточках ИСПДн и документах.
-          </Typography>
         </Box>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ alignSelf: { sm: "flex-start" } }}>
           <Button variant="outlined" startIcon={<AddIcon />} onClick={() => setDepartmentDialog({ mode: "create" })}>

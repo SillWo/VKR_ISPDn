@@ -33,9 +33,6 @@ export function IspdnDocumentsPage() {
         <Typography component="h1" variant="h5" sx={{ fontWeight: 600 }}>
           Документы по ИСПДн
         </Typography>
-        <Typography color="text.secondary" sx={{ mt: 0.5 }}>
-          Формирование системных .docx документов по данным выбранной ИСПДн и ручным полям шаблона.
-        </Typography>
       </Box>
 
       <Button

@@ -10,6 +10,7 @@ from app.models import (
     Department,
     Employee,
     IspdnCard,
+    IspdnSystemCompositionItem,
     CryptoTool,
     IspdnCryptographySettings,
     OrganizationBranch,

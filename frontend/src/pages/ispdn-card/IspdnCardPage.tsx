@@ -19,7 +19,6 @@ const sections = [
   { label: "Процессы обработки", path: "processing" },
   { label: "Связанные ЦОД", path: "data-centers" },
   { label: "Криптография", path: "cryptography" },
-  { label: "Модель угроз", path: "threat-model" },
   { label: "Задачи и несоответствия", path: "tasks" },
 ];
 
@@ -143,9 +142,6 @@ export function IspdnCardPage() {
           <Box>
             <Typography component="h2" variant="h6" sx={{ fontWeight: 600 }}>
               Основные сведения
-            </Typography>
-            <Typography color="text.secondary" sx={{ mt: 0.5 }}>
-              Изменения сохраняются через API карточки ИСПДн и остаются привязанными к выбранному идентификатору.
             </Typography>
           </Box>
           {mutation.isError && <Alert severity="error">Не удалось сохранить изменения. Проверьте данные и доступность API.</Alert>}

@@ -12,7 +12,14 @@ const ispdnCardBaseSchema = z.object({
     .trim()
     .refine((value) => value === "" || z.url().safeParse(value).success, "Укажите корректный URL"),
   responsibleEmployeeId: z.number().nullable(),
-  systemComposition: requiredText("Опишите состав ИСПДн"),
+  systemComposition: z
+    .array(
+      z.object({
+        name: requiredText("Укажите наименование элемента состава ИСПДн"),
+        description: requiredText("Укажите описание элемента состава ИСПДн"),
+      }),
+    )
+    .min(1, "Добавьте минимум один элемент состава ИСПДн"),
   securityTools: z.object({
     dlp: z.boolean(),
     siem: z.boolean(),
@@ -59,7 +66,12 @@ export const defaultIspdnFormValues: IspdnCardFormSchema = {
   decommissioningDate: "",
   websiteUrl: "",
   responsibleEmployeeId: null,
-  systemComposition: "",
+  systemComposition: [
+    {
+      name: "",
+      description: "",
+    },
+  ],
   securityTools: {
     dlp: false,
     siem: false,

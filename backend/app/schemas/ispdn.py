@@ -11,19 +11,34 @@ from app.schemas.text import strip_required_text
 IspdnStatus = Literal["active", "archived"]
 
 
+class IspdnSystemCompositionItemUpsert(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
+    description: str = Field(min_length=1)
+
+    _validate_required_text = field_validator("name", "description", mode="before")(strip_required_text)
+
+
+class IspdnSystemCompositionItemRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    description: str
+    sort_order: int
+
+
 class IspdnBase(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     short_description: str = Field(min_length=1)
     commissioning_date: date
     decommissioning_date: date | None = None
     website_url: str | None = Field(default=None, max_length=2048)
-    system_composition: str = Field(min_length=1)
+    system_composition: list[IspdnSystemCompositionItemUpsert] = Field(min_length=1)
     status: IspdnStatus = "active"
 
     _validate_required_text = field_validator(
         "name",
         "short_description",
-        "system_composition",
         mode="before",
     )(strip_required_text)
 
@@ -61,6 +76,10 @@ class IspdnRead(IspdnBase):
     responsible_employee_id: int | None
     responsible_employee: EmployeeShortRead | None = None
     data_centers: list[DataCenterOption] = []
+    system_composition: list[IspdnSystemCompositionItemRead] = Field(
+        default_factory=list,
+        validation_alias="system_composition_items",
+    )
     security_tools: IspdnSecurityToolsRead = Field(default_factory=IspdnSecurityToolsRead)
     created_at: datetime
     updated_at: datetime

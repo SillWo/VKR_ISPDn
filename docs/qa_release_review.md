@@ -122,4 +122,3 @@ SUMMARY | passed=38 failed=0 total=38
 Ready with known limitations.
 
 Причина: blocker-ов нет, обязательные проверки и smoke-сценарии прошли, но нет browser E2E и нет публичного сценария для проверки non-owner удаления организации.
-

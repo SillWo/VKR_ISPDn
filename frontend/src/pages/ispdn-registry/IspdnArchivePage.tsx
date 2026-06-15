@@ -40,9 +40,6 @@ export function IspdnArchivePage() {
           <Typography component="h1" variant="h5" sx={{ fontWeight: 600 }}>
             Архив ИСПДн
           </Typography>
-          <Typography color="text.secondary" sx={{ mt: 0.5, maxWidth: 760 }}>
-            Карточки ИСПДн со статусом «Архив».
-          </Typography>
         </Box>
         <Button component={RouterLink} to="/ispdns" variant="outlined" sx={{ alignSelf: { sm: "flex-start" } }}>
           К реестру ИСПДн

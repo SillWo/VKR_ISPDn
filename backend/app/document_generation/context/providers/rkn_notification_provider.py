@@ -174,7 +174,7 @@ class RknNotificationContextProvider:
     def get_changes_context(self, manual_data: dict) -> dict:
         context = self.get_context(manual_data)
         context["change_date"] = _date(manual_data.get("change_date"))
-        context["main_office_reg"] = _text(manual_data.get("main_office_reg")).strip()
+        context["org_reg_number"] = _text(manual_data.get("main_office_reg")).strip()
         return context
 
     def _list_active_ispdns(self) -> list[IspdnCard]:
@@ -476,7 +476,13 @@ class RknNotificationContextProvider:
         head_employee = organization.head_employee
         return {
             "main_name": _text(head_employee.full_name if head_employee else organization.head_full_name),
-            "main_post": _text(organization.head_position),
+            "main_post": self._head_position(organization),
             "main_phone": _text((head_employee.phone_number if head_employee else None) or organization.phone),
             "date": date.today().strftime("%d.%m.%Y"),
         }
+
+    def _head_position(self, organization: OrganizationCard) -> str:
+        head_employee = organization.head_employee
+        if head_employee is not None:
+            return _text(head_employee.position).strip()
+        return _text(organization.head_position).strip()

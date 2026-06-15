@@ -36,7 +36,7 @@ class PdnSecurityContextProvider:
             "org_city": _strip(organization.registration_city),
             "org_full_name": org_full_name,
             "ORG_FULL_NAME": org_full_name,
-            "main_post": _strip(organization.head_position),
+            "main_post": self._head_position(organization),
             "main_FIO": self._head_full_name(organization),
             "year": generation_date.strftime("%Y"),
         }
@@ -46,7 +46,7 @@ class PdnSecurityContextProvider:
             raise DocumentPrerequisiteMissingError("В карточке организации не указан город регистрации.")
         if not _strip(organization.full_legal_name):
             raise DocumentPrerequisiteMissingError("В карточке организации не указано полное наименование организации.")
-        if not _strip(organization.head_position):
+        if not self._head_position(organization):
             raise DocumentPrerequisiteMissingError("В карточке организации не указана должность руководителя.")
         if not _strip(organization.head_full_name) and organization.head_employee is None:
             raise DocumentPrerequisiteMissingError("В карточке организации не указан руководитель организации.")
@@ -55,3 +55,8 @@ class PdnSecurityContextProvider:
         if organization.head_employee is not None:
             return organization.head_employee.full_name
         return _strip(organization.head_full_name)
+
+    def _head_position(self, organization: OrganizationCard) -> str:
+        if organization.head_employee is not None:
+            return _strip(organization.head_employee.position)
+        return _strip(organization.head_position)

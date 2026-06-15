@@ -92,9 +92,6 @@ export function IspdnCryptographyPage() {
           <Typography component="h1" variant="h5" sx={{ fontWeight: 600 }}>
             Криптография
           </Typography>
-          <Typography color="text.secondary" sx={{ mt: 0.5, maxWidth: 820 }}>
-            Признак использования СКЗИ и список средств криптографической защиты, связанных с выбранной ИСПДн.
-          </Typography>
         </Box>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ alignSelf: { sm: "flex-start" } }}>
           <Button variant="outlined" component={RouterLink} to="/cryptography">

@@ -12,7 +12,7 @@ export function IspdnModulePlaceholderPage({ title, body }: IspdnModulePlacehold
   const { ispdnId } = useParams();
 
   return (
-    <PlaceholderPage title={title} description={`ИСПДн: ${ispdnId}. Функционал модуля будет реализован позже.`}>
+    <PlaceholderPage title={title}>
       <Stack spacing={2} sx={{ alignItems: "flex-start" }}>
         <Typography color="text.secondary">{body}</Typography>
         <Button component={RouterLink} to={`/ispdns/${ispdnId}`} variant="outlined">

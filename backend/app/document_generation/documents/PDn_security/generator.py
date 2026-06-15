@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 from app.document_generation.context.builder import DocumentContextBuilder
 from app.document_generation.core.document_definition import DocumentGenerator, DocumentManualField
+from app.document_generation.core.filenames import build_docx_filename
 from app.document_generation.documents.PDn_security.schemas import PdnSecurityManualData
 
 
@@ -39,7 +40,7 @@ class PdnSecurityGenerator(DocumentGenerator):
         return context_builder.pdn_security(manual_data)
 
     def build_output_filename(self, context: dict) -> str:
-        return "Положение об организации и обеспечении защиты персональных данных.docx"
+        return build_docx_filename(self.title)
 
     def get_template_context_schema(self) -> dict:
         return {

@@ -17,7 +17,6 @@ import { IspdnProcessingPage } from "../pages/ispdn-card/IspdnProcessingPage";
 import { IspdnSecurityLevelPage } from "../pages/ispdn-card/IspdnSecurityLevelPage";
 import { IspdnSecurityMeasuresPage } from "../pages/ispdn-card/IspdnSecurityMeasuresPage";
 import { IspdnTasksPage } from "../pages/ispdn-card/IspdnTasksPage";
-import { IspdnThreatModelPage } from "../pages/ispdn-card/IspdnThreatModelPage";
 import { IspdnArchivePage } from "../pages/ispdn-registry/IspdnArchivePage";
 import { IspdnRegistryPage } from "../pages/ispdn-registry/IspdnRegistryPage";
 import { OrganizationCardPage } from "../pages/organization-card/OrganizationCardPage";
@@ -73,10 +72,6 @@ export const router = createBrowserRouter([
       {
         path: "ispdns/:ispdnId/security-measures",
         element: <IspdnSecurityMeasuresPage />,
-      },
-      {
-        path: "ispdns/:ispdnId/threat-model",
-        element: <IspdnThreatModelPage />,
       },
       {
         path: "ispdns/:ispdnId/tasks",

@@ -19,7 +19,9 @@ Job `frontend-checks` выполняет:
 - установку Node.js LTS;
 - `npm ci`, если есть `package-lock.json`, иначе `npm install`;
 - `npm audit`;
-- `npx tsc --noEmit`.
+- `npx tsc --noEmit`;
+- установку Python и `semgrep`;
+- SAST-анализ исходного frontend-кода через Semgrep.
 
 ESLint, Docker и Trivy в этот контур не добавлены.
 
@@ -52,6 +54,20 @@ pre-commit run --all-files
 ```
 
 TypeScript-check не добавлен в pre-commit, чтобы не завязывать локальный hook на состояние Windows/npm-окружения. Проверка TypeScript выполняется в GitHub Actions через `npx tsc --noEmit`.
+
+## Semgrep
+
+Semgrep используется для статического анализа исходного frontend-кода в каталоге `frontend/src`. В проверке применяются наборы правил для JavaScript и TypeScript (`p/javascript` и `p/typescript`), поэтому инструмент выявляет проблемы только в пределах применённых правил.
+
+Локальный запуск из корня проекта:
+
+```powershell
+semgrep scan --config p/javascript --config p/typescript frontend/src
+```
+
+В GitHub Actions Semgrep запускается в job `frontend-checks` после `npx tsc --noEmit`. В workflow к команде добавлен флаг `--error`, чтобы найденные Semgrep замечания завершали проверку ошибкой.
+
+Semgrep дополняет TypeScript-проверку: `npx tsc --noEmit` проверяет типы, но не является полноценным SAST-анализом. Semgrep не заменяет Snyk: Snyk контролирует известные уязвимости сторонних зависимостей, а Semgrep анализирует исходный frontend-код.
 
 ## Snyk
 

@@ -52,7 +52,6 @@ class IspdnCard(Base):
         nullable=True,
         index=True,
     )
-    system_composition: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="active")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=False),
@@ -68,6 +67,12 @@ class IspdnCard(Base):
 
     responsible_employee: Mapped["Employee | None"] = relationship(
         back_populates="responsible_ispdn_cards",
+    )
+    system_composition_items: Mapped[list["IspdnSystemCompositionItem"]] = relationship(
+        back_populates="ispdn",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        order_by="IspdnSystemCompositionItem.sort_order",
     )
     processing_processes: Mapped[list["ProcessingProcess"]] = relationship(
         secondary=ispdn_processing_processes,
@@ -114,3 +119,19 @@ class IspdnCard(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+
+
+class IspdnSystemCompositionItem(Base):
+    __tablename__ = "ispdn_system_composition_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    ispdn_id: Mapped[int] = mapped_column(
+        ForeignKey("ispdn_cards.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    sort_order: Mapped[int] = mapped_column(nullable=False)
+
+    ispdn: Mapped["IspdnCard"] = relationship(back_populates="system_composition_items")

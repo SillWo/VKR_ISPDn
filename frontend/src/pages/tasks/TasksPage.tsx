@@ -143,10 +143,6 @@ export function TasksPage() {
           <Typography component="h1" variant="h5" sx={{ fontWeight: 600 }}>
             Задачи и несоответствия
           </Typography>
-          <Typography color="text.secondary" sx={{ mt: 0.5, maxWidth: 860 }}>
-            Глобальный список событий и задач по всем ИСПДн. Используйте фильтры, чтобы оставить задачи конкретной
-            ИСПДн, ответственного сотрудника, статуса или важности.
-          </Typography>
         </Box>
         <Button
           variant="contained"

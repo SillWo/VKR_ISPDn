@@ -146,9 +146,6 @@ export function IspdnProcessingPage() {
           <Typography component="h1" variant="h5" sx={{ fontWeight: 600 }}>
             Процессы обработки
           </Typography>
-          <Typography color="text.secondary" sx={{ mt: 0.5, maxWidth: 820 }}>
-            Здесь отображаются процессы, связанные с конкретной ИСПДн. Редактирование на этой странице работает через copy-on-write и не меняет процесс у других ИСПДн.
-          </Typography>
         </Box>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ alignSelf: { sm: "flex-start" } }}>
           <Button variant="outlined" onClick={() => setDialog({ mode: "link" })}>

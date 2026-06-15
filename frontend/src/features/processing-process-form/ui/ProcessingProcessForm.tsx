@@ -133,7 +133,7 @@ export const ProcessingProcessForm = forwardRef<ProcessingProcessFormHandle, Pro
         >
           <Tab label="Основные сведения процесса" />
           <Tab label="Обрабатываемые персональные данные" />
-          <Tab label="Способы отправки" />
+          <Tab label="Действия с ПДн" />
         </Tabs>
 
         <Box>
@@ -223,7 +223,7 @@ export const ProcessingProcessForm = forwardRef<ProcessingProcessFormHandle, Pro
                 />
               </FormSection>
 
-              <FormSection title="Способы отправки">
+              <FormSection title="Способы обработки">
                 <ProcessingMethodsSection control={control} errors={errors} />
               </FormSection>
             </Stack>

@@ -8,7 +8,13 @@ export function toIspdnFormValues(card: IspdnCard): IspdnFormValues {
     decommissioningDate: card.decommissioningDate ?? "",
     websiteUrl: card.websiteUrl ?? "",
     responsibleEmployeeId: card.responsibleEmployeeId,
-    systemComposition: card.systemComposition,
+    systemComposition:
+      card.systemComposition.length > 0
+        ? card.systemComposition.map((item) => ({
+            name: item.name,
+            description: item.description,
+          }))
+        : [{ name: "", description: "" }],
     securityTools: {
       ...card.securityTools,
       otherSecurityTools: card.securityTools.otherSecurityTools ?? "",

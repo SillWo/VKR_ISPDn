@@ -110,9 +110,6 @@ export function ProcessingProcessesRegistryPage() {
           <Typography component="h1" variant="h5" sx={{ fontWeight: 600 }}>
             Реестр процессов обработки
           </Typography>
-          <Typography color="text.secondary" sx={{ mt: 0.5, maxWidth: 820 }}>
-            Глобальный реестр канонических процессов обработки. Связанные с ИСПДн процессы редактируются из карточки конкретной ИСПДн.
-          </Typography>
         </Box>
         <Button variant="contained" startIcon={<AddIcon />} onClick={() => setDialog({ mode: "create" })} sx={{ alignSelf: { sm: "flex-start" } }}>
           Создать процесс обработки

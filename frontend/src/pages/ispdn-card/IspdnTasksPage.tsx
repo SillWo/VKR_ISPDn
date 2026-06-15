@@ -48,10 +48,6 @@ export function IspdnTasksPage() {
           <Typography component="h1" variant="h5" sx={{ fontWeight: 600 }}>
             Актуальные задачи ИСПДн
           </Typography>
-          <Typography color="text.secondary" sx={{ mt: 0.5, maxWidth: 820 }}>
-            Список задач выбранной ИСПДн со статусами «Ожидает выполнения» и «В работе». Управление задачами
-            выполняется в общем модуле.
-          </Typography>
         </Box>
         <Button
           component={RouterLink}

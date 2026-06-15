@@ -171,9 +171,6 @@ export function IspdnSecurityMeasuresPage() {
           <Typography component="h1" variant="h5" sx={{ fontWeight: 600 }}>
             Технические меры защиты
           </Typography>
-          <Typography color="text.secondary" sx={{ mt: 0.5, maxWidth: 920 }}>
-            Таблица мер по Приказу ФСТЭК №21 строится по фактическому уровню защищённости выбранной ИСПДн.
-          </Typography>
         </Box>
       </Stack>
 

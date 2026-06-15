@@ -129,9 +129,6 @@ export function ControlEventsRegistryPage() {
           <Typography component="h1" variant="h5" sx={{ fontWeight: 600 }}>
             Реестр контрольных мероприятий
           </Typography>
-          <Typography color="text.secondary" sx={{ mt: 0.5, maxWidth: 820 }}>
-            Единый реестр контрольных мероприятий организации. Записи можно использовать в других модулях платформы.
-          </Typography>
         </Box>
         <Button
           variant="contained"

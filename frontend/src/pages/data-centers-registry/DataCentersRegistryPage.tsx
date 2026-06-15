@@ -99,9 +99,6 @@ export function DataCentersRegistryPage() {
           <Typography component="h1" variant="h5" sx={{ fontWeight: 600 }}>
             Реестр ЦОД
           </Typography>
-          <Typography color="text.secondary" sx={{ mt: 0.5, maxWidth: 820 }}>
-            Глобальный справочник центров обработки данных, которые можно связать с одной или несколькими ИСПДн.
-          </Typography>
         </Box>
         <Button
           variant="contained"

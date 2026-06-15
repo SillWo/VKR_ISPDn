@@ -41,9 +41,6 @@ export function IspdnRegistryPage() {
           <Typography component="h1" variant="h5" sx={{ fontWeight: 600 }}>
             Реестр ИСПДн
           </Typography>
-          <Typography color="text.secondary" sx={{ mt: 0.5, maxWidth: 760 }}>
-            Карточки ИСПДн организации, их статусы и ответственные лица.
-          </Typography>
         </Box>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ alignSelf: { sm: "flex-start" } }}>
           <Button component={RouterLink} to="/ispdns/archive" variant="outlined">

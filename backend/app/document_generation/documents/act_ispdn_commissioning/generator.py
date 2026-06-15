@@ -1,4 +1,3 @@
-import re
 from pathlib import Path
 
 from pydantic import BaseModel
@@ -6,12 +5,10 @@ from pydantic import BaseModel
 from app.document_generation.context.builder import DocumentContextBuilder
 from app.document_generation.core.document_definition import DocumentGenerator, DocumentManualField
 from app.document_generation.core.errors import DocumentRequiresIspdnError
+from app.document_generation.core.filenames import build_docx_filename
 from app.document_generation.documents.act_ispdn_commissioning.schemas import (
     ActIspdnCommissioningManualData,
 )
-
-
-INVALID_WINDOWS_FILENAME_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
 
 
 class ActIspdnCommissioningGenerator(DocumentGenerator):
@@ -95,7 +92,4 @@ class ActIspdnCommissioningGenerator(DocumentGenerator):
 
     def build_output_filename(self, context: dict) -> str:
         ispdn_name = str(context.get("ISPDn_name") or "ИСПДн")
-        safe_ispdn_name = INVALID_WINDOWS_FILENAME_CHARS.sub("_", ispdn_name).strip(" .")
-        if not safe_ispdn_name:
-            safe_ispdn_name = "ИСПДн"
-        return f"Акт ввода ИСПДн {safe_ispdn_name}.docx"
+        return build_docx_filename(self.title, ispdn_name)

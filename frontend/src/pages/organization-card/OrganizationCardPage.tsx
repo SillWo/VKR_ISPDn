@@ -139,9 +139,6 @@ export function OrganizationCardPage() {
         <Typography component="h1" variant="h5" sx={{ fontWeight: 600 }}>
           Карточка организации
         </Typography>
-        <Typography color="text.secondary" sx={{ mt: 0.5, maxWidth: 820 }}>
-          Единая карточка юридического лица для документов, уведомлений и связанных процессов платформы.
-        </Typography>
       </Box>
 
       {isInitialLoading && (

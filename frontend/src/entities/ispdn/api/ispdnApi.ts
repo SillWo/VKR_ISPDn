@@ -30,7 +30,7 @@ type IspdnCardDto = {
   responsible_person: string;
   responsible_employee_id: number | null;
   responsible_employee: ResponsibleEmployeeDto | null;
-  system_composition: string;
+  system_composition: IspdnSystemCompositionItemDto[];
   security_tools: IspdnSecurityToolsDto;
   status: IspdnStatus;
   created_at: string;
@@ -57,9 +57,21 @@ type IspdnPayloadDto = {
   decommissioning_date: string | null;
   website_url: string | null;
   responsible_employee_id: number;
-  system_composition: string;
+  system_composition: IspdnSystemCompositionItemPayloadDto[];
   security_tools: IspdnSecurityToolsDto;
   status: IspdnStatus;
+};
+
+type IspdnSystemCompositionItemDto = {
+  id: number;
+  name: string;
+  description: string;
+  sort_order: number;
+};
+
+type IspdnSystemCompositionItemPayloadDto = {
+  name: string;
+  description: string;
 };
 
 type IspdnSecurityToolsDto = {
@@ -158,7 +170,13 @@ function mapCard(dto: IspdnCardDto): IspdnCard {
     responsiblePerson: dto.responsible_person,
     responsibleEmployeeId: dto.responsible_employee_id,
     responsibleEmployee: mapResponsibleEmployee(dto.responsible_employee),
-    systemComposition: dto.system_composition,
+    systemComposition: dto.system_composition
+      .slice()
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map((item) => ({
+        name: item.name,
+        description: item.description,
+      })),
     securityTools: mapSecurityTools(dto.security_tools),
     status: dto.status,
     createdAt: dto.created_at,
@@ -189,7 +207,10 @@ function mapPayload(values: IspdnFormValues): IspdnPayloadDto {
     decommissioning_date: values.decommissioningDate || null,
     website_url: values.websiteUrl.trim() || null,
     responsible_employee_id: values.responsibleEmployeeId ?? 0,
-    system_composition: values.systemComposition.trim(),
+    system_composition: values.systemComposition.map((item) => ({
+      name: item.name.trim(),
+      description: item.description.trim(),
+    })),
     security_tools: mapSecurityToolsPayload(values.securityTools),
     status: values.status,
   };

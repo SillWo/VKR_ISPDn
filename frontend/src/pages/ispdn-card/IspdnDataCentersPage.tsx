@@ -70,9 +70,6 @@ export function IspdnDataCentersPage() {
           <Typography component="h1" variant="h5" sx={{ fontWeight: 600 }}>
             Связанные ЦОД
           </Typography>
-          <Typography color="text.secondary" sx={{ mt: 0.5, maxWidth: 820 }}>
-            Список центров обработки данных, связанных с выбранной ИСПДн.
-          </Typography>
         </Box>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ alignSelf: { sm: "flex-start" } }}>
           <Button

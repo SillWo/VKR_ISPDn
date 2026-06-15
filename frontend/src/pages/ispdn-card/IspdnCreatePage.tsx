@@ -72,8 +72,8 @@ import type { GenerateActSafetyLevelDocumentFormHandle } from "../../features/do
 const steps = [
   "Основные сведения",
   "Средства защиты внутри ИСПДн",
-  "Информация о субъектах ПДн",
   "Процессы обработки",
+  "Информация о субъектах ПДн",
   "Заполнение информации о ЦОД",
   "Использование криптографии",
   "Выпуск документов",
@@ -167,13 +167,13 @@ export function IspdnCreatePage() {
   const linkedProcessesQuery = useQuery({
     queryKey: ["ispdnProcessingProcesses", card?.id],
     queryFn: () => getIspdnProcessingProcesses(card!.id),
-    enabled: activeStep === 3 && Boolean(card),
+    enabled: activeStep === 2 && Boolean(card),
   });
 
   const processOptionsQuery = useQuery({
     queryKey: ["processingProcessOptions"],
     queryFn: getProcessingProcessOptions,
-    enabled: activeStep === 3 || processDialog?.mode === "link",
+    enabled: activeStep === 2 || processDialog?.mode === "link",
   });
 
   const cardMutation = useMutation({
@@ -218,7 +218,7 @@ export function IspdnCreatePage() {
       queryClient.removeQueries({ queryKey: ["technicalSecurityMeasures", card.id] });
       await queryClient.invalidateQueries({ queryKey: ["ispdnSecurityLevel", card.id] });
       await queryClient.invalidateQueries({ queryKey: ["technicalSecurityMeasures", card.id] });
-      setActiveStep(3);
+      setActiveStep(4);
     },
   });
 
@@ -343,7 +343,7 @@ export function IspdnCreatePage() {
       return;
     }
     setProcessingStepError(false);
-    setActiveStep(4);
+    setActiveStep(3);
   };
 
   const handleLinkExistingProcess = () => {
@@ -444,7 +444,7 @@ export function IspdnCreatePage() {
         setActiveStep((current) => Math.max(0, current - 1));
       }}
       onNext={
-        activeStep === 3
+        activeStep === 2
           ? handleFinish
           : activeStep === 4
             ? () => dataCentersMutation.mutate()
@@ -459,7 +459,7 @@ export function IspdnCreatePage() {
           ? "ispdn-card-form"
           : activeStep === 1
             ? "security-tools-create-form"
-            : activeStep === 2
+            : activeStep === 3
               ? "security-level-create-form"
               : undefined
       }
@@ -473,10 +473,6 @@ export function IspdnCreatePage() {
       <Box>
         <Typography component="h1" variant="h5" sx={{ fontWeight: 600 }}>
           Создание ИСПДн
-        </Typography>
-        <Typography color="text.secondary" sx={{ mt: 0.5, maxWidth: 820 }}>
-          Заполните обязательные разделы последовательно. Выйти из процесса через интерфейс можно только после
-          завершения всех 7 шагов, включая выпуск документов.
         </Typography>
       </Box>
 
@@ -603,19 +599,7 @@ export function IspdnCreatePage() {
         />
       )}
 
-      {activeStep === 2 && card && (
-        <SecurityLevelForm
-          key={card.id}
-          formId="security-level-create-form"
-          ispdnId={card.id}
-          defaultValues={securityLevelValues}
-          isSubmitting={isBusy}
-          showActions={false}
-          onSubmit={(values) => securityLevelMutation.mutate(values)}
-        />
-      )}
-
-      {activeStep === 3 && (
+      {activeStep === 2 && (
         <Stack spacing={3}>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ justifyContent: "space-between" }}>
             <Box>
@@ -624,7 +608,7 @@ export function IspdnCreatePage() {
               </Typography>
               <Typography color="text.secondary" sx={{ mt: 0.5, maxWidth: 760 }}>
                 Добавьте один или несколько процессов обработки для создаваемой ИСПДн. После нажатия «Далее» процессы
-                будут сохранены, а wizard перейдёт к заполнению информации о ЦОД.
+                будут сохранены, а мастер перейдёт к заполнению информации о субъектах ПДн.
               </Typography>
             </Box>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ alignSelf: { sm: "flex-start" } }}>
@@ -654,6 +638,18 @@ export function IspdnCreatePage() {
             </Paper>
           )}
         </Stack>
+      )}
+
+      {activeStep === 3 && card && (
+        <SecurityLevelForm
+          key={card.id}
+          formId="security-level-create-form"
+          ispdnId={card.id}
+          defaultValues={securityLevelValues}
+          isSubmitting={isBusy}
+          showActions={false}
+          onSubmit={(values) => securityLevelMutation.mutate(values)}
+        />
       )}
 
       {activeStep === 4 && card && (
@@ -826,8 +822,8 @@ export function IspdnCreatePage() {
         <DialogTitle>Создание ИСПДн не завершено</DialogTitle>
         <DialogContent>
           <Typography color="text.secondary">
-            Завершите разделы «Основные сведения», «Средства защиты внутри ИСПДн», «Информация о субъектах ПДн»,
-            «Процессы обработки», «Заполнение информации о ЦОД», «Использование криптографии» и «Выпуск документов»,
+            Завершите разделы «Основные сведения», «Средства защиты внутри ИСПДн», «Процессы обработки»,
+            «Информация о субъектах ПДн», «Заполнение информации о ЦОД», «Использование криптографии» и «Выпуск документов»,
             чтобы выйти из процесса создания.
           </Typography>
         </DialogContent>

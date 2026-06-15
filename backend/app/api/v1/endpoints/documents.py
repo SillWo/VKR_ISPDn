@@ -1,5 +1,3 @@
-from urllib.parse import quote
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import StreamingResponse
@@ -19,11 +17,23 @@ from app.document_generation.core.errors import (
     DocumentTypeNotFoundError,
 )
 from app.document_generation.core.registry import get_document_registry
-from app.document_generation.core.service import DocumentGenerationService
+from app.document_generation.core.filenames import build_content_disposition
+from app.document_generation.core.service import DocumentGenerationService, GeneratedDocument
 from app.schemas.documents import DocumentGenerateRequest, DocumentTypeRead
 from app.services.ispdn import IspdnNotFoundError
 
 router = APIRouter(tags=["documents"])
+
+
+def build_document_response(generated_document: GeneratedDocument) -> StreamingResponse:
+    headers = {
+        "Content-Disposition": build_content_disposition(generated_document.filename),
+    }
+    return StreamingResponse(
+        generated_document.file,
+        media_type=generated_document.media_type,
+        headers=headers,
+    )
 
 
 @router.get("/document-types", response_model=list[DocumentTypeRead])
@@ -80,11 +90,7 @@ def generate_ispdn_document(
             detail="Failed to render DOCX template.",
         ) from exc
 
-    encoded_filename = quote(generated_document.filename)
-    headers = {
-        "Content-Disposition": f"attachment; filename=\"document.docx\"; filename*=UTF-8''{encoded_filename}",
-    }
-    return StreamingResponse(generated_document.file, media_type=generated_document.media_type, headers=headers)
+    return build_document_response(generated_document)
 
 
 @router.post("/documents/generate")
@@ -123,8 +129,4 @@ def generate_global_document(
             detail="Failed to render DOCX template.",
         ) from exc
 
-    encoded_filename = quote(generated_document.filename)
-    headers = {
-        "Content-Disposition": f"attachment; filename=\"document.docx\"; filename*=UTF-8''{encoded_filename}",
-    }
-    return StreamingResponse(generated_document.file, media_type=generated_document.media_type, headers=headers)
+    return build_document_response(generated_document)

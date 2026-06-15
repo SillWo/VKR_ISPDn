@@ -11,6 +11,11 @@ export type IspdnResponsibleEmployee = {
   departmentName: string | null;
 };
 
+export type IspdnSystemCompositionItem = {
+  name: string;
+  description: string;
+};
+
 export type IspdnCard = {
   id: number;
   name: string;
@@ -22,7 +27,7 @@ export type IspdnCard = {
   responsiblePerson: string;
   responsibleEmployeeId: number | null;
   responsibleEmployee: IspdnResponsibleEmployee | null;
-  systemComposition: string;
+  systemComposition: IspdnSystemCompositionItem[];
   securityTools: IspdnSecurityTools;
   status: IspdnStatus;
   createdAt: string;
@@ -49,7 +54,7 @@ export type IspdnFormValues = {
   decommissioningDate: string;
   websiteUrl: string;
   responsibleEmployeeId: number | null;
-  systemComposition: string;
+  systemComposition: IspdnSystemCompositionItem[];
   securityTools: IspdnSecurityTools;
   status: IspdnStatus;
 };

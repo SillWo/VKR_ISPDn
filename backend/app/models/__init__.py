@@ -4,7 +4,7 @@ from app.models.crypto_tool import CryptoTool, IspdnCryptographySettings, ispdn_
 from app.models.data_center import DataCenter, ispdn_data_centers
 from app.models.department import Department
 from app.models.employee import Employee
-from app.models.ispdn import IspdnCard
+from app.models.ispdn import IspdnCard, IspdnSystemCompositionItem
 from app.models.ispdn_processing_process import ispdn_processing_processes
 from app.models.organization import OrganizationBranch, OrganizationCard, OrganizationOkved
 from app.models.organization import Organization
@@ -25,6 +25,7 @@ __all__ = [
     "ispdn_data_centers",
     "Employee",
     "IspdnCard",
+    "IspdnSystemCompositionItem",
     "ispdn_processing_processes",
     "OrganizationCard",
     "Organization",

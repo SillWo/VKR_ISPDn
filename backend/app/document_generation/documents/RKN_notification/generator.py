@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 from app.document_generation.context.builder import DocumentContextBuilder
 from app.document_generation.core.document_definition import DocumentGenerator, DocumentManualField
+from app.document_generation.core.filenames import build_docx_filename
 from app.document_generation.documents.RKN_notification.schemas import RknNotificationManualData
 
 
@@ -47,7 +48,7 @@ class RknNotificationGenerator(DocumentGenerator):
         return context_builder.rkn_notification(manual_data)
 
     def build_output_filename(self, context: dict) -> str:
-        return "Уведомление в РКН о намерении осуществлять обработку персональных данных.docx"
+        return build_docx_filename(self.title)
 
     def get_template_context_schema(self) -> dict:
         return {

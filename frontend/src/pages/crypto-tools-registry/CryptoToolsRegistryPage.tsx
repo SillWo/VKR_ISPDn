@@ -97,9 +97,6 @@ export function CryptoToolsRegistryPage() {
           <Typography component="h1" variant="h5" sx={{ fontWeight: 600 }}>
             Криптография
           </Typography>
-          <Typography color="text.secondary" sx={{ mt: 0.5, maxWidth: 820 }}>
-            Глобальный реестр средств криптографической защиты информации, которые можно связать с одной или несколькими ИСПДн.
-          </Typography>
         </Box>
         <Button
           variant="contained"

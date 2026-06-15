@@ -75,10 +75,6 @@ export function IspdnSecurityLevelPage() {
           <Typography component="h1" variant="h5" sx={{ fontWeight: 600 }}>
             Уровень защищённости
           </Typography>
-          <Typography color="text.secondary" sx={{ mt: 0.5, maxWidth: 820 }}>
-            Заполните сведения о категориях данных, субъектах ПДн и типе актуальных угроз. Рекомендуемый
-            уровень рассчитывается backend-ом по алгоритму 1119.
-          </Typography>
         </Box>
       </Stack>
 

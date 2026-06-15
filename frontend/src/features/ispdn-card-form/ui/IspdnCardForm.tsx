@@ -1,20 +1,31 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import AddIcon from "@mui/icons-material/Add";
+import DeleteIcon from "@mui/icons-material/Delete";
 import {
   Alert,
   Box,
   Button,
   FormControl,
   FormHelperText,
+  IconButton,
   InputLabel,
   MenuItem,
+  Paper,
   Select,
   Stack,
   Tab,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   Tabs,
   TextField,
+  Typography,
 } from "@mui/material";
 import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
-import { Controller, type FieldPath, useForm } from "react-hook-form";
+import { Controller, type FieldPath, useFieldArray, useForm } from "react-hook-form";
 
 import type { IspdnFormValues } from "../../../entities/ispdn/model/types";
 import { findFirstInvalidTab, scrollTabContainerToTop } from "../../../shared/lib/tabsValidation";
@@ -75,6 +86,14 @@ export const IspdnCardForm = forwardRef<IspdnCardFormHandle, IspdnCardFormProps>
   } = useForm<IspdnFormValues>({
     resolver: zodResolver(ispdnCardFormSchema),
     defaultValues,
+  });
+  const {
+    fields: systemCompositionFields,
+    append: appendSystemCompositionItem,
+    remove: removeSystemCompositionItem,
+  } = useFieldArray({
+    control,
+    name: "systemComposition",
   });
 
   const setActiveTab = (value: number) => {
@@ -164,6 +183,11 @@ export const IspdnCardForm = forwardRef<IspdnCardFormHandle, IspdnCardFormProps>
     </Stack>
   );
 
+  const systemCompositionErrorMessage =
+    typeof errors.systemComposition?.message === "string"
+      ? errors.systemComposition.message
+      : errors.systemComposition?.root?.message;
+
   const responsibleFields = (
     <Stack spacing={2}>
       {legacyResponsiblePerson && !defaultValues.responsibleEmployeeId && (
@@ -188,16 +212,83 @@ export const IspdnCardForm = forwardRef<IspdnCardFormHandle, IspdnCardFormProps>
           />
         )}
       />
-      <TextField
-        label="Состав ИСПДн"
-        fullWidth
-        required
-        multiline
-        minRows={4}
-        {...register("systemComposition")}
-        error={Boolean(errors.systemComposition)}
-        helperText={errors.systemComposition?.message}
-      />
+      <Stack spacing={2}>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ justifyContent: "space-between" }}>
+          <Typography variant="subtitle2" component="h3">
+            Состав ИСПДн
+          </Typography>
+          <Button
+            type="button"
+            variant="outlined"
+            size="small"
+            startIcon={<AddIcon />}
+            onClick={() => appendSystemCompositionItem({ name: "", description: "" })}
+            disabled={isSubmitting}
+            sx={{ alignSelf: { xs: "stretch", sm: "flex-start" } }}
+          >
+            Добавить элемент
+          </Button>
+        </Stack>
+        <TableContainer component={Paper} variant="outlined">
+          <Table size="small" sx={{ tableLayout: "fixed" }}>
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ width: "calc((100% - 96px) / 2)", px: 2.5, py: 2 }}>
+                  Наименование
+                </TableCell>
+                <TableCell sx={{ width: "calc((100% - 96px) / 2)", px: 2.5, py: 2 }}>Описание</TableCell>
+                <TableCell align="right" sx={{ width: 96, px: 2.5, py: 2 }}>
+                  Действия
+                </TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {systemCompositionFields.map((field, index) => (
+                <TableRow key={field.id}>
+                  <TableCell sx={{ verticalAlign: "top", px: 2.5, py: 2 }}>
+                    <TextField
+                      fullWidth
+                      required
+                      multiline
+                      minRows={2}
+                      label="Наименование"
+                      {...register(`systemComposition.${index}.name` as const)}
+                      error={Boolean(errors.systemComposition?.[index]?.name)}
+                      helperText={errors.systemComposition?.[index]?.name?.message}
+                      disabled={isSubmitting}
+                    />
+                  </TableCell>
+                  <TableCell sx={{ verticalAlign: "top", px: 2.5, py: 2 }}>
+                    <TextField
+                      fullWidth
+                      required
+                      multiline
+                      minRows={2}
+                      label="Описание"
+                      {...register(`systemComposition.${index}.description` as const)}
+                      error={Boolean(errors.systemComposition?.[index]?.description)}
+                      helperText={errors.systemComposition?.[index]?.description?.message}
+                      disabled={isSubmitting}
+                    />
+                  </TableCell>
+                  <TableCell align="right" sx={{ verticalAlign: "top", px: 2.5, py: 2 }}>
+                    <IconButton
+                      type="button"
+                      aria-label="Удалить элемент состава ИСПДн"
+                      color="error"
+                      disabled={isSubmitting || systemCompositionFields.length <= 1}
+                      onClick={() => removeSystemCompositionItem(index)}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        {systemCompositionErrorMessage && <FormHelperText error>{systemCompositionErrorMessage}</FormHelperText>}
+      </Stack>
     </Stack>
   );
 

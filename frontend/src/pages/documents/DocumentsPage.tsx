@@ -48,9 +48,6 @@ export function DocumentsPage() {
         <Typography component="h1" variant="h5" sx={{ fontWeight: 600 }}>
           Документы
         </Typography>
-        <Typography color="text.secondary" sx={{ mt: 0.5 }}>
-          Глобальные документы организации формируются по карточке организации, действующим ИСПДн и ручным данным формы.
-        </Typography>
       </Box>
 
       <Paper elevation={0} sx={{ p: 3, borderRadius: 2, bgcolor: "background.paper" }}>

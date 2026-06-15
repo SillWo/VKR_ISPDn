@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 from app.document_generation.context.builder import DocumentContextBuilder
 from app.document_generation.core.document_definition import DocumentGenerator, DocumentManualField
+from app.document_generation.core.filenames import build_docx_filename
 from app.document_generation.documents.RKN_notification.change_schemas import RknNotificationChangesManualData
 from app.document_generation.documents.RKN_notification.generator import RknNotificationGenerator
 
@@ -51,7 +52,7 @@ class RknNotificationChangesGenerator(DocumentGenerator):
         return context_builder.rkn_notification_changes(manual_data)
 
     def build_output_filename(self, context: dict) -> str:
-        return "Уведомление в РКН об изменении сведений.docx"
+        return build_docx_filename(self.title)
 
     def get_template_context_schema(self) -> dict:
         schema = RknNotificationGenerator().get_template_context_schema()
@@ -63,5 +64,6 @@ class RknNotificationChangesGenerator(DocumentGenerator):
             "fields": [
                 *fields,
                 "change_date",
+                "org_reg_number",
             ],
         }

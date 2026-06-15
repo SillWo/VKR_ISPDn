@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
-from app.models.ispdn import IspdnCard
+from app.models.ispdn import IspdnCard, IspdnSystemCompositionItem
 from app.models.security_measure import IspdnSecurityTools
 from app.schemas.ispdn import IspdnCreate, IspdnStatus, IspdnUpdate
 
@@ -19,6 +19,7 @@ class IspdnRepository:
                 joinedload(IspdnCard.responsible_employee),
                 joinedload(IspdnCard.security_tools),
                 joinedload(IspdnCard.data_centers),
+                selectinload(IspdnCard.system_composition_items),
             )
             .where(IspdnCard.organization_id == organization_id)
             .order_by(IspdnCard.updated_at.desc())
@@ -34,6 +35,7 @@ class IspdnRepository:
                 joinedload(IspdnCard.responsible_employee),
                 joinedload(IspdnCard.security_tools),
                 joinedload(IspdnCard.data_centers),
+                selectinload(IspdnCard.system_composition_items),
             )
             .where(IspdnCard.id == ispdn_id, IspdnCard.organization_id == organization_id)
         )
@@ -45,8 +47,9 @@ class IspdnRepository:
         responsible_person: str,
         organization_id: int,
     ) -> IspdnCard:
-        values = payload.model_dump(exclude={"security_tools"})
+        values = payload.model_dump(exclude={"security_tools", "system_composition"})
         card = IspdnCard(**values, responsible_person=responsible_person, organization_id=organization_id)
+        card.system_composition_items = self._build_system_composition_items(payload.system_composition)
         card.security_tools = IspdnSecurityTools(**payload.security_tools.model_dump()) if payload.security_tools else None
         self.db.add(card)
         self.db.commit()
@@ -59,10 +62,11 @@ class IspdnRepository:
         payload: IspdnUpdate,
         responsible_person: str,
     ) -> IspdnCard:
-        values = payload.model_dump(exclude={"security_tools"})
+        values = payload.model_dump(exclude={"security_tools", "system_composition"})
         for field, value in values.items():
             setattr(card, field, value)
         card.responsible_person = responsible_person
+        card.system_composition_items = self._build_system_composition_items(payload.system_composition)
         if payload.security_tools is not None:
             security_tools_values = payload.security_tools.model_dump()
             if card.security_tools is None:
@@ -77,3 +81,14 @@ class IspdnRepository:
     def delete(self, card: IspdnCard) -> None:
         self.db.delete(card)
         self.db.commit()
+
+    @staticmethod
+    def _build_system_composition_items(items) -> list[IspdnSystemCompositionItem]:
+        return [
+            IspdnSystemCompositionItem(
+                name=item.name,
+                description=item.description,
+                sort_order=index,
+            )
+            for index, item in enumerate(items)
+        ]

@@ -1,4 +1,3 @@
-import re
 from pathlib import Path
 
 from pydantic import BaseModel
@@ -6,11 +5,9 @@ from pydantic import BaseModel
 from app.document_generation.context.builder import DocumentContextBuilder
 from app.document_generation.core.document_definition import DocumentGenerator, DocumentManualField
 from app.document_generation.core.errors import DocumentPrerequisiteMissingError, DocumentRequiresIspdnError
+from app.document_generation.core.filenames import build_docx_filename
 from app.document_generation.documents.act_safety_level_of_ISPDn.schemas import ActSafetyLevelManualData
 from app.services.security_level import SecurityLevelNotFoundError
-
-
-INVALID_WINDOWS_FILENAME_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
 
 
 def format_subject_group_for_document(value: str) -> str:
@@ -132,10 +129,7 @@ class ActSafetyLevelOfIspdnGenerator(DocumentGenerator):
 
     def build_output_filename(self, context: dict) -> str:
         ispdn_name = str(context.get("ispdn_name") or "ИСПДн")
-        safe_ispdn_name = INVALID_WINDOWS_FILENAME_CHARS.sub("_", ispdn_name).strip(" .")
-        if not safe_ispdn_name:
-            safe_ispdn_name = "ИСПДн"
-        return f"Акт оценки уровня защищённости ИСПДн {safe_ispdn_name}.docx"
+        return build_docx_filename(self.title, ispdn_name)
 
     @staticmethod
     def _build_numbered_multiline(values: list[str], *, first_item_number: bool) -> str:
