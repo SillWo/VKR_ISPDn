@@ -8,6 +8,7 @@ from app.document_generation.documents.act_safety_level_of_ISPDn.generator impor
 )
 from app.document_generation.documents.PDn_document.generator import PdnDocumentGenerator
 from app.document_generation.documents.PDn_security.generator import PdnSecurityGenerator
+from app.document_generation.documents.prikaz_otvet_za_PDn.generator import PrikazOtvetZaPdnGenerator
 from app.document_generation.documents.RKN_notification.change_generator import RknNotificationChangesGenerator
 from app.document_generation.documents.RKN_notification.generator import RknNotificationGenerator
 
@@ -35,5 +36,6 @@ def get_document_registry() -> DocumentRegistry:
             RknNotificationChangesGenerator(),
             PdnSecurityGenerator(),
             PdnDocumentGenerator(),
+            PrikazOtvetZaPdnGenerator(),
         ],
     )

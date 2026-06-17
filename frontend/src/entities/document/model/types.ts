@@ -126,13 +126,25 @@ export type PdnSecurityDocumentPayload = {
   };
 };
 
+export type PrikazOtvetZaPdnFormValues = {
+  orderNumber: string;
+};
+
+export type PrikazOtvetZaPdnDocumentPayload = {
+  documentType: "prikaz_otvet_za_PDn";
+  manualData: {
+    order_number: string;
+  };
+};
+
 export type GenerateIspdnDocumentPayload = ActIspdnCommissioningDocumentPayload | ActSafetyLevelDocumentPayload;
 
 export type GenerateGlobalDocumentPayload =
   | RknNotificationDocumentPayload
   | RknNotificationChangesDocumentPayload
   | PdnDocumentPayload
-  | PdnSecurityDocumentPayload;
+  | PdnSecurityDocumentPayload
+  | PrikazOtvetZaPdnDocumentPayload;
 
 export type GeneratedDocumentFile = {
   blob: Blob;
