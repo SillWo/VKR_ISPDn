@@ -35,6 +35,15 @@ export type ActSafetyLevelDocumentFormValues = {
   commissionMembers: ActSafetyLevelCommissionMember[];
 };
 
+export type PrikazPerechenLicAccessPerson = {
+  employeeId: number | null;
+};
+
+export type PrikazPerechenLicDocumentFormValues = {
+  orderNumber: string;
+  accessPersons: PrikazPerechenLicAccessPerson[];
+};
+
 export type ActIspdnCommissioningDocumentPayload = {
   documentType: string;
   manualData: {
@@ -53,6 +62,27 @@ export type ActSafetyLevelDocumentPayload = {
     commission_members: Array<{
       employee_id: number;
     }>;
+  };
+};
+
+export type PrikazPerechenLicDocumentPayload = {
+  documentType: "prikaz_perechen_lic";
+  manualData: {
+    order_number: string;
+    access_persons: Array<{
+      employee_id: number;
+    }>;
+  };
+};
+
+export type PrikazOtvetZaBezopasnostDocumentFormValues = {
+  orderNumber: string;
+};
+
+export type PrikazOtvetZaBezopasnostDocumentPayload = {
+  documentType: "prikaz_otvet_za_bezopasnost";
+  manualData: {
+    order_number: string;
   };
 };
 
@@ -137,7 +167,11 @@ export type PrikazOtvetZaPdnDocumentPayload = {
   };
 };
 
-export type GenerateIspdnDocumentPayload = ActIspdnCommissioningDocumentPayload | ActSafetyLevelDocumentPayload;
+export type GenerateIspdnDocumentPayload =
+  | ActIspdnCommissioningDocumentPayload
+  | ActSafetyLevelDocumentPayload
+  | PrikazPerechenLicDocumentPayload
+  | PrikazOtvetZaBezopasnostDocumentPayload;
 
 export type GenerateGlobalDocumentPayload =
   | RknNotificationDocumentPayload
@@ -149,4 +183,8 @@ export type GenerateGlobalDocumentPayload =
 export type GeneratedDocumentFile = {
   blob: Blob;
   filename: string;
+};
+
+export type GenerateIspdnDocumentZipPayload = {
+  documents: GenerateIspdnDocumentPayload[];
 };

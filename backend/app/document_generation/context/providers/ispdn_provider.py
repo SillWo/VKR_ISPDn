@@ -21,4 +21,6 @@ class IspdnContextProvider:
         return {
             "ISPDn_name": card.name,
             "start_date": card.commissioning_date.strftime("%d.%m.%Y"),
+            "responsible_employee_id": card.responsible_employee_id,
+            "responsible_person": card.responsible_person,
         }

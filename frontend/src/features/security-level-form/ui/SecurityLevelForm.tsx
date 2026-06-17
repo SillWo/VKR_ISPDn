@@ -2,10 +2,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Alert,
   Button,
+  Chip,
   FormControl,
+  FormControlLabel,
   FormHelperText,
   InputLabel,
   MenuItem,
+  Radio,
+  RadioGroup,
   Select,
   Stack,
   TextField,
@@ -17,6 +21,7 @@ import { Controller, useForm } from "react-hook-form";
 
 import { calculateIspdnSecurityLevel } from "../../../entities/security-level/api/securityLevelApi";
 import {
+  dataCategoryOptions,
   labelByValue,
   securityLevelOptions,
   subjectCountRangeOptions,
@@ -25,14 +30,18 @@ import {
 } from "../../../entities/security-level/model/catalogs";
 import type {
   SecurityLevelCalculationPayload,
+  SecurityLevelDataCategories,
   SecurityLevelFormValues,
   SecurityLevelRecord,
   SecurityLevelValue,
 } from "../../../entities/security-level/model/types";
 import { FormSection } from "../../../shared/ui/FormSection";
 import { defaultSecurityLevelFormValues, securityLevelFormSchema } from "../model/schema";
-import { DataCategorySwitches } from "./DataCategorySwitches";
 import { SecurityLevelResultCard } from "./SecurityLevelResultCard";
+
+type AutomaticSecurityLevelDataCategories = Partial<
+  Pick<SecurityLevelDataCategories, "special" | "biometric" | "other">
+>;
 
 type SecurityLevelFormProps = {
   ispdnId: number;
@@ -41,8 +50,41 @@ type SecurityLevelFormProps = {
   isSubmitting?: boolean;
   formId?: string;
   showActions?: boolean;
+  autoDataCategories?: AutomaticSecurityLevelDataCategories;
+  disableSubmit?: boolean;
+  submitDisabledReason?: string;
   onSubmit: (values: SecurityLevelFormValues) => void;
 };
+
+function resolveDataCategories(
+  formDataCategories: SecurityLevelDataCategories,
+  autoDataCategories?: AutomaticSecurityLevelDataCategories,
+): SecurityLevelDataCategories {
+  return {
+    special: autoDataCategories?.special ?? formDataCategories.special,
+    biometric: autoDataCategories?.biometric ?? formDataCategories.biometric,
+    public: formDataCategories.public,
+    other: autoDataCategories?.other ?? formDataCategories.other,
+  };
+}
+
+function ProcessedDataCategoriesBlock({ dataCategories }: { dataCategories: SecurityLevelDataCategories }) {
+  const selectedCategories = dataCategoryOptions.filter((category) => dataCategories[category.value]);
+
+  return (
+    <FormSection title="Категории обрабатываемых данных в ИСПДн">
+      {selectedCategories.length > 0 ? (
+        <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>
+          {selectedCategories.map((category) => (
+            <Chip key={category.value} label={category.label} size="small" variant="outlined" />
+          ))}
+        </Stack>
+      ) : (
+        <Alert severity="warning">Категории обрабатываемых данных пока не определены.</Alert>
+      )}
+    </FormSection>
+  );
+}
 
 export function SecurityLevelForm({
   ispdnId,
@@ -51,6 +93,9 @@ export function SecurityLevelForm({
   isSubmitting,
   formId,
   showActions = true,
+  autoDataCategories,
+  disableSubmit = false,
+  submitDisabledReason,
   onSubmit,
 }: SecurityLevelFormProps) {
   const {
@@ -66,26 +111,65 @@ export function SecurityLevelForm({
 
   const watchedValues = watch();
   const latestCalculationKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!autoDataCategories) {
+      return;
+    }
+
+    if (typeof autoDataCategories.special === "boolean") {
+      setValue("dataCategories.special", autoDataCategories.special, { shouldValidate: true });
+    }
+    if (typeof autoDataCategories.biometric === "boolean") {
+      setValue("dataCategories.biometric", autoDataCategories.biometric, { shouldValidate: true });
+    }
+    if (typeof autoDataCategories.other === "boolean") {
+      setValue("dataCategories.other", autoDataCategories.other, { shouldValidate: true });
+    }
+  }, [
+    autoDataCategories,
+    autoDataCategories?.special,
+    autoDataCategories?.biometric,
+    autoDataCategories?.other,
+    setValue,
+  ]);
+
+  const resolvedDataCategories = useMemo(
+    () => resolveDataCategories(watchedValues.dataCategories, autoDataCategories),
+    [
+      watchedValues.dataCategories,
+      watchedValues.dataCategories.special,
+      watchedValues.dataCategories.biometric,
+      watchedValues.dataCategories.public,
+      watchedValues.dataCategories.other,
+      autoDataCategories,
+      autoDataCategories?.special,
+      autoDataCategories?.biometric,
+      autoDataCategories?.other,
+    ],
+  );
+
   const calculationPayload = useMemo<SecurityLevelCalculationPayload>(
     () => ({
-      dataCategories: watchedValues.dataCategories,
+      dataCategories: resolvedDataCategories,
       subjectCountRange: watchedValues.subjectCountRange,
       threatType: watchedValues.threatType,
       subjectGroup: watchedValues.subjectGroup,
     }),
     [
-      watchedValues.dataCategories,
+      resolvedDataCategories,
       watchedValues.subjectCountRange,
       watchedValues.threatType,
       watchedValues.subjectGroup,
     ],
   );
 
-  const canCalculate =
+  const hasCalculationInputs =
     Object.values(calculationPayload.dataCategories).some(Boolean) &&
     calculationPayload.subjectCountRange !== "" &&
     calculationPayload.threatType !== "" &&
     calculationPayload.subjectGroup !== "";
+  const canCalculate = !disableSubmit && hasCalculationInputs;
   const calculationKey = useMemo(
     () =>
       JSON.stringify({
@@ -110,6 +194,11 @@ export function SecurityLevelForm({
   });
 
   useEffect(() => {
+    if (disableSubmit) {
+      latestCalculationKeyRef.current = null;
+      return;
+    }
+
     if (!canCalculate) {
       latestCalculationKeyRef.current = null;
       setValue("recommendedLevel", null, { shouldValidate: true });
@@ -123,6 +212,7 @@ export function SecurityLevelForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     ispdnId,
+    disableSubmit,
     canCalculate,
     calculationPayload.dataCategories.special,
     calculationPayload.dataCategories.biometric,
@@ -140,11 +230,42 @@ export function SecurityLevelForm({
     watchedValues.recommendedLevel !== null &&
     watchedValues.actualLevel !== "" &&
     watchedValues.actualLevel !== watchedValues.recommendedLevel;
+  const handleFormSubmit = (values: SecurityLevelFormValues) => {
+    if (disableSubmit) {
+      return;
+    }
+
+    onSubmit({
+      ...values,
+      dataCategories: resolveDataCategories(values.dataCategories, autoDataCategories),
+    });
+  };
 
   return (
-    <Stack id={formId} component="form" spacing={3} onSubmit={handleSubmit(onSubmit)} noValidate>
+    <Stack id={formId} component="form" spacing={3} onSubmit={handleSubmit(handleFormSubmit)} noValidate>
+      <ProcessedDataCategoriesBlock dataCategories={resolvedDataCategories} />
+
       <FormSection title="Категории данных">
-        <DataCategorySwitches control={control} errors={errors} disabled={isSubmitting} />
+        <Controller
+          name="dataCategories.public"
+          control={control}
+          render={({ field }) => (
+            <FormControl error={Boolean(errors.dataCategories)} component="fieldset" fullWidth>
+              <Typography sx={{ mb: 1, fontWeight: 500 }}>
+                Используются ли в ИСПДн данные из общедоступных источников?
+              </Typography>
+              <RadioGroup
+                row
+                value={field.value ? "yes" : "no"}
+                onChange={(event) => field.onChange(event.target.value === "yes")}
+              >
+                <FormControlLabel value="yes" control={<Radio />} label="Да" disabled={isSubmitting} />
+                <FormControlLabel value="no" control={<Radio />} label="Нет" disabled={isSubmitting} />
+              </RadioGroup>
+              {errors.dataCategories?.message && <FormHelperText>{errors.dataCategories.message}</FormHelperText>}
+            </FormControl>
+          )}
+        />
       </FormSection>
 
       <FormSection title="Количество субъектов ПДн">
@@ -322,9 +443,15 @@ export function SecurityLevelForm({
         </Stack>
       </FormSection>
 
+      {submitDisabledReason && disableSubmit && <Alert severity="warning">{submitDisabledReason}</Alert>}
+
       {showActions && (
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ justifyContent: "flex-end" }}>
-          <Button type="submit" variant="contained" disabled={isSubmitting || watchedValues.recommendedLevel === null}>
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={isSubmitting || disableSubmit || watchedValues.recommendedLevel === null}
+          >
             {isSubmitting ? "Сохранение..." : "Сохранить"}
           </Button>
         </Stack>

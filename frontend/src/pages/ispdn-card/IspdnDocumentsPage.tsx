@@ -6,6 +6,8 @@ import { Link as RouterLink, useParams } from "react-router-dom";
 import { getDocumentTypes } from "../../entities/document/api/documentApi";
 import { GenerateActIspdnDocumentForm } from "../../features/document-generation/ui/GenerateActIspdnDocumentForm";
 import { GenerateActSafetyLevelDocumentForm } from "../../features/document-generation/ui/GenerateActSafetyLevelDocumentForm";
+import { GeneratePrikazOtvetZaBezopasnostDocumentForm } from "../../features/document-generation/ui/GeneratePrikazOtvetZaBezopasnostDocumentForm";
+import { GeneratePrikazPerechenLicDocumentForm } from "../../features/document-generation/ui/GeneratePrikazPerechenLicDocumentForm";
 
 export function IspdnDocumentsPage() {
   const { ispdnId } = useParams();
@@ -25,6 +27,10 @@ export function IspdnDocumentsPage() {
   const actDocumentType = documentTypesQuery.data?.find((item) => item.code === "act_ispdn_commissioning");
   const safetyLevelDocumentType = documentTypesQuery.data?.find(
     (item) => item.code === "act_safety_level_of_ISPDn",
+  );
+  const prikazPerechenLicDocumentType = documentTypesQuery.data?.find((item) => item.code === "prikaz_perechen_lic");
+  const prikazOtvetZaBezopasnostDocumentType = documentTypesQuery.data?.find(
+    (item) => item.code === "prikaz_otvet_za_bezopasnost",
   );
 
   return (
@@ -98,6 +104,38 @@ export function IspdnDocumentsPage() {
               </Typography>
             </Box>
             <GenerateActSafetyLevelDocumentForm ispdnId={numericId} />
+          </Stack>
+        </Paper>
+      )}
+
+      {prikazPerechenLicDocumentType && (
+        <Paper variant="outlined" sx={{ p: 3, borderRadius: 2, bgcolor: "background.paper" }}>
+          <Stack spacing={2.5}>
+            <Box>
+              <Typography component="h2" variant="h6" sx={{ fontWeight: 600 }}>
+                {prikazPerechenLicDocumentType.title}
+              </Typography>
+              <Typography color="text.secondary" sx={{ mt: 0.5 }}>
+                {prikazPerechenLicDocumentType.description}
+              </Typography>
+            </Box>
+            <GeneratePrikazPerechenLicDocumentForm ispdnId={numericId} />
+          </Stack>
+        </Paper>
+      )}
+
+      {prikazOtvetZaBezopasnostDocumentType && (
+        <Paper variant="outlined" sx={{ p: 3, borderRadius: 2, bgcolor: "background.paper" }}>
+          <Stack spacing={2.5}>
+            <Box>
+              <Typography component="h2" variant="h6" sx={{ fontWeight: 600 }}>
+                {prikazOtvetZaBezopasnostDocumentType.title}
+              </Typography>
+              <Typography color="text.secondary" sx={{ mt: 0.5 }}>
+                {prikazOtvetZaBezopasnostDocumentType.description}
+              </Typography>
+            </Box>
+            <GeneratePrikazOtvetZaBezopasnostDocumentForm ispdnId={numericId} />
           </Stack>
         </Paper>
       )}

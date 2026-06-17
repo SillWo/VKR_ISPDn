@@ -16,3 +16,7 @@ class DocumentTypeRead(BaseModel):
 class DocumentGenerateRequest(BaseModel):
     document_type: str = Field(min_length=1)
     manual_data: dict[str, Any] = Field(default_factory=dict)
+
+
+class DocumentBatchGenerateRequest(BaseModel):
+    documents: list[DocumentGenerateRequest] = Field(min_length=1)

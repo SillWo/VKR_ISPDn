@@ -623,8 +623,7 @@ export function OrganizationCardForm({
         <Stack spacing={2}>
           {[
             ["documentApproverEmployeeId", "Уполномоченный утверждать документы"],
-            ["informationSecurityResponsibleEmployeeId", "Ответственный за обеспечение защиты информации"],
-            ["personalDataProcessingResponsibleEmployeeId", "Ответственный за организацию работы по персональным данным"],
+            ["personalDataProcessingResponsibleEmployeeId", "Ответственный за обработку персональных данных"],
           ].map(([name, label]) => (
             <Controller
               key={name}
@@ -632,7 +631,6 @@ export function OrganizationCardForm({
               name={name as keyof Pick<
                 OrganizationFormValues,
                 | "documentApproverEmployeeId"
-                | "informationSecurityResponsibleEmployeeId"
                 | "personalDataProcessingResponsibleEmployeeId"
               >}
               render={({ field }) => (

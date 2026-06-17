@@ -51,6 +51,9 @@ class OrganizationService:
         self._normalize_operator_fields(payload)
         existing_card = self.repository.get(organization_id)
         before_snapshot = self._snapshot(existing_card) if existing_card is not None else None
+        previous_responsible_employee_id = (
+            existing_card.personal_data_processing_responsible_employee_id if existing_card is not None else None
+        )
         card = self.repository.upsert(payload, organization_id)
         if self.task_automation_service is not None:
             self.task_automation_service.sync_fill_organization_card_task(organization_id)
@@ -60,6 +63,15 @@ class OrganizationService:
             and self.task_automation_service is not None
         ):
             self.task_automation_service.create_organization_data_changed_events(organization_id)
+        if (
+            existing_card is not None
+            and previous_responsible_employee_id != payload.personal_data_processing_responsible_employee_id
+            and self.task_automation_service is not None
+        ):
+            self.task_automation_service.create_personal_data_processing_responsible_changed_event(
+                organization_id,
+                payload.personal_data_processing_responsible_employee_id,
+            )
         return card
 
     def _validate_employee_ids(self, payload: OrganizationUpsert, organization_id: int) -> None:

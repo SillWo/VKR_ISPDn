@@ -2,9 +2,12 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import { Alert, Box, Button, CircularProgress, Paper, Stack, Typography } from "@mui/material";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { Link as RouterLink, useParams, useSearchParams } from "react-router-dom";
 
+import { getIspdnProcessingProcesses } from "../../entities/processing-process/api/processingProcessApi";
 import { getIspdnSecurityLevel, saveIspdnSecurityLevel } from "../../entities/security-level/api/securityLevelApi";
+import { deriveSecurityLevelDataCategoriesFromProcesses } from "../../entities/security-level/model/deriveDataCategoriesFromProcesses";
 import type { SecurityLevelFormValues, SecurityLevelRecord } from "../../entities/security-level/model/types";
 import { defaultSecurityLevelFormValues } from "../../features/security-level-form/model/schema";
 import { SecurityLevelForm } from "../../features/security-level-form/ui/SecurityLevelForm";
@@ -41,6 +44,23 @@ export function IspdnSecurityLevelPage() {
     enabled: isValidId,
     retry: false,
   });
+
+  const linkedProcessesQuery = useQuery({
+    queryKey: ["ispdnProcessingProcesses", numericId],
+    queryFn: () => getIspdnProcessingProcesses(numericId),
+    enabled: isValidId,
+    retry: false,
+  });
+
+  const automaticSecurityLevelDataCategories = useMemo(
+    () =>
+      linkedProcessesQuery.data
+        ? deriveSecurityLevelDataCategoriesFromProcesses(linkedProcessesQuery.data)
+        : undefined,
+    [linkedProcessesQuery.data],
+  );
+  const isSecurityLevelBlockedByProcesses =
+    linkedProcessesQuery.isLoading || linkedProcessesQuery.isError || linkedProcessesQuery.data === undefined;
 
   const saveMutation = useMutation({
     mutationFn: (values: SecurityLevelFormValues) => saveIspdnSecurityLevel(numericId, values),
@@ -130,6 +150,12 @@ export function IspdnSecurityLevelPage() {
         </Alert>
       )}
 
+      {linkedProcessesQuery.isError && (
+        <Alert severity="error">
+          Не удалось загрузить связанные процессы обработки. Сохранение уровня защищённости отключено, чтобы не сохранить устаревшие категории данных.
+        </Alert>
+      )}
+
       {!securityLevelQuery.isLoading && (!securityLevelQuery.isError || isEmpty) && (
         <SecurityLevelForm
           key={record?.updatedAt ?? "new-security-level"}
@@ -137,7 +163,14 @@ export function IspdnSecurityLevelPage() {
           defaultValues={toFormValues(record)}
           existingRecord={record}
           isSubmitting={saveMutation.isPending}
-          onSubmit={(values) => saveMutation.mutate(values)}
+          autoDataCategories={automaticSecurityLevelDataCategories}
+          disableSubmit={isSecurityLevelBlockedByProcesses}
+          submitDisabledReason="Сначала должны загрузиться связанные процессы обработки, по которым рассчитываются категории данных."
+          onSubmit={(values) => {
+            if (!isSecurityLevelBlockedByProcesses) {
+              saveMutation.mutate(values);
+            }
+          }}
         />
       )}
     </Stack>

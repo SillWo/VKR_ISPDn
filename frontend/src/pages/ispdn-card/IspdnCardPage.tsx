@@ -125,11 +125,11 @@ export function IspdnCardPage() {
           </Stack>
           <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap" }}>
             <Typography variant="body2" color="text.secondary">
-              Ответственный:
+              Ответственный за безопасность ПДн:
             </Typography>
             <Chip
               size="small"
-              label={data.responsibleEmployee?.fullName ?? data.responsiblePerson ?? "Ответственный не назначен"}
+              label={data.responsibleEmployee?.fullName ?? data.responsiblePerson ?? "Ответственный за безопасность ПДн не назначен"}
               variant="outlined"
               sx={{ bgcolor: "background.default" }}
             />

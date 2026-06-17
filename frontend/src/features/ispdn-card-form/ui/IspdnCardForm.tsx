@@ -34,6 +34,16 @@ import { EmployeeSelect } from "../../../shared/ui/employee-select/EmployeeSelec
 import { ispdnCardFormSchema } from "../model/schema";
 import { IspdnSecurityToolsSection } from "./IspdnSecurityToolsSection";
 
+const twoLineTabLabelSx = {
+  display: "-webkit-box",
+  WebkitBoxOrient: "vertical",
+  WebkitLineClamp: 2,
+  overflow: "hidden",
+  whiteSpace: "normal",
+  lineHeight: 1.25,
+  textAlign: "center",
+} as const;
+
 type IspdnCardFormProps = {
   defaultValues: IspdnFormValues;
   submitLabel: string;
@@ -192,7 +202,7 @@ export const IspdnCardForm = forwardRef<IspdnCardFormHandle, IspdnCardFormProps>
     <Stack spacing={2}>
       {legacyResponsiblePerson && !defaultValues.responsibleEmployeeId && (
         <Alert severity="warning">
-          Ответственный указан старым текстовым значением. Выберите сотрудника из реестра и сохраните карточку.
+          Ответственный за безопасность ПДн указан старым текстовым значением. Выберите сотрудника из реестра и сохраните карточку.
         </Alert>
       )}
       <Controller
@@ -202,7 +212,7 @@ export const IspdnCardForm = forwardRef<IspdnCardFormHandle, IspdnCardFormProps>
           <EmployeeSelect
             value={field.value}
             onChange={field.onChange}
-            label="Ответственный за обработку ПДн"
+            label={useTabs ? "Ответственный за безопасность ПДн в ИСПДн" : "Ответственный за безопасность ПДн"}
             required
             allowQuickCreate
             quickCreateButtonPlacement="inline"
@@ -359,9 +369,9 @@ export const IspdnCardForm = forwardRef<IspdnCardFormHandle, IspdnCardFormProps>
               },
             }}
           >
-            <Tab label="Основные сведения" />
-            <Tab label="Ответственный и состав системы" />
-            <Tab label="Даты и статус" />
+            <Tab label={<Box component="span" sx={twoLineTabLabelSx}>Основные сведения</Box>} />
+            <Tab label={<Box component="span" sx={twoLineTabLabelSx}>Ответственный</Box>} />
+            <Tab label={<Box component="span" sx={twoLineTabLabelSx}>Даты и статус</Box>} />
           </Tabs>
           <Box sx={{ p: { xs: 0, sm: 1 } }}>
             {activeTab === 0 && basicFields}
@@ -387,7 +397,7 @@ export const IspdnCardForm = forwardRef<IspdnCardFormHandle, IspdnCardFormProps>
       ) : (
         <>
           <FormSection title="Основные сведения">{basicFields}</FormSection>
-          <FormSection title="Ответственный и состав системы">{responsibleFields}</FormSection>
+          <FormSection title="Ответственный за безопасность ПДн и состав системы">{responsibleFields}</FormSection>
         </>
       )}
 

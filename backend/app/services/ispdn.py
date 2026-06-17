@@ -59,14 +59,25 @@ class IspdnService:
 
     def update_card(self, ispdn_id: int, payload: IspdnUpdate, organization_id: int) -> IspdnCard:
         card = self.get_card(ispdn_id, organization_id)
+        previous_responsible_employee_id = card.responsible_employee_id
         employee = self.employee_repository.get_by_id(payload.responsible_employee_id, organization_id)
         if employee is None:
             raise IspdnResponsibleEmployeeNotFoundError
-        return self.repository.update(
+        updated_card = self.repository.update(
             card,
             payload,
             responsible_person=employee.full_name,
         )
+        if (
+            previous_responsible_employee_id != payload.responsible_employee_id
+            and self.task_automation_service is not None
+        ):
+            self.task_automation_service.create_ispdn_personal_data_security_responsible_changed_event(
+                updated_card.id,
+                organization_id,
+                payload.responsible_employee_id,
+            )
+        return updated_card
 
     def delete_card(self, ispdn_id: int, organization_id: int) -> None:
         card = self.get_card(ispdn_id, organization_id)

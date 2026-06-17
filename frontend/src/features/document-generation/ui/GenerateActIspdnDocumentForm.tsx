@@ -75,6 +75,7 @@ type GenerateActIspdnDocumentFormProps = {
 export type GenerateActIspdnDocumentFormHandle = {
   generate: () => Promise<void>;
   prepare: () => Promise<GeneratedDocumentFile>;
+  getPayload: () => Promise<GenerateIspdnDocumentPayload>;
 };
 
 export const GenerateActIspdnDocumentForm = forwardRef<
@@ -149,6 +150,13 @@ export const GenerateActIspdnDocumentForm = forwardRef<
               reject(error);
             }
           },
+          () => reject(new Error("Проверьте ручные данные акта ввода ИСПДн.")),
+        )();
+      }),
+    getPayload: () =>
+      new Promise<GenerateIspdnDocumentPayload>((resolve, reject) => {
+        void handleSubmit(
+          (values) => resolve(mapToPayload(values)),
           () => reject(new Error("Проверьте ручные данные акта ввода ИСПДн.")),
         )();
       }),

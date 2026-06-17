@@ -2,7 +2,7 @@ import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DownloadIcon from "@mui/icons-material/Download";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Alert, Box, Button, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, Stack, TextField, Typography } from "@mui/material";
 import { useMutation } from "@tanstack/react-query";
 import { forwardRef, useImperativeHandle, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
@@ -10,47 +10,49 @@ import { z } from "zod";
 
 import { generateIspdnDocument } from "../../../entities/document/api/documentApi";
 import type {
-  ActSafetyLevelDocumentFormValues,
   GeneratedDocumentFile,
   GenerateIspdnDocumentPayload,
+  PrikazPerechenLicDocumentFormValues,
 } from "../../../entities/document/model/types";
-import { HttpError } from "../../../shared/api/httpClient";
+import { requiredText } from "../../../shared/lib/validation";
 import { EmployeeSelect } from "../../../shared/ui/employee-select/EmployeeSelect";
 
-const actSafetyLevelDocumentSchema = z
+const prikazPerechenLicDocumentSchema = z
   .object({
-    commissionMembers: z
+    orderNumber: requiredText("Укажите номер приказа"),
+    accessPersons: z
       .array(
         z
           .object({
             employeeId: z.number().nullable(),
           })
-          .refine((member) => member.employeeId !== null, {
-            message: "Выберите сотрудника комиссии из реестра",
+          .refine((person) => person.employeeId !== null, {
+            message: "Выберите сотрудника из реестра",
             path: ["employeeId"],
           }),
       )
-      .min(1, "Добавьте минимум одного члена комиссии"),
+      .min(1, "Добавьте минимум одного сотрудника с доступом к ПДн"),
   })
   .refine(
     (values) => {
-      const employeeIds = values.commissionMembers
-        .map((member) => member.employeeId)
+      const employeeIds = values.accessPersons
+        .map((person) => person.employeeId)
         .filter((employeeId): employeeId is number => employeeId !== null);
       return employeeIds.length === new Set(employeeIds).size;
     },
     {
       message: "Один сотрудник не может быть выбран дважды",
-      path: ["commissionMembers"],
+      path: ["accessPersons"],
     },
   );
 
-function mapToPayload(values: ActSafetyLevelDocumentFormValues): GenerateIspdnDocumentPayload {
+function mapToPayload(values: PrikazPerechenLicDocumentFormValues): GenerateIspdnDocumentPayload {
   return {
-    documentType: "act_safety_level_of_ISPDn",
+    documentType: "prikaz_perechen_lic",
     manualData: {
-      commission_members: values.commissionMembers.map((member) => ({
-        employee_id: member.employeeId ?? 0,
+      order_number: values.orderNumber.trim(),
+      access_persons: values.accessPersons.map((person) => ({
+        employee_id: person.employeeId ?? 0,
       })),
     },
   };
@@ -67,63 +69,54 @@ function downloadBlob(blob: Blob, filename: string) {
   window.URL.revokeObjectURL(url);
 }
 
-function getGenerationErrorMessage(error: unknown) {
-  if (
-    error instanceof HttpError
-    && error.status === 422
-    && error.message.includes("Уровень защищённости")
-  ) {
-    return 'Для формирования акта сначала заполните модуль "Уровень защищённости" для выбранной ИСПДн.';
-  }
-  return "Не удалось сформировать документ. Проверьте состав комиссии, доступность backend API и наличие системного шаблона.";
-}
-
-type GenerateActSafetyLevelDocumentFormProps = {
+type GeneratePrikazPerechenLicDocumentFormProps = {
   ispdnId: number;
   disabled?: boolean;
   showSubmitButton?: boolean;
   onGenerated?: () => void;
 };
 
-export type GenerateActSafetyLevelDocumentFormHandle = {
+export type GeneratePrikazPerechenLicDocumentFormHandle = {
   generate: () => Promise<void>;
   prepare: () => Promise<GeneratedDocumentFile>;
   getPayload: () => Promise<GenerateIspdnDocumentPayload>;
 };
 
-export const GenerateActSafetyLevelDocumentForm = forwardRef<
-  GenerateActSafetyLevelDocumentFormHandle,
-  GenerateActSafetyLevelDocumentFormProps
->(function GenerateActSafetyLevelDocumentForm({
+export const GeneratePrikazPerechenLicDocumentForm = forwardRef<
+  GeneratePrikazPerechenLicDocumentFormHandle,
+  GeneratePrikazPerechenLicDocumentFormProps
+>(function GeneratePrikazPerechenLicDocumentForm({
   ispdnId,
   disabled = false,
   showSubmitButton = true,
   onGenerated,
-}: GenerateActSafetyLevelDocumentFormProps, ref) {
+}: GeneratePrikazPerechenLicDocumentFormProps, ref) {
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const {
+    register,
     control,
     handleSubmit,
     formState: { errors },
-  } = useForm<ActSafetyLevelDocumentFormValues>({
-    resolver: zodResolver(actSafetyLevelDocumentSchema),
+  } = useForm<PrikazPerechenLicDocumentFormValues>({
+    resolver: zodResolver(prikazPerechenLicDocumentSchema),
     defaultValues: {
-      commissionMembers: [{ employeeId: null }],
+      orderNumber: "",
+      accessPersons: [{ employeeId: null }],
     },
   });
 
   const { fields, append, remove } = useFieldArray({
     control,
-    name: "commissionMembers",
+    name: "accessPersons",
   });
 
-  const generateFile = async (values: ActSafetyLevelDocumentFormValues) => {
+  const generateFile = async (values: PrikazPerechenLicDocumentFormValues) => {
     setDownloadError(null);
     return generateIspdnDocument(ispdnId, mapToPayload(values));
   };
 
   const mutation = useMutation({
-    mutationFn: async (values: ActSafetyLevelDocumentFormValues) => {
+    mutationFn: async (values: PrikazPerechenLicDocumentFormValues) => {
       const file = await generateFile(values);
       try {
         downloadBlob(file.blob, file.filename);
@@ -147,7 +140,7 @@ export const GenerateActSafetyLevelDocumentForm = forwardRef<
               reject(error);
             }
           },
-          () => reject(new Error("Проверьте состав комиссии в акте оценки уровня защищённости.")),
+          () => reject(new Error("Проверьте номер приказа и перечень сотрудников с доступом к ПДн.")),
         )();
       }),
     prepare: () =>
@@ -160,14 +153,14 @@ export const GenerateActSafetyLevelDocumentForm = forwardRef<
               reject(error);
             }
           },
-          () => reject(new Error("Проверьте состав комиссии в акте оценки уровня защищённости.")),
+          () => reject(new Error("Проверьте номер приказа и перечень сотрудников с доступом к ПДн.")),
         )();
       }),
     getPayload: () =>
       new Promise<GenerateIspdnDocumentPayload>((resolve, reject) => {
         void handleSubmit(
           (values) => resolve(mapToPayload(values)),
-          () => reject(new Error("Проверьте состав комиссии в акте оценки уровня защищенности.")),
+          () => reject(new Error("Проверьте номер приказа и перечень сотрудников с доступом к ПДн.")),
         )();
       }),
   }));
@@ -179,23 +172,39 @@ export const GenerateActSafetyLevelDocumentForm = forwardRef<
   return (
     <Box component="form" onSubmit={submitForm}>
       <Stack spacing={3}>
-        {mutation.isError && <Alert severity="error">{getGenerationErrorMessage(mutation.error)}</Alert>}
+        {mutation.isError && (
+          <Alert severity="error">
+            Не удалось сформировать документ. Проверьте номер приказа, выбранных сотрудников, доступность backend API и
+            наличие системного шаблона.
+          </Alert>
+        )}
         {downloadError && <Alert severity="error">{downloadError}</Alert>}
-        {mutation.isSuccess && !downloadError && <Alert severity="success">Документ сформирован и передан на скачивание.</Alert>}
+        {mutation.isSuccess && !downloadError && (
+          <Alert severity="success">Документ сформирован и передан на скачивание.</Alert>
+        )}
+
+        <TextField
+          label="Номер приказа"
+          disabled={disabled || mutation.isPending}
+          error={Boolean(errors.orderNumber)}
+          helperText={errors.orderNumber?.message}
+          {...register("orderNumber")}
+        />
 
         <Stack spacing={2}>
           <Box>
             <Typography component="h3" variant="h6" sx={{ fontWeight: 600 }}>
-              Состав комиссии
+              Сотрудники с доступом к ПДн
+            </Typography>
+            <Typography color="text.secondary" sx={{ mt: 0.5 }}>
+              Выберите сотрудников из реестра. ФИО и должность будут подставлены в приложение к приказу автоматически.
             </Typography>
           </Box>
 
-          {typeof errors.commissionMembers?.message === "string" && (
-            <Alert severity="error">{errors.commissionMembers.message}</Alert>
+          {typeof errors.accessPersons?.message === "string" && (
+            <Alert severity="error">{errors.accessPersons.message}</Alert>
           )}
-          {errors.commissionMembers?.root?.message && (
-            <Alert severity="error">{errors.commissionMembers.root.message}</Alert>
-          )}
+          {errors.accessPersons?.root?.message && <Alert severity="error">{errors.accessPersons.root.message}</Alert>}
 
           <Stack spacing={2}>
             {fields.map((field, index) => (
@@ -215,7 +224,7 @@ export const GenerateActSafetyLevelDocumentForm = forwardRef<
                     spacing={1.5}
                     sx={{ alignItems: { sm: "center" }, justifyContent: "space-between" }}
                   >
-                    <Typography sx={{ fontWeight: 600 }}>Член комиссии {index + 1}</Typography>
+                    <Typography sx={{ fontWeight: 600 }}>Запись {index + 1}</Typography>
                     <Button
                       type="button"
                       variant="outlined"
@@ -228,18 +237,18 @@ export const GenerateActSafetyLevelDocumentForm = forwardRef<
                     </Button>
                   </Stack>
                   <Controller
-                    name={`commissionMembers.${index}.employeeId`}
+                    name={`accessPersons.${index}.employeeId`}
                     control={control}
                     render={({ field: employeeField }) => (
                       <EmployeeSelect
                         value={employeeField.value}
                         onChange={employeeField.onChange}
-                        label="Сотрудник комиссии"
+                        label="Сотрудник с доступом к ПДн"
                         required
                         allowQuickCreate
                         disabled={disabled || mutation.isPending}
-                        error={Boolean(errors.commissionMembers?.[index]?.employeeId)}
-                        helperText={errors.commissionMembers?.[index]?.employeeId?.message}
+                        error={Boolean(errors.accessPersons?.[index]?.employeeId)}
+                        helperText={errors.accessPersons?.[index]?.employeeId?.message}
                       />
                     )}
                   />
@@ -256,7 +265,7 @@ export const GenerateActSafetyLevelDocumentForm = forwardRef<
             onClick={() => append({ employeeId: null })}
             sx={{ alignSelf: "flex-start" }}
           >
-            Добавить члена комиссии
+            Добавить сотрудника
           </Button>
         </Stack>
 

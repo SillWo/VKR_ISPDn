@@ -358,6 +358,63 @@ class TaskAutomationService:
             created_events.append(self.task_event_repository.get_event_by_id(task_event.id, organization_id) or task_event)
         return created_events
 
+    def create_personal_data_processing_responsible_changed_event(
+        self,
+        organization_id: int,
+        responsible_employee_id: int | None,
+    ) -> TaskEvent:
+        task_title = "Выпустить приказ о назначении ответственного за обработку ПДн"
+        task_event = self.task_event_repository.create_event(
+            ispdn_id=None,
+            event_type="personal_data_processing_responsible_changed",
+            source_module="organization",
+            title="Изменение ответственного за обработку ПДн",
+            description="Вы изменили ответственного за обработку ПДн в организации",
+            organization_id=organization_id,
+        )
+        self.task_event_repository.create_task_once(
+            task_event_id=task_event.id,
+            title=task_title,
+            description=task_title,
+            importance="high",
+            status="pending",
+            automation_key="issue_personal_data_processing_responsible_order",
+            responsible_employee_id=responsible_employee_id,
+        )
+        return self.task_event_repository.get_event_by_id(task_event.id, organization_id) or task_event
+
+    def create_ispdn_personal_data_security_responsible_changed_event(
+        self,
+        ispdn_id: int,
+        organization_id: int,
+        responsible_employee_id: int | None,
+    ) -> TaskEvent | None:
+        ispdn = self.ispdn_repository.get_by_id(ispdn_id, organization_id)
+        if ispdn is None:
+            return None
+
+        task_title = "Выпустить приказ о назначении ответственного за безопасность ПДн"
+        event_title = f"Изменение ответственного за безопасность ПДн в {ispdn.name}"
+        event_description = f"Вы изменили ответственного за безопасность ПДн в {ispdn.name}"
+        task_event = self.task_event_repository.create_event(
+            ispdn_id=ispdn.id,
+            event_type="ispdn_personal_data_security_responsible_changed",
+            source_module="ispdn_registry",
+            title=event_title,
+            description=event_description,
+            organization_id=organization_id,
+        )
+        self.task_event_repository.create_task_once(
+            task_event_id=task_event.id,
+            title=task_title,
+            description=task_title,
+            importance="high",
+            status="pending",
+            automation_key="issue_ispdn_personal_data_security_responsible_order",
+            responsible_employee_id=responsible_employee_id,
+        )
+        return self.task_event_repository.get_event_by_id(task_event.id, organization_id) or task_event
+
     def _get_ispdn_responsible_employee_id(self, ispdn_id: int, organization_id: int) -> int | None:
         ispdn = self.ispdn_repository.get_by_id(ispdn_id, organization_id)
         return ispdn.responsible_employee_id if ispdn is not None else None

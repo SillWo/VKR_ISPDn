@@ -34,13 +34,14 @@ import {
   Typography,
 } from "@mui/material";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useBlocker, useNavigate } from "react-router-dom";
 
 import { createIspdn, deleteIspdn, updateIspdn } from "../../entities/ispdn/api/ispdnApi";
 import { toIspdnFormValues } from "../../entities/ispdn/model/toIspdnFormValues";
 import type { IspdnCard, IspdnFormValues, IspdnSecurityTools } from "../../entities/ispdn/model/types";
-import type { GeneratedDocumentFile } from "../../entities/document/model/types";
+import { generateIspdnDocumentsZip } from "../../entities/document/api/documentApi";
+import type { GenerateIspdnDocumentPayload } from "../../entities/document/model/types";
 import { updateIspdnDataCenters } from "../../entities/data-center/api/dataCenterApi";
 import { updateIspdnCryptography } from "../../entities/crypto-tool/api/cryptoToolApi";
 import {
@@ -55,6 +56,7 @@ import type {
   ProcessingProcessFormValues,
 } from "../../entities/processing-process/model/types";
 import { saveIspdnSecurityLevel } from "../../entities/security-level/api/securityLevelApi";
+import { deriveSecurityLevelDataCategoriesFromProcesses } from "../../entities/security-level/model/deriveDataCategoriesFromProcesses";
 import type { SecurityLevelFormValues } from "../../entities/security-level/model/types";
 import { defaultIspdnFormValues } from "../../features/ispdn-card-form/model/schema";
 import { IspdnCardForm } from "../../features/ispdn-card-form/ui/IspdnCardForm";
@@ -68,6 +70,11 @@ import { GenerateActIspdnDocumentForm } from "../../features/document-generation
 import type { GenerateActIspdnDocumentFormHandle } from "../../features/document-generation/ui/GenerateActIspdnDocumentForm";
 import { GenerateActSafetyLevelDocumentForm } from "../../features/document-generation/ui/GenerateActSafetyLevelDocumentForm";
 import type { GenerateActSafetyLevelDocumentFormHandle } from "../../features/document-generation/ui/GenerateActSafetyLevelDocumentForm";
+import { GeneratePrikazOtvetZaBezopasnostDocumentForm } from "../../features/document-generation/ui/GeneratePrikazOtvetZaBezopasnostDocumentForm";
+import type { GeneratePrikazOtvetZaBezopasnostDocumentFormHandle } from "../../features/document-generation/ui/GeneratePrikazOtvetZaBezopasnostDocumentForm";
+import { GeneratePrikazPerechenLicDocumentForm } from "../../features/document-generation/ui/GeneratePrikazPerechenLicDocumentForm";
+import type { GeneratePrikazPerechenLicDocumentFormHandle } from "../../features/document-generation/ui/GeneratePrikazPerechenLicDocumentForm";
+import { HttpError } from "../../shared/api/httpClient";
 
 const steps = [
   "Основные сведения",
@@ -97,6 +104,50 @@ type ProcessDialogState =
   | { mode: "link" };
 
 type DocumentStatus = "not_prepared" | "prepared" | "error";
+type WizardDocumentKey = "actIspdn" | "safetyLevel" | "prikazOtvetZaBezopasnost" | "prikazPerechenLic";
+
+const wizardDocuments = [
+  {
+    key: "actIspdn",
+    documentType: "act_ispdn_commissioning",
+    label: "Акт ввода ИСПДн",
+  },
+  {
+    key: "safetyLevel",
+    documentType: "act_safety_level_of_ISPDn",
+    label: "Акт оценки уровня защищенности",
+  },
+  {
+    key: "prikazOtvetZaBezopasnost",
+    documentType: "prikaz_otvet_za_bezopasnost",
+    label: "Приказ о назначении ответственного за безопасность ПДн",
+  },
+  {
+    key: "prikazPerechenLic",
+    documentType: "prikaz_perechen_lic",
+    label: "Приказ о перечне лиц с доступом к ПДн",
+  },
+] as const satisfies ReadonlyArray<{
+  key: WizardDocumentKey;
+  documentType: GenerateIspdnDocumentPayload["documentType"];
+  label: string;
+}>;
+
+type DocumentZipErrorDetail = {
+  document_type?: string;
+  generated_document_types?: string[];
+  message?: unknown;
+};
+
+const documentTabLabelTextSx = {
+  display: "-webkit-box",
+  WebkitBoxOrient: "vertical",
+  WebkitLineClamp: 2,
+  overflow: "hidden",
+  whiteSpace: "normal",
+  lineHeight: 1.25,
+  textAlign: "left",
+} as const;
 
 function downloadBlob(blob: Blob, filename: string) {
   const url = window.URL.createObjectURL(blob);
@@ -109,12 +160,70 @@ function downloadBlob(blob: Blob, filename: string) {
   window.URL.revokeObjectURL(url);
 }
 
+function findWizardDocumentByType(documentType: string | undefined) {
+  return wizardDocuments.find((documentItem) => documentItem.documentType === documentType);
+}
+
+function parseZipGenerationError(error: unknown): DocumentZipErrorDetail | null {
+  if (!(error instanceof HttpError)) {
+    return null;
+  }
+
+  const jsonStart = error.message.indexOf("{");
+  if (jsonStart === -1) {
+    return null;
+  }
+
+  try {
+    const detail = JSON.parse(error.message.slice(jsonStart)) as DocumentZipErrorDetail;
+    return detail && typeof detail === "object" ? detail : null;
+  } catch {
+    return null;
+  }
+}
+
+function formatZipGenerationMessage(message: unknown): string {
+  if (typeof message === "string") {
+    return message;
+  }
+  if (Array.isArray(message)) {
+    return message
+      .map((item) => {
+        if (typeof item === "string") {
+          return item;
+        }
+        if (item && typeof item === "object" && "msg" in item && typeof item.msg === "string") {
+          return item.msg;
+        }
+        return JSON.stringify(item);
+      })
+      .join("; ");
+  }
+  if (message && typeof message === "object") {
+    return JSON.stringify(message);
+  }
+  return "Не удалось сформировать документ.";
+}
+
+function DocumentTabLabel({ title, status }: { title: string; status: DocumentStatus }) {
+  return (
+    <Stack direction="row" spacing={1} sx={{ alignItems: "center", maxWidth: 290 }}>
+      <Box component="span" sx={{ ...documentTabLabelTextSx, minWidth: 0 }}>
+        {title}
+      </Box>
+      <DocumentStatusChip status={status} />
+    </Stack>
+  );
+}
+
 export function IspdnCreatePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const allowExitRef = useRef(false);
   const actIspdnDocumentRef = useRef<GenerateActIspdnDocumentFormHandle>(null);
   const safetyLevelDocumentRef = useRef<GenerateActSafetyLevelDocumentFormHandle>(null);
+  const prikazOtvetZaBezopasnostDocumentRef = useRef<GeneratePrikazOtvetZaBezopasnostDocumentFormHandle>(null);
+  const prikazPerechenLicDocumentRef = useRef<GeneratePrikazPerechenLicDocumentFormHandle>(null);
   const readinessQuery = useQuery({
     queryKey: ["organization", "readiness"],
     queryFn: getOrganizationReadiness,
@@ -136,14 +245,19 @@ export function IspdnCreatePage() {
   const [cryptoToolIds, setCryptoToolIds] = useState<number[]>([]);
   const [cryptographyStepError, setCryptographyStepError] = useState(false);
   const [documentTab, setDocumentTab] = useState(0);
-  const [documentStatuses, setDocumentStatuses] = useState<Record<"actIspdn" | "safetyLevel", DocumentStatus>>({
+  const [documentStatuses, setDocumentStatuses] = useState<Record<WizardDocumentKey, DocumentStatus>>({
     actIspdn: "not_prepared",
     safetyLevel: "not_prepared",
+    prikazOtvetZaBezopasnost: "not_prepared",
+    prikazPerechenLic: "not_prepared",
   });
   const [documentGenerationError, setDocumentGenerationError] = useState<string | null>(null);
   const [isPreparingDocuments, setIsPreparingDocuments] = useState(false);
   const areDocumentsPrepared =
-    documentStatuses.actIspdn === "prepared" && documentStatuses.safetyLevel === "prepared";
+    documentStatuses.actIspdn === "prepared"
+    && documentStatuses.safetyLevel === "prepared"
+    && documentStatuses.prikazOtvetZaBezopasnost === "prepared"
+    && documentStatuses.prikazPerechenLic === "prepared";
   const isCardFormLastTab = cardFormTab >= 2;
   const shouldShowWizardNavigation = activeStep !== 0 || isCardFormLastTab;
 
@@ -167,8 +281,19 @@ export function IspdnCreatePage() {
   const linkedProcessesQuery = useQuery({
     queryKey: ["ispdnProcessingProcesses", card?.id],
     queryFn: () => getIspdnProcessingProcesses(card!.id),
-    enabled: activeStep === 2 && Boolean(card),
+    enabled: (activeStep === 2 || activeStep === 3) && Boolean(card),
   });
+
+  const automaticSecurityLevelDataCategories = useMemo(
+    () =>
+      linkedProcessesQuery.data
+        ? deriveSecurityLevelDataCategoriesFromProcesses(linkedProcessesQuery.data)
+        : undefined,
+    [linkedProcessesQuery.data],
+  );
+  const isSecurityLevelBlockedByProcesses =
+    activeStep === 3 &&
+    (linkedProcessesQuery.isLoading || linkedProcessesQuery.isError || linkedProcessesQuery.data === undefined);
 
   const processOptionsQuery = useQuery({
     queryKey: ["processingProcessOptions"],
@@ -363,7 +488,13 @@ export function IspdnCreatePage() {
   };
 
   const handlePrepareAllDocuments = async () => {
-    if (!actIspdnDocumentRef.current || !safetyLevelDocumentRef.current) {
+    if (
+      !card
+      || !actIspdnDocumentRef.current
+      || !safetyLevelDocumentRef.current
+      || !prikazOtvetZaBezopasnostDocumentRef.current
+      || !prikazPerechenLicDocumentRef.current
+    ) {
       return;
     }
 
@@ -372,47 +503,65 @@ export function IspdnCreatePage() {
     setDocumentStatuses({
       actIspdn: "not_prepared",
       safetyLevel: "not_prepared",
+      prikazOtvetZaBezopasnost: "not_prepared",
+      prikazPerechenLic: "not_prepared",
     });
 
-    let actIspdnFile: GeneratedDocumentFile | null = null;
-    let safetyLevelFile: GeneratedDocumentFile | null = null;
-    let generationError: string | null = null;
-
     try {
-      actIspdnFile = await actIspdnDocumentRef.current.prepare();
-      setDocumentStatuses((current) => ({ ...current, actIspdn: "prepared" }));
-    } catch (error) {
-      setDocumentStatuses((current) => ({ ...current, actIspdn: "error" }));
-      generationError =
-        error instanceof Error ? `Акт ввода ИСПДн: ${error.message}` : "Акт ввода ИСПДн не удалось подготовить.";
-    }
-
-    try {
-      safetyLevelFile = await safetyLevelDocumentRef.current.prepare();
-      setDocumentStatuses((current) => ({ ...current, safetyLevel: "prepared" }));
-    } catch (error) {
-      setDocumentStatuses((current) => ({ ...current, safetyLevel: "error" }));
-      const safetyLevelError =
-        error instanceof Error
-          ? `Акт оценки уровня защищённости: ${error.message}`
-          : "Акт оценки уровня защищённости не удалось подготовить.";
-      generationError = generationError ? `${generationError} ${safetyLevelError}` : safetyLevelError;
-    } finally {
-      if (!generationError && actIspdnFile && safetyLevelFile) {
+      const documentHandles = [
+        { ...wizardDocuments[0], getPayload: () => actIspdnDocumentRef.current!.getPayload() },
+        { ...wizardDocuments[1], getPayload: () => safetyLevelDocumentRef.current!.getPayload() },
+        {
+          ...wizardDocuments[2],
+          getPayload: () => prikazOtvetZaBezopasnostDocumentRef.current!.getPayload(),
+        },
+        { ...wizardDocuments[3], getPayload: () => prikazPerechenLicDocumentRef.current!.getPayload() },
+      ];
+      const documents: GenerateIspdnDocumentPayload[] = [];
+      for (const documentHandle of documentHandles) {
         try {
-          downloadBlob(actIspdnFile.blob, actIspdnFile.filename);
-          downloadBlob(safetyLevelFile.blob, safetyLevelFile.filename);
-        } catch {
-          generationError = "Не удалось начать скачивание подготовленных документов.";
+          documents.push(await documentHandle.getPayload());
+        } catch (error) {
+          setDocumentStatuses((current) => ({ ...current, [documentHandle.key]: "error" }));
+          const message = error instanceof Error ? error.message : "Проверьте ручные данные документа.";
+          throw new Error(`${documentHandle.label}: ${message}`);
         }
       }
-      if (generationError) {
-        setDocumentGenerationError(generationError);
+      const archive = await generateIspdnDocumentsZip(card.id, { documents });
+      downloadBlob(archive.blob, archive.filename);
+      setDocumentStatuses({
+        actIspdn: "prepared",
+        safetyLevel: "prepared",
+        prikazOtvetZaBezopasnost: "prepared",
+        prikazPerechenLic: "prepared",
+      });
+    } catch (error) {
+      const zipErrorDetail = parseZipGenerationError(error);
+      if (zipErrorDetail) {
+        const generatedDocumentTypes = new Set(zipErrorDetail.generated_document_types ?? []);
+        const failedDocument = findWizardDocumentByType(zipErrorDetail.document_type);
+        setDocumentStatuses((current) => {
+          const nextStatuses = { ...current };
+          for (const documentItem of wizardDocuments) {
+            if (generatedDocumentTypes.has(documentItem.documentType)) {
+              nextStatuses[documentItem.key] = "prepared";
+            }
+          }
+          if (failedDocument) {
+            nextStatuses[failedDocument.key] = "error";
+          }
+          return nextStatuses;
+        });
+        const label = failedDocument?.label ?? "Документ";
+        setDocumentGenerationError(`${label}: ${formatZipGenerationMessage(zipErrorDetail.message)}`);
+      } else {
+        const validationMessage = error instanceof Error ? error.message : "Проверьте ручные данные документов.";
+        setDocumentGenerationError(validationMessage);
       }
+    } finally {
       setIsPreparingDocuments(false);
     }
   };
-
   const handleDocumentsFinish = () => {
     if (!card) {
       return;
@@ -424,6 +573,16 @@ export function IspdnCreatePage() {
     }
     if (documentStatuses.safetyLevel !== "prepared") {
       setDocumentTab(1);
+      document.getElementById("ispdn-create-documents")?.scrollIntoView({ block: "start" });
+      return;
+    }
+    if (documentStatuses.prikazOtvetZaBezopasnost !== "prepared") {
+      setDocumentTab(2);
+      document.getElementById("ispdn-create-documents")?.scrollIntoView({ block: "start" });
+      return;
+    }
+    if (documentStatuses.prikazPerechenLic !== "prepared") {
+      setDocumentTab(3);
       document.getElementById("ispdn-create-documents")?.scrollIntoView({ block: "start" });
       return;
     }
@@ -464,7 +623,15 @@ export function IspdnCreatePage() {
               : undefined
       }
       nextLabel={activeStep === 6 ? "Завершить" : "Далее"}
-      nextDisabled={activeStep === 0 ? !isCardFormLastTab : activeStep === 6 ? !areDocumentsPrepared : false}
+      nextDisabled={
+        activeStep === 0
+          ? !isCardFormLastTab
+          : activeStep === 3
+            ? isSecurityLevelBlockedByProcesses
+            : activeStep === 6
+              ? !areDocumentsPrepared
+              : false
+      }
     />
   );
 
@@ -648,6 +815,13 @@ export function IspdnCreatePage() {
           defaultValues={securityLevelValues}
           isSubmitting={isBusy}
           showActions={false}
+          autoDataCategories={automaticSecurityLevelDataCategories}
+          disableSubmit={isSecurityLevelBlockedByProcesses}
+          submitDisabledReason={
+            linkedProcessesQuery.isError
+              ? "Не удалось загрузить связанные процессы обработки. Сохранение уровня защищённости отключено, чтобы не сохранить некорректные категории данных."
+              : "Связанные процессы обработки загружаются. Сохранение уровня защищённости станет доступно после расчёта категорий данных."
+          }
           onSubmit={(values) => securityLevelMutation.mutate(values)}
         />
       )}
@@ -730,7 +904,7 @@ export function IspdnCreatePage() {
               Выпуск документов
             </Typography>
             <Typography color="text.secondary" sx={{ mt: 0.5, maxWidth: 760 }}>
-              Сформируйте обязательные документы по созданной ИСПДн. Завершить мастер можно после выпуска обоих
+              Сформируйте обязательные документы по созданной ИСПДн. Завершить мастер можно после выпуска всех
               документов.
             </Typography>
           </Box>
@@ -742,22 +916,42 @@ export function IspdnCreatePage() {
                 onChange={(_, value: number) => setDocumentTab(value)}
                 variant="scrollable"
                 allowScrollButtonsMobile
-                sx={{ borderBottom: "1px solid", borderColor: "divider" }}
+                sx={{
+                  borderBottom: "1px solid",
+                  borderColor: "divider",
+                  "& .MuiTab-root": {
+                    minHeight: 56,
+                    maxWidth: 320,
+                    whiteSpace: "normal",
+                    alignItems: "stretch",
+                  },
+                }}
               >
                 <Tab
+                  label={<DocumentTabLabel title="Акт ввода ИСПДн" status={documentStatuses.actIspdn} />}
+                />
+                <Tab
                   label={
-                    <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-                      <span>Акт ввода ИСПДн</span>
-                      <DocumentStatusChip status={documentStatuses.actIspdn} />
-                    </Stack>
+                    <DocumentTabLabel
+                      title="Акт оценки уровня защищённости"
+                      status={documentStatuses.safetyLevel}
+                    />
                   }
                 />
                 <Tab
                   label={
-                    <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-                      <span>Акт оценки уровня защищённости</span>
-                      <DocumentStatusChip status={documentStatuses.safetyLevel} />
-                    </Stack>
+                    <DocumentTabLabel
+                      title="Приказ о назначении ответственного за безопасность ПДн"
+                      status={documentStatuses.prikazOtvetZaBezopasnost}
+                    />
+                  }
+                />
+                <Tab
+                  label={
+                    <DocumentTabLabel
+                      title="Приказ о перечне лиц с доступом к ПДн"
+                      status={documentStatuses.prikazPerechenLic}
+                    />
                   }
                 />
               </Tabs>
@@ -785,6 +979,34 @@ export function IspdnCreatePage() {
                     disabled={isPreparingDocuments}
                     onGenerated={() => {
                       setDocumentStatuses((current) => ({ ...current, safetyLevel: "prepared" }));
+                    }}
+                  />
+                </Stack>
+              </Box>
+
+              <Box sx={{ display: documentTab === 2 ? "block" : "none" }}>
+                <Stack spacing={2.5}>
+                  <GeneratePrikazOtvetZaBezopasnostDocumentForm
+                    ref={prikazOtvetZaBezopasnostDocumentRef}
+                    ispdnId={card.id}
+                    showSubmitButton={false}
+                    disabled={isPreparingDocuments}
+                    onGenerated={() => {
+                      setDocumentStatuses((current) => ({ ...current, prikazOtvetZaBezopasnost: "prepared" }));
+                    }}
+                  />
+                </Stack>
+              </Box>
+
+              <Box sx={{ display: documentTab === 3 ? "block" : "none" }}>
+                <Stack spacing={2.5}>
+                  <GeneratePrikazPerechenLicDocumentForm
+                    ref={prikazPerechenLicDocumentRef}
+                    ispdnId={card.id}
+                    showSubmitButton={false}
+                    disabled={isPreparingDocuments}
+                    onGenerated={() => {
+                      setDocumentStatuses((current) => ({ ...current, prikazPerechenLic: "prepared" }));
                     }}
                   />
                 </Stack>

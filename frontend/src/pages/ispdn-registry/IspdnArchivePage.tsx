@@ -72,7 +72,7 @@ export function IspdnArchivePage() {
               <TableRow>
                 <TableCell>Название</TableCell>
                 <TableCell>Статус</TableCell>
-                <TableCell>Ответственный</TableCell>
+                <TableCell>Ответственный за безопасность ПДн</TableCell>
                 <TableCell>Дата ввода</TableCell>
                 <TableCell>Дата вывода</TableCell>
                 <TableCell>Последнее обновление</TableCell>

@@ -3,6 +3,7 @@ import type {
   DocumentType,
   GenerateGlobalDocumentPayload,
   GenerateIspdnDocumentPayload,
+  GenerateIspdnDocumentZipPayload,
   GeneratedDocumentFile,
 } from "../model/types";
 
@@ -64,6 +65,15 @@ async function getErrorMessage(response: Response) {
   return response.statusText;
 }
 
+async function getErrorDetail(response: Response): Promise<unknown> {
+  try {
+    const body = (await response.json()) as { detail?: unknown };
+    return body.detail ?? response.statusText;
+  } catch {
+    return response.statusText;
+  }
+}
+
 export function getDocumentTypes() {
   return httpClient<DocumentTypeDto[]>("/api/v1/document-types").then((items) => items.map(mapDocumentType));
 }
@@ -112,6 +122,37 @@ export async function generateGlobalDocument(
 
   if (!response.ok) {
     throw new HttpError(response.status, await getErrorMessage(response));
+  }
+
+  const blob = await response.blob();
+  return {
+    blob,
+    filename: getFilenameFromContentDisposition(response.headers.get("Content-Disposition")),
+  };
+}
+
+export async function generateIspdnDocumentsZip(
+  ispdnId: number,
+  payload: GenerateIspdnDocumentZipPayload,
+): Promise<GeneratedDocumentFile> {
+  const response = await fetch(buildApiUrl(`/api/v1/ispdns/${ispdnId}/documents/generate-zip`), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(),
+    },
+    body: JSON.stringify({
+      documents: payload.documents.map((documentPayload) => ({
+        document_type: documentPayload.documentType,
+        manual_data: documentPayload.manualData,
+      })),
+    }),
+  });
+
+  if (!response.ok) {
+    const detail = await getErrorDetail(response);
+    const message = typeof detail === "string" ? detail : JSON.stringify(detail);
+    throw new HttpError(response.status, message);
   }
 
   const blob = await response.blob();

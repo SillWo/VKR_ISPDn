@@ -19,6 +19,16 @@ import { DataCategoriesSection } from "./DataCategoriesSection";
 import { ProcessingMethodsSection } from "./ProcessingMethodsSection";
 import { SwitchCatalogSection } from "./SwitchCatalogSection";
 
+const twoLineTabLabelSx = {
+  display: "-webkit-box",
+  WebkitBoxOrient: "vertical",
+  WebkitLineClamp: 2,
+  overflow: "hidden",
+  whiteSpace: "normal",
+  lineHeight: 1.25,
+  textAlign: "center",
+} as const;
+
 type ProcessingProcessFormProps = {
   defaultValues: ProcessingProcessFormValues;
   submitLabel: string;
@@ -131,9 +141,9 @@ export const ProcessingProcessForm = forwardRef<ProcessingProcessFormHandle, Pro
             "& .MuiTab-root": { whiteSpace: "normal", lineHeight: 1.25, minHeight: 48 },
           }}
         >
-          <Tab label="Основные сведения процесса" />
-          <Tab label="Обрабатываемые персональные данные" />
-          <Tab label="Действия с ПДн" />
+          <Tab label={<Box component="span" sx={twoLineTabLabelSx}>Основные сведения процесса</Box>} />
+          <Tab label={<Box component="span" sx={twoLineTabLabelSx}>Обрабатываемые персональные данные</Box>} />
+          <Tab label={<Box component="span" sx={twoLineTabLabelSx}>Действия с ПДн</Box>} />
         </Tabs>
 
         <Box>
